@@ -1,10 +1,18 @@
-APP_URL=http://localhost:8787
-ADMIN_EMAIL=you@yourdomain.com
-SUPPORT_DOMAIN=support.yourdomain.com
+# Ranse environment — copy to .dev.vars for local dev, or fill these in
+# during the Deploy-to-Cloudflare prompts.
+#
+# IMPORTANT: leave COOKIE_SIGNING_KEY, ADMIN_BOOTSTRAP_TOKEN, and any API
+# keys BLANK here. `bun run setup` generates strong random values locally;
+# `bun run deploy` generates them at deploy time. If you paste weak values
+# here, they'll be prefilled for every future install of your fork.
 
-# Session + bootstrap
-COOKIE_SIGNING_KEY=change-me-32-chars-minimum
-ADMIN_BOOTSTRAP_TOKEN=change-me-generate-with-openssl-rand
+APP_URL=
+ADMIN_EMAIL=
+SUPPORT_DOMAIN=
+
+# Session + bootstrap — generated automatically, do not prefill.
+COOKIE_SIGNING_KEY=
+ADMIN_BOOTSTRAP_TOKEN=
 
 # LLM — leave unset to default to Workers AI via the `AI` binding.
 # Set any one of these to enable the corresponding provider.

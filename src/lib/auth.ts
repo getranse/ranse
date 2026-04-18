@@ -36,9 +36,12 @@ export async function setSessionCookie<E extends { Bindings: Env }>(
   const secret = c.env.COOKIE_SIGNING_KEY;
   if (!secret) throw new Error('COOKIE_SIGNING_KEY not configured');
   const sig = await hmacSign(secret, sessionId);
+  // Determine Secure from the actual request scheme — robust against a
+  // misconfigured APP_URL var pointing at localhost in production.
+  const isHttps = new URL(c.req.url).protocol === 'https:';
   setCookie(c, COOKIE_NAME, `${sessionId}.${sig}`, {
     httpOnly: true,
-    secure: !c.env.APP_URL?.startsWith('http://'),
+    secure: isHttps,
     sameSite: 'Lax',
     path: '/',
     maxAge: MAX_AGE,
