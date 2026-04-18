@@ -58,7 +58,7 @@ async function main() {
   const prodVarsPath = '.prod.vars';
   writeFileSync(
     prodVarsPath,
-    secretsPresent.map((k) => `${k}=${process.env[k]}`).join('\n') + '\n',
+    `${secretsPresent.map((k) => `${k}=${process.env[k]}`).join('\n')}\n`,
     { mode: 0o600 },
   );
   console.log(`· Wrote ${prodVarsPath} with ${secretsPresent.length} keys`);

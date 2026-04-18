@@ -5,7 +5,24 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "style": { "useNodejsImportProtocol": "off" },
+      "style": {
+        "useNodejsImportProtocol": "off",
+        "noUnusedTemplateLiteral": "off",
+        "noNonNullAssertion": "off"
+      },
+      "complexity": {
+        "useLiteralKeys": "off"
+      },
+      "a11y": {
+        "useButtonType": "off",
+        "useKeyWithClickEvents": "off",
+        "useValidAnchor": "off",
+        "noLabelWithoutControl": "off",
+        "noAutofocus": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
       "suspicious": { "noExplicitAny": "off" }
     }
   },

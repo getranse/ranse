@@ -29,7 +29,10 @@ export async function createSession(
   return sessionId;
 }
 
-export async function setSessionCookie(c: Context<{ Bindings: Env }>, sessionId: string): Promise<void> {
+export async function setSessionCookie<E extends { Bindings: Env }>(
+  c: Context<E>,
+  sessionId: string,
+): Promise<void> {
   const secret = c.env.COOKIE_SIGNING_KEY;
   if (!secret) throw new Error('COOKIE_SIGNING_KEY not configured');
   const sig = await hmacSign(secret, sessionId);
@@ -42,7 +45,9 @@ export async function setSessionCookie(c: Context<{ Bindings: Env }>, sessionId:
   });
 }
 
-export async function getSession(c: Context<{ Bindings: Env }>): Promise<SessionData | null> {
+export async function getSession<E extends { Bindings: Env }>(
+  c: Context<E>,
+): Promise<SessionData | null> {
   const raw = getCookie(c, COOKIE_NAME);
   if (!raw) return null;
   const secret = c.env.COOKIE_SIGNING_KEY;
@@ -61,7 +66,9 @@ export async function getSession(c: Context<{ Bindings: Env }>): Promise<Session
   return { sessionId: row.id, userId: row.user_id, workspaceId: row.workspace_id ?? undefined };
 }
 
-export async function requireUser(c: Context<{ Bindings: Env }>): Promise<SessionData> {
+export async function requireUser<E extends { Bindings: Env }>(
+  c: Context<E>,
+): Promise<SessionData> {
   const s = await getSession(c);
   if (!s) throw new Response('Unauthorized', { status: 401 });
   return s;

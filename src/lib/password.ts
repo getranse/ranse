@@ -28,13 +28,13 @@ async function pbkdf2(
 ): Promise<Uint8Array> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(password),
+    new TextEncoder().encode(password) as BufferSource,
     { name: 'PBKDF2' },
     false,
     ['deriveBits'],
   );
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt as BufferSource, iterations, hash: 'SHA-256' },
     keyMaterial,
     bytes * 8,
   );
@@ -61,7 +61,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (stored.startsWith('pbkdf2$')) {
     const parts = stored.split('$');
     if (parts.length !== 4) return false;
-    const iterations = parseInt(parts[1], 10);
+    const iterations = Number.parseInt(parts[1], 10);
     if (!Number.isFinite(iterations) || iterations < 100_000) return false;
     const salt = b64decode(parts[2]);
     const expected = b64decode(parts[3]);
@@ -91,6 +91,6 @@ export async function verifyPassword(password: string, stored: string): Promise<
 
 export function needsRehash(stored: string): boolean {
   if (!stored.startsWith('pbkdf2$')) return true;
-  const iters = parseInt(stored.split('$')[1] ?? '0', 10);
+  const iters = Number.parseInt(stored.split('$')[1] ?? '0', 10);
   return !Number.isFinite(iters) || iters < CURRENT_ITERATIONS;
 }

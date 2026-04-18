@@ -1,4 +1,4 @@
-import { Agent, unstable_callable } from 'agents';
+import { Agent, callable } from 'agents';
 import type { Env } from '../env';
 
 interface SecretRecord {
@@ -56,7 +56,7 @@ export class UserSecretsStore extends Agent<Env, SecretsState> {
     )`;
   }
 
-  @unstable_callable()
+  @callable()
   async setKey(args: { provider: string; apiKey: string }) {
     const { ciphertext, iv } = await this.encryptValue(args.apiKey);
     this.sql`INSERT OR REPLACE INTO secret (provider, ciphertext, iv, updated_at)
@@ -65,13 +65,13 @@ export class UserSecretsStore extends Agent<Env, SecretsState> {
     await this.setState({ ...this.state, providers: rows.map((r) => r.provider) });
   }
 
-  @unstable_callable()
+  @callable()
   async listProviders(): Promise<string[]> {
     const rows = this.sql<{ provider: string }>`SELECT provider FROM secret`;
     return rows.map((r) => r.provider);
   }
 
-  @unstable_callable()
+  @callable()
   async deleteKey(provider: string) {
     this.sql`DELETE FROM secret WHERE provider = ${provider}`;
     const rows = this.sql<{ provider: string }>`SELECT provider FROM secret`;

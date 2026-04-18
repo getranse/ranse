@@ -1,4 +1,4 @@
-import { Agent, unstable_callable } from 'agents';
+import { Agent, callable } from 'agents';
 import type { Env } from '../env';
 
 export interface MailboxState {
@@ -26,7 +26,7 @@ const DEFAULT_STATE: MailboxState = {
 export class MailboxAgent extends Agent<Env, MailboxState> {
   initialState: MailboxState = DEFAULT_STATE;
 
-  @unstable_callable()
+  @callable()
   async recordInbound(args: { autoReply: boolean }) {
     await this.setState({
       ...this.state,
@@ -36,7 +36,7 @@ export class MailboxAgent extends Agent<Env, MailboxState> {
     });
   }
 
-  @unstable_callable()
+  @callable()
   async stats() {
     return this.state;
   }

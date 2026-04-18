@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { Env } from '../env';
 import { DEFAULT_AGENT_CONFIG } from './config';
 import type { ActionKey, AgentConfig, CallMetadata, ModelConfig, RuntimeOverrides } from './config.types';

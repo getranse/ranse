@@ -33,13 +33,13 @@ function isAutoReplyHeaders(h: Record<string, string>): boolean {
   return false;
 }
 
-async function readBody(stream: ReadableStream): Promise<Uint8Array> {
+async function readBody(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
   while (true) {
     const { value, done } = await reader.read();
-    if (done) break;
+    if (done || !value) break;
     chunks.push(value);
     total += value.byteLength;
   }
@@ -50,7 +50,7 @@ async function readBody(stream: ReadableStream): Promise<Uint8Array> {
 }
 
 export async function parseInbound(msg: ForwardableEmailMessage): Promise<ParsedInbound> {
-  const raw = await readBody(msg.raw);
+  const raw = await readBody(msg.raw as ReadableStream<Uint8Array>);
   const parsed = await PostalMime.parse(raw);
   const headers = headerMap(parsed.headers ?? []);
   const atts = (parsed.attachments ?? []).map((a) => ({

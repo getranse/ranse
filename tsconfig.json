@@ -14,10 +14,10 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*", "worker-configuration.d.ts"]
+  "include": ["src/**/*", "scripts/**/*", "tests/**/*", "worker-configuration.d.ts"]
 }

@@ -1,4 +1,4 @@
-import { Agent, unstable_callable } from 'agents';
+import { Agent, callable } from 'agents';
 import type { Env } from '../env';
 import { audit } from '../lib/audit';
 import { createApproval } from '../lib/approvals';
@@ -263,7 +263,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     await this.refreshCounts();
   }
 
-  @unstable_callable()
+  @callable()
   async listTickets(params: { status?: string; limit?: number; offset?: number }): Promise<TicketListItem[]> {
     const limit = Math.min(params.limit ?? 50, 200);
     const offset = params.offset ?? 0;
@@ -281,7 +281,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     return rows.results ?? [];
   }
 
-  @unstable_callable()
+  @callable()
   async getTicket(ticketId: string): Promise<{ ticket: any; messages: any[]; audit: any[]; approvals: any[] } | null> {
     const ticket = await this.env.DB.prepare(
       `SELECT * FROM ticket WHERE id = ? AND workspace_id = ?`,
@@ -314,7 +314,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     };
   }
 
-  @unstable_callable()
+  @callable()
   async assignTicket(args: { ticketId: string; userId: string | null; actorUserId: string }) {
     await this.env.DB.prepare(
       `UPDATE ticket SET assignee_user_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
@@ -331,7 +331,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     });
   }
 
-  @unstable_callable()
+  @callable()
   async setTicketStatus(args: { ticketId: string; status: 'open' | 'pending' | 'resolved' | 'closed' | 'spam'; actorUserId: string }) {
     await this.env.DB.prepare(
       `UPDATE ticket SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
@@ -348,7 +348,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     await this.refreshCounts();
   }
 
-  @unstable_callable()
+  @callable()
   async addInternalNote(args: { ticketId: string; body: string; actorUserId: string }) {
     const messageId = ids.message();
     await this.env.DB.prepare(
@@ -373,7 +373,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     });
   }
 
-  @unstable_callable()
+  @callable()
   async listApprovals(): Promise<any[]> {
     const rows = await this.env.DB.prepare(
       `SELECT * FROM approval_request WHERE workspace_id = ? AND status = 'pending' ORDER BY created_at DESC`,
@@ -383,7 +383,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     return rows.results ?? [];
   }
 
-  @unstable_callable()
+  @callable()
   async approveAndSend(args: { approvalId: string; actorUserId: string; edits?: { subject?: string; body_markdown?: string } }): Promise<{ ok: boolean; messageId?: string; error?: string }> {
     const row = await this.env.DB.prepare(
       `SELECT workspace_id, ticket_id, kind, proposed_json, status FROM approval_request WHERE id = ?`,
@@ -460,7 +460,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     return { ok: true, messageId };
   }
 
-  @unstable_callable()
+  @callable()
   async rejectApproval(args: { approvalId: string; actorUserId: string; reason?: string }) {
     await this.env.DB.prepare(
       `UPDATE approval_request SET status = 'rejected', decided_by_user_id = ?, decided_at = ? WHERE id = ? AND workspace_id = ?`,
