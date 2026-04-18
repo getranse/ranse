@@ -1,0 +1,21 @@
+APP_URL=http://localhost:8787
+ADMIN_EMAIL=you@yourdomain.com
+SUPPORT_DOMAIN=support.yourdomain.com
+
+# Session + bootstrap
+COOKIE_SIGNING_KEY=change-me-32-chars-minimum
+ADMIN_BOOTSTRAP_TOKEN=change-me-generate-with-openssl-rand
+
+# LLM — leave unset to default to Workers AI via the `AI` binding.
+# Set any one of these to enable the corresponding provider.
+# Format: "provider/model-id" in LLM_DEFAULT_MODEL.
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GOOGLE_AI_STUDIO_API_KEY=
+GROK_API_KEY=
+OPENROUTER_API_KEY=
+
+# AI Gateway (optional — enables unified analytics + fallback)
+CLOUDFLARE_AI_GATEWAY=ranse
+CLOUDFLARE_AI_GATEWAY_TOKEN=
+CLOUDFLARE_AI_GATEWAY_URL=none
