@@ -16,9 +16,7 @@
     "APP_URL": "",
     "ADMIN_EMAIL": "",
     "SUPPORT_DOMAIN": "",
-    "LLM_DEFAULT_MODEL": "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    "CLOUDFLARE_AI_GATEWAY": "ranse",
-    "CLOUDFLARE_AI_GATEWAY_URL": "none"
+    "LLM_DEFAULT_MODEL": "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"
   },
 
   "assets": {

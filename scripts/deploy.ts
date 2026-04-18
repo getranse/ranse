@@ -115,8 +115,10 @@ async function main() {
   }
 
   console.log('· Ensuring AI Gateway');
-  const wranglerPre = parseJsonc(readFileSync('wrangler.jsonc', 'utf8'));
-  const gatewayName = process.env.CLOUDFLARE_AI_GATEWAY ?? wranglerPre?.vars?.CLOUDFLARE_AI_GATEWAY ?? 'ranse';
+  // Gateway name is hardcoded in src/llm/core.ts (GATEWAY_NAME) — keep the
+  // literal in sync here. We don't read it from env so it never appears as
+  // a redundant Deploy-UI prompt.
+  const gatewayName = 'ranse';
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   if (accountId) {
     const cf = new Cloudflare({ apiToken: process.env.CLOUDFLARE_API_TOKEN });

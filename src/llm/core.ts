@@ -1,5 +1,9 @@
 import { OpenAI } from 'openai';
 import type { Env } from '../env';
+
+/** Hardcoded AI Gateway name. Auto-provisioned in scripts/deploy.ts. */
+export const GATEWAY_NAME = 'ranse';
+
 import {
   MODELS_MASTER,
   type CallMetadata,
@@ -53,13 +57,13 @@ async function buildBaseUrl(
   if (overrides?.aiGateway) {
     return `${overrides.aiGateway.baseUrl.replace(/\/$/, '')}/${provider}`;
   }
-  if (env.CLOUDFLARE_AI_GATEWAY_URL && env.CLOUDFLARE_AI_GATEWAY_URL !== 'none') {
+  if (env.CLOUDFLARE_AI_GATEWAY_URL) {
     const u = new URL(env.CLOUDFLARE_AI_GATEWAY_URL);
     u.pathname = u.pathname.replace(/\/$/, '') + (spec.directOverride ? `/${provider}` : '/compat');
     return u.toString();
   }
-  if (env.AI && env.CLOUDFLARE_AI_GATEWAY) {
-    const gw = (env.AI as any).gateway(env.CLOUDFLARE_AI_GATEWAY);
+  if (env.AI) {
+    const gw = (env.AI as any).gateway(GATEWAY_NAME);
     return spec.directOverride
       ? await gw.getUrl(provider)
       : `${await gw.getUrl()}compat`;

@@ -6,8 +6,11 @@ export interface Env {
   ADMIN_EMAIL: string;
   SUPPORT_DOMAIN: string;
   LLM_DEFAULT_MODEL: string;
-  CLOUDFLARE_AI_GATEWAY: string;
-  CLOUDFLARE_AI_GATEWAY_URL: string;
+
+  // Optional — only set if the user adds a custom AI Gateway URL in the
+  // dashboard. When unset, the LLM dispatcher uses `env.AI.gateway(<name>)`
+  // with the name from GATEWAY_NAME in src/llm/core.ts.
+  CLOUDFLARE_AI_GATEWAY_URL?: string;
 
   // secrets (all optional at build time — populated by deploy script or local .dev.vars)
   COOKIE_SIGNING_KEY?: string;
