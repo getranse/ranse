@@ -4,6 +4,7 @@ import { deleteCookie } from 'hono/cookie';
 import type { Env } from '../env';
 import { createSession, getSession, setSessionCookie, verifyPassword } from '../lib/auth';
 import { hashPassword, needsRehash } from '../lib/password';
+import { apiError } from '../lib/errors';
 
 export const authApp = new Hono<{ Bindings: Env }>();
 
@@ -17,10 +18,12 @@ authApp.post('/login', async (c) => {
   )
     .bind(body.email.toLowerCase())
     .first<{ id: string; password_hash: string | null }>();
-  if (!user?.password_hash) return c.json({ error: 'invalid_credentials' }, 401);
+  if (!user?.password_hash) {
+    return apiError(c, 'invalid_credentials', 'Incorrect email or password.');
+  }
 
   const ok = await verifyPassword(body.password, user.password_hash);
-  if (!ok) return c.json({ error: 'invalid_credentials' }, 401);
+  if (!ok) return apiError(c, 'invalid_credentials', 'Incorrect email or password.');
 
   if (needsRehash(user.password_hash)) {
     const fresh = await hashPassword(body.password);

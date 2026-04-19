@@ -5,6 +5,7 @@ import { hashPassword, createSession, setSessionCookie, getSession } from '../li
 import { ids } from '../lib/ids';
 import { randomToken } from '../lib/crypto';
 import { audit } from '../lib/audit';
+import { apiError } from '../lib/errors';
 
 export const setupApp = new Hono<{ Bindings: Env }>();
 
@@ -26,7 +27,13 @@ setupApp.get('/status', async (c) => {
 });
 
 setupApp.post('/bootstrap', async (c) => {
-  if (await isSetupComplete(c.env)) return c.json({ error: 'already_completed' }, 409);
+  if (await isSetupComplete(c.env)) {
+    return apiError(
+      c,
+      'already_completed',
+      'Setup has already been completed. Sign in or rotate ADMIN_SETUP_TOKEN and re-provision the database.',
+    );
+  }
 
   const schema = z.object({
     setup_token: z.string().min(1),
@@ -39,7 +46,11 @@ setupApp.post('/bootstrap', async (c) => {
 
   const expected = c.env.ADMIN_SETUP_TOKEN;
   if (!expected || body.setup_token !== expected) {
-    return c.json({ error: 'invalid_setup_token' }, 401);
+    return apiError(
+      c,
+      'invalid_setup_token',
+      'That setup token doesn\'t match. Find the current value in the Cloudflare deploy log, or rotate with `wrangler secret put ADMIN_SETUP_TOKEN`.',
+    );
   }
 
   const workspaceId = ids.workspace();
@@ -78,7 +89,7 @@ setupApp.post('/bootstrap', async (c) => {
 
 setupApp.post('/mailbox', async (c) => {
   const session = await getSession(c);
-  if (!session?.workspaceId) return c.json({ error: 'unauthorized' }, 401);
+  if (!session?.workspaceId) return apiError(c, 'unauthorized', 'Sign in required.');
 
   const body = z
     .object({
@@ -111,7 +122,7 @@ setupApp.post('/mailbox', async (c) => {
 
 setupApp.post('/verify', async (c) => {
   const session = await getSession(c);
-  if (!session?.workspaceId) return c.json({ error: 'unauthorized' }, 401);
+  if (!session?.workspaceId) return apiError(c, 'unauthorized', 'Sign in required.');
 
   const checks: Record<string, { ok: boolean; message?: string }> = {};
 

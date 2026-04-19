@@ -1,3 +1,18 @@
+export class ApiRequestError extends Error {
+  code: string;
+  status: number;
+  details?: unknown;
+  requestId?: string;
+  constructor(init: { code: string; message: string; status: number; details?: unknown; requestId?: string }) {
+    super(init.message);
+    this.name = 'ApiRequestError';
+    this.code = init.code;
+    this.status = init.status;
+    this.details = init.details;
+    this.requestId = init.requestId;
+  }
+}
+
 export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -5,8 +20,19 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
     credentials: 'include',
   });
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(body || res.statusText);
+    let body: any;
+    try {
+      body = await res.json();
+    } catch {
+      body = { error: 'http_error', message: res.statusText };
+    }
+    throw new ApiRequestError({
+      code: body?.error ?? 'http_error',
+      message: body?.message ?? body?.error ?? `HTTP ${res.status}`,
+      status: res.status,
+      details: body?.details,
+      requestId: body?.requestId,
+    });
   }
   return res.json();
 }

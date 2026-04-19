@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Env } from '../env';
 import { getSession } from '../lib/auth';
+import { apiError } from '../lib/errors';
 
 interface AuthedSession {
   sessionId: string;
@@ -20,7 +21,7 @@ function getSupervisor(env: Env, workspaceId: string) {
 
 apiApp.use('*', async (c, next) => {
   const s = await getSession(c);
-  if (!s?.workspaceId) return c.json({ error: 'unauthorized' }, 401);
+  if (!s?.workspaceId) return apiError(c, 'unauthorized', 'Sign in required.');
   c.set('session', { sessionId: s.sessionId, userId: s.userId, workspaceId: s.workspaceId });
   await next();
 });
@@ -37,7 +38,7 @@ apiApp.get('/tickets/:id', async (c) => {
   const s = c.get('session');
   const stub = getSupervisor(c.env, s.workspaceId);
   const data = await (stub as any).getTicket(c.req.param('id'));
-  if (!data) return c.json({ error: 'not_found' }, 404);
+  if (!data) return apiError(c, 'not_found', 'That ticket doesn\'t exist or is not in your workspace.');
   return c.json(data);
 });
 

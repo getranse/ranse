@@ -30,11 +30,29 @@ app.onError((err, c) => {
   const requestId = crypto.randomUUID();
   console.error(`[${requestId}] ${c.req.method} ${c.req.path}`, err);
   if (err instanceof ZodError) {
-    return c.json({ error: 'validation_error', issues: err.issues, requestId }, 400);
+    const first = err.issues[0];
+    const field = first?.path?.join('.') || 'request';
+    return c.json(
+      {
+        error: 'validation_error',
+        message: `${field}: ${first?.message ?? 'invalid input'}`,
+        details: { issues: err.issues },
+        requestId,
+      },
+      400,
+    );
   }
   const message = err instanceof Error ? err.message : String(err);
   const cause = err instanceof Error && err.cause ? String(err.cause) : undefined;
-  return c.json({ error: 'internal_error', message, cause, requestId }, 500);
+  return c.json(
+    {
+      error: 'internal_error',
+      message: `Something went wrong: ${message}`,
+      details: cause ? { cause } : undefined,
+      requestId,
+    },
+    500,
+  );
 });
 
 app.route('/setup', setupApp);
