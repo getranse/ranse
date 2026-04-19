@@ -26,7 +26,7 @@ Ranse turns support email into a real-time, multi-agent support workspace built 
    - `ADMIN_EMAIL` — your admin account email
    - `SUPPORT_DOMAIN` — the domain you'll use for support email (e.g. `support.acme.com`)
 3. Open your Worker URL — Ranse redirects you to `/setup`.
-4. Enter the generated `ADMIN_BOOTSTRAP_TOKEN` (see your Worker's secrets) to create the first admin + workspace.
+4. Enter the generated `ADMIN_SETUP_TOKEN` (see your Worker's secrets) to create the first admin + workspace.
 5. Add your support mailbox in step 2 of the wizard.
 6. In the **Cloudflare dashboard → Email → Email Routing**, route `support@yourdomain.com` to the Ranse Worker.
 7. Send a test email — it lands in your inbox as a ticket with a triage summary and a suggested reply waiting for approval.

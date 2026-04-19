@@ -29,7 +29,7 @@ setupApp.post('/bootstrap', async (c) => {
   if (await isSetupComplete(c.env)) return c.json({ error: 'already_completed' }, 409);
 
   const schema = z.object({
-    bootstrap_token: z.string().min(1),
+    setup_token: z.string().min(1),
     workspace_name: z.string().min(1).max(100),
     admin_email: z.string().email(),
     admin_password: z.string().min(12),
@@ -37,9 +37,9 @@ setupApp.post('/bootstrap', async (c) => {
   });
   const body = schema.parse(await c.req.json());
 
-  const expected = c.env.ADMIN_BOOTSTRAP_TOKEN;
-  if (!expected || body.bootstrap_token !== expected) {
-    return c.json({ error: 'invalid_bootstrap_token' }, 401);
+  const expected = c.env.ADMIN_SETUP_TOKEN;
+  if (!expected || body.setup_token !== expected) {
+    return c.json({ error: 'invalid_setup_token' }, 401);
   }
 
   const workspaceId = ids.workspace();

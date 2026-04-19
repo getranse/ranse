@@ -29,7 +29,7 @@ ADMIN_EMAIL=you@example.com
 SUPPORT_DOMAIN=support.example.com
 
 COOKIE_SIGNING_KEY=${randomHex(32)}
-ADMIN_BOOTSTRAP_TOKEN=${randomHex(16)}
+ADMIN_SETUP_TOKEN=${randomHex(16)}
 
 # Add provider API keys here for local dev, or use in-app BYOK
 # at Settings → LLM providers (preferred — scoped per workspace).

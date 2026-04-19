@@ -10,7 +10,7 @@
 # ────────────────────────────────────────────────────────────────────────
 # Session signing + single-use admin bootstrap.
 COOKIE_SIGNING_KEY=
-ADMIN_BOOTSTRAP_TOKEN=
+ADMIN_SETUP_TOKEN=
 
 # ────────────────────────────────────────────────────────────────────────
 # NOT prompted during deploy:

@@ -4,7 +4,7 @@ import { API } from '../api';
 export function SetupView({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState({
-    bootstrap_token: '',
+    setup_token: '',
     workspace_name: '',
     admin_email: '',
     admin_password: '',
@@ -48,15 +48,15 @@ export function SetupView({ onDone }: { onDone: () => void }) {
           <form onSubmit={submitBootstrap}>
             <h2>Step 1 · Admin account</h2>
             <div className="field">
-              <label>Bootstrap token</label>
+              <label>Setup token</label>
               <input
-                value={form.bootstrap_token}
-                onChange={(e) => setForm({ ...form, bootstrap_token: e.target.value })}
-                placeholder="From ADMIN_BOOTSTRAP_TOKEN secret"
+                value={form.setup_token}
+                onChange={(e) => setForm({ ...form, setup_token: e.target.value })}
+                placeholder="From ADMIN_SETUP_TOKEN secret"
                 required
               />
               <span className="muted">
-                This is the <code>ADMIN_BOOTSTRAP_TOKEN</code> value you set during deploy — single-use.
+                This is the <code>ADMIN_SETUP_TOKEN</code> value you set during deploy — single-use.
               </span>
             </div>
             <div className="field">

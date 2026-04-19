@@ -15,7 +15,7 @@ There are two supported install paths: **one-click deploy** (recommended) and **
    - `SUPPORT_DOMAIN` — the domain you'll use for support email.
    - `CLOUDFLARE_API_TOKEN` — build-time token Cloudflare auto-injects; leave as-is.
 3. Cloudflare runs `bun run deploy` which:
-   - Generates `COOKIE_SIGNING_KEY` and `ADMIN_BOOTSTRAP_TOKEN` if not set.
+   - Generates `COOKIE_SIGNING_KEY` and `ADMIN_SETUP_TOKEN` if not set.
    - Builds the React console (`vite build`).
    - Applies D1 migrations.
    - Pushes Worker secrets in bulk.
@@ -23,7 +23,7 @@ There are two supported install paths: **one-click deploy** (recommended) and **
 
 ### After deploy
 
-- Grab `ADMIN_BOOTSTRAP_TOKEN` from Cloudflare → your Worker → Settings → Variables and Secrets. **You need it once** to create the first admin.
+- Grab `ADMIN_SETUP_TOKEN` from Cloudflare → your Worker → Settings → Variables and Secrets. **You need it once** to create the first admin.
 - Finish the `/setup` wizard (admin account → mailbox → verification).
 
 ## Path B — Manual Wrangler
@@ -69,7 +69,7 @@ If any check fails, fix it before going live — the wizard blocks completion.
 
 ## Troubleshooting
 
-**"invalid_bootstrap_token"** — double-check the value from your Worker's secrets; it's a one-time use.
+**"invalid_setup_token"** — double-check the value from your Worker's secrets; it's a one-time use.
 
 **Email arrives but no ticket appears** — check Worker logs. Confirm the `support@` address is routed to the `ranse` Worker. Confirm the same address is registered as a mailbox in Ranse.
 

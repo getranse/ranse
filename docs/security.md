@@ -5,7 +5,7 @@
 - Password auth with PBKDF2-HMAC-SHA256 (600k iterations, 16-byte salt, 32-byte hash; Web Crypto). Hashes are stored in a versioned `pbkdf2$iters$salt$hash` format so the cost factor can be raised in-place — users are auto-rehashed on next login via `needsRehash()`.
 - Session cookie is `ranse_session=<sessionId>.<hmac>`, `HttpOnly`, `Secure` in prod, `SameSite=Lax`.
 - Session rows live in D1 with 30-day expiry and are revocable (`DELETE FROM session WHERE id = ?`).
-- `/setup/bootstrap` requires a single-use `ADMIN_BOOTSTRAP_TOKEN` Worker secret, which is invalidated the moment setup completes.
+- `/setup/bootstrap` requires a single-use `ADMIN_SETUP_TOKEN` Worker secret, which is invalidated the moment setup completes.
 
 ## Role model
 

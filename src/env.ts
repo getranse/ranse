@@ -14,7 +14,7 @@ export interface Env {
 
   // secrets (all optional at build time — populated by deploy script or local .dev.vars)
   COOKIE_SIGNING_KEY?: string;
-  ADMIN_BOOTSTRAP_TOKEN?: string;
+  ADMIN_SETUP_TOKEN?: string;
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_AI_GATEWAY_TOKEN?: string;
   OPENAI_API_KEY?: string;

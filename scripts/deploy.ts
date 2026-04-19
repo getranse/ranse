@@ -17,7 +17,7 @@ import Cloudflare from 'cloudflare';
 
 const SECRET_KEYS = [
   'COOKIE_SIGNING_KEY',
-  'ADMIN_BOOTSTRAP_TOKEN',
+  'ADMIN_SETUP_TOKEN',
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
   'GOOGLE_AI_STUDIO_API_KEY',
@@ -129,7 +129,7 @@ async function main() {
 
   console.log('· Preparing deploy-time secrets');
   generateIfMissing('COOKIE_SIGNING_KEY');
-  generateIfMissing('ADMIN_BOOTSTRAP_TOKEN');
+  generateIfMissing('ADMIN_SETUP_TOKEN');
 
   // Scrub placeholder vars that may have leaked in from .dev.vars.example.
   // APP_URL defaults to Secure cookies when unset; localhost would disable them in prod.
@@ -172,7 +172,7 @@ async function main() {
 
   console.log('\n✓ Deploy complete.');
   console.log('  Next: open your Worker URL and finish the /setup wizard.');
-  console.log(`  Your bootstrap token is ADMIN_BOOTSTRAP_TOKEN — check .prod.vars.`);
+  console.log(`  Your setup token is ADMIN_SETUP_TOKEN — check .prod.vars.`);
 }
 
 main().catch((err) => {
