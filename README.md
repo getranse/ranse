@@ -2,7 +2,7 @@
 
 **The Cloudflare-native shared inbox for support teams.**
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tomicodesdev/ranse)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/getranse/ranse)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 Ranse turns support email into a real-time, multi-agent support workspace built on Cloudflare Workers, Durable Objects, Email Service, R2, D1, Queues, and AI Gateway.

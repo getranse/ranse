@@ -39,7 +39,7 @@ Then finish the `/setup` wizard (admin account → mailbox → verification). Th
 ## Path B — Manual Wrangler
 
 ```bash
-git clone https://github.com/tomicodesdev/ranse.git
+git clone https://github.com/getranse/ranse.git
 cd ranse
 bun install
 bun run setup                 # generates .dev.vars
