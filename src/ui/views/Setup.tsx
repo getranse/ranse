@@ -14,7 +14,29 @@ interface MailboxForm {
   display_name: string;
 }
 
+interface ProvisionForm {
+  enabled: boolean;
+  api_token: string;
+  account_id: string;
+  worker_name: string;
+}
+
+interface ProvisionStep {
+  id: string;
+  label: string;
+  status: 'ok' | 'fail' | 'skipped';
+  message?: string;
+  dns_records?: Array<{ type: string; name: string; content: string; priority?: number }>;
+}
+
 type Step = 1 | 2 | 3 | 4;
+
+function detectWorkerName(): string {
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname;
+  if (host.endsWith('.workers.dev')) return host.split('.')[0];
+  return '';
+}
 
 export function SetupView({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState<Step>(1);
@@ -26,7 +48,16 @@ export function SetupView({ onDone }: { onDone: () => void }) {
     admin_password: '',
   });
   const [mailbox, setMailbox] = useState<MailboxForm>({ address: '', display_name: '' });
+  const [provision, setProvision] = useState<ProvisionForm>({
+    enabled: false,
+    api_token: '',
+    account_id: '',
+    worker_name: detectWorkerName(),
+  });
   const [showToken, setShowToken] = useState(false);
+  const [showApiToken, setShowApiToken] = useState(false);
+  const [provisionSteps, setProvisionSteps] = useState<ProvisionStep[] | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
   const [error, setError] = useState('');
   const [checks, setChecks] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,6 +65,32 @@ export function SetupView({ onDone }: { onDone: () => void }) {
   function next(to: Step) {
     setError('');
     setStep(to);
+  }
+
+  async function runProvision() {
+    setError('');
+    if (!mailbox.address || !provision.api_token || !provision.account_id || !provision.worker_name) {
+      setError('Fill in mailbox address, API token, account ID, and Worker name first.');
+      return;
+    }
+    setProvisioning(true);
+    setProvisionSteps(null);
+    try {
+      const domain = mailbox.address.split('@')[1];
+      const res = await API.provision({
+        api_token: provision.api_token,
+        account_id: provision.account_id,
+        domain,
+        mailbox_address: mailbox.address,
+        worker_name: provision.worker_name,
+      });
+      setProvisionSteps(res.steps);
+      if (!res.ok) setError('Some steps failed — review below and retry.');
+    } catch (err: any) {
+      setError(err.message || 'Provisioning failed');
+    } finally {
+      setProvisioning(false);
+    }
   }
 
   async function finish() {
@@ -179,8 +236,124 @@ export function SetupView({ onDone }: { onDone: () => void }) {
                 onChange={(e) => setMailbox({ ...mailbox, display_name: e.target.value })}
               />
             </div>
-            {error && <div className="error">{error}</div>}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <details
+              style={{ marginTop: 12, padding: 10, background: 'var(--bg-soft)', borderRadius: 6, border: '1px solid var(--border)' }}
+              open={provision.enabled}
+              onToggle={(e) => setProvision({ ...provision, enabled: (e.target as HTMLDetailsElement).open })}
+            >
+              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>
+                Auto-configure Cloudflare (optional)
+              </summary>
+              <p className="muted" style={{ marginTop: 8 }}>
+                Paste a scoped API token and Ranse will onboard the sending domain, add DKIM/SPF/DMARC DNS records (if the zone is on Cloudflare), enable Email Routing, and create a rule that forwards <code>{mailbox.address || 'your mailbox'}</code> to this Worker. Token is used once and not stored.
+              </p>
+              <p className="muted" style={{ fontSize: 12 }}>
+                Required token permissions:{' '}
+                <strong>
+                  Account · Email Sending: Edit, Zone · Zone: Read, Zone · DNS: Edit, Zone · Email Routing: Edit
+                </strong>
+                .{' '}
+                <a
+                  href="https://dash.cloudflare.com/profile/api-tokens"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Create token →
+                </a>
+              </p>
+              <div className="field">
+                <label>Cloudflare API token</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showApiToken ? 'text' : 'password'}
+                    value={provision.api_token}
+                    onChange={(e) => setProvision({ ...provision, api_token: e.target.value })}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="cf_xxx..."
+                    style={{ paddingRight: 56 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiToken((v) => !v)}
+                    style={{
+                      position: 'absolute',
+                      right: 4,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      padding: '4px 10px',
+                      fontSize: 12,
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {showApiToken ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+              <div className="field">
+                <label>Cloudflare account ID</label>
+                <input
+                  value={provision.account_id}
+                  onChange={(e) => setProvision({ ...provision, account_id: e.target.value })}
+                  placeholder="0fd7f5d92bfc8b08c568e8e3cf575394"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <span className="muted">Dashboard → right sidebar → Account ID.</span>
+              </div>
+              <div className="field">
+                <label>This Worker's script name</label>
+                <input
+                  value={provision.worker_name}
+                  onChange={(e) => setProvision({ ...provision, worker_name: e.target.value })}
+                  placeholder="ranse"
+                />
+                <span className="muted">Auto-detected from your Worker URL.</span>
+              </div>
+              <button
+                type="button"
+                onClick={runProvision}
+                disabled={provisioning}
+                style={{ marginTop: 6 }}
+              >
+                {provisioning ? 'Provisioning…' : provisionSteps ? 'Retry' : 'Run auto-configure'}
+              </button>
+              {provisionSteps && (
+                <div style={{ marginTop: 12 }}>
+                  {provisionSteps.map((s) => (
+                    <div key={s.id} className={`step ${s.status === 'ok' ? 'ok' : s.status === 'fail' ? 'fail' : ''}`}>
+                      <span className="dot" />
+                      <span>{s.label}</span>
+                    </div>
+                  ))}
+                  {provisionSteps.some((s) => s.dns_records && s.status === 'skipped') && (
+                    <div style={{ marginTop: 10 }}>
+                      <strong style={{ fontSize: 13 }}>Add these at your registrar:</strong>
+                      <pre
+                        style={{
+                          marginTop: 6,
+                          padding: 8,
+                          background: 'var(--bg)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          overflow: 'auto',
+                        }}
+                      >
+                        {provisionSteps
+                          .flatMap((s) => s.dns_records ?? [])
+                          .map((r, i) => `${i + 1}. ${r.type}  ${r.name}  →  ${r.content}${r.priority ? ` (priority ${r.priority})` : ''}`)
+                          .join('\n')}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </details>
+            {error && <div className="error" style={{ marginTop: 8 }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button type="button" onClick={() => next(1)} style={{ flex: 1 }}>
                 ← Back
               </button>

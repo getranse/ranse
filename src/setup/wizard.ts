@@ -6,6 +6,7 @@ import { ids } from '../lib/ids';
 import { randomToken } from '../lib/crypto';
 import { audit } from '../lib/audit';
 import { apiError } from '../lib/errors';
+import { applyProvisioning } from '../email/provisioning';
 
 export const setupApp = new Hono<{ Bindings: Env }>();
 
@@ -118,6 +119,34 @@ setupApp.post('/mailbox', async (c) => {
   });
 
   return c.json({ ok: true, mailboxId, address: body.address });
+});
+
+/**
+ * Optional auto-onboarding for Cloudflare Email Sending + Routing.
+ * Caller provides a user-scoped CF API token (never persisted) and the
+ * target domain; we onboard sending, add DKIM/SPF/DMARC records (if the
+ * zone is on CF), enable Email Routing, and create a forwarding rule.
+ */
+setupApp.post('/provision', async (c) => {
+  const body = z
+    .object({
+      api_token: z.string().min(20),
+      account_id: z.string().min(8),
+      domain: z.string().min(3),
+      mailbox_address: z.string().email(),
+      worker_name: z.string().min(1).max(63),
+    })
+    .parse(await c.req.json());
+
+  const steps = await applyProvisioning({
+    apiToken: body.api_token,
+    accountId: body.account_id,
+    domain: body.domain,
+    mailboxAddress: body.mailbox_address,
+    workerName: body.worker_name,
+  });
+  const anyFail = steps.some((s) => s.status === 'fail');
+  return c.json({ ok: !anyFail, steps });
 });
 
 setupApp.post('/verify', async (c) => {
