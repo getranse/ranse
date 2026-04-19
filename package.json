@@ -19,6 +19,7 @@
     "setup": "bun scripts/setup.ts",
     "db:migrate:local": "wrangler d1 migrations apply ranse-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply ranse-db --remote",
+    "db:reset:local": "rm -rf .wrangler/state/v3/d1 && wrangler d1 migrations apply ranse-db --local",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
