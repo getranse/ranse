@@ -73,8 +73,6 @@ If any check fails, fix it before going live — the wizard blocks completion.
 
 **Email arrives but no ticket appears** — check Worker logs. Confirm the `support@` address is routed to the `ranse` Worker. Confirm the same address is registered as a mailbox in Ranse.
 
-**LLM calls fail** — without any provider API keys and without the `AI` binding configured, the triage/draft specialists will throw. Either:
-- use the default Workers AI path (leave `LLM_DEFAULT_MODEL` on a `workers-ai/*` model), or
-- add a provider key in **Settings → LLM providers (BYOK)**.
+**LLM calls fail** — Workers AI is the zero-setup default and requires no keys. If you've switched `LLM_DEFAULT_MODEL` to an external provider (OpenAI, Anthropic, etc.), add the matching key in **Settings → LLM providers (BYOK)** — the key is stored per-workspace in an encrypted Durable Object. Prefer BYOK over Worker-wide secrets for multi-tenant installs; use `wrangler secret put OPENAI_API_KEY` only if you want a single shared key for the whole Worker.
 
 **AI Gateway** — `scripts/deploy.ts` ensures an AI Gateway named `ranse` exists in your account (creates it with cache_ttl=3600, logs on, no rate limits by default). No manual step needed. To disable: set `CLOUDFLARE_AI_GATEWAY` to an empty string in `wrangler.jsonc` vars — the LLM dispatcher then falls back to direct provider URLs.

@@ -1,25 +1,22 @@
 # Ranse build-time secrets.
 #
-# Every KEY listed here becomes a Worker Secret (write-only, encrypted).
-# Runtime configuration (APP_URL, ADMIN_EMAIL, SUPPORT_DOMAIN, gateway
-# name, etc.) lives in wrangler.jsonc `vars`, NOT here — otherwise the
-# Deploy-to-Cloudflare UI prompts for the same key in two places.
+# These keys are prompted during the Deploy-to-Cloudflare flow and pushed
+# as Worker Secrets. Runtime config (APP_URL, ADMIN_EMAIL, SUPPORT_DOMAIN,
+# LLM_DEFAULT_MODEL) lives in wrangler.jsonc `vars`, NOT here.
 #
-# IMPORTANT: leave these blank. `bun run setup` fills them locally;
-# `bun run deploy` generates strong random values at deploy time.
-
-# Session + first-admin bootstrap (auto-generated if blank).
+# Leave both values BLANK. `bun run deploy` auto-generates strong random
+# values; any weak prefill (e.g. "change-me...") is regenerated.
+#
+# ────────────────────────────────────────────────────────────────────────
+# Session signing + single-use admin bootstrap.
 COOKIE_SIGNING_KEY=
 ADMIN_BOOTSTRAP_TOKEN=
 
-# LLM providers (BYOK). Leave all blank to use Workers AI via the `AI`
-# binding; set any one to enable that provider.
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-GOOGLE_AI_STUDIO_API_KEY=
-GROK_API_KEY=
-OPENROUTER_API_KEY=
-
-# (Optional) If you later enable authentication on the `ranse` AI Gateway,
-# add CLOUDFLARE_AI_GATEWAY_TOKEN via dashboard → Variables → Secrets or
-# `wrangler secret put`. Not prompted during deploy.
+# ────────────────────────────────────────────────────────────────────────
+# NOT prompted during deploy:
+#   • Provider API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.) — add
+#     them in-app at Settings → LLM providers, or `wrangler secret put`
+#     post-deploy if you prefer Worker-wide scope. Workers AI is the
+#     default and requires no keys.
+#   • CLOUDFLARE_AI_GATEWAY_TOKEN — only needed if you manually enable
+#     gateway authentication.
