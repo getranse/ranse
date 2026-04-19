@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { ZodError } from 'zod';
 import { routeAgentRequest } from 'agents';
 import type {
   ExecutionContext,
@@ -24,6 +25,17 @@ export { UserSecretsStore } from './agents/UserSecretsStore';
 const app = new Hono<{ Bindings: Env }>();
 
 app.get('/healthz', (c) => c.json({ ok: true, name: c.env.APP_NAME, version: c.env.CF_VERSION?.id }));
+
+app.onError((err, c) => {
+  const requestId = crypto.randomUUID();
+  console.error(`[${requestId}] ${c.req.method} ${c.req.path}`, err);
+  if (err instanceof ZodError) {
+    return c.json({ error: 'validation_error', issues: err.issues, requestId }, 400);
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  const cause = err instanceof Error && err.cause ? String(err.cause) : undefined;
+  return c.json({ error: 'internal_error', message, cause, requestId }, 500);
+});
 
 app.route('/setup', setupApp);
 app.route('/auth', authApp);

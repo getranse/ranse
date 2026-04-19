@@ -10,7 +10,8 @@ describe('password hashing', () => {
     const stored = await hashPassword('correct-horse-battery');
     const parts = stored.split('$');
     expect(parts[0]).toBe('pbkdf2');
-    expect(Number(parts[1])).toBeGreaterThanOrEqual(600_000);
+    // 100k is the Cloudflare Workers runtime ceiling for PBKDF2.
+    expect(Number(parts[1])).toBeGreaterThanOrEqual(100_000);
     expect(parts).toHaveLength(4);
   });
 

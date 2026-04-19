@@ -5,10 +5,14 @@
  * The iteration count is embedded so we can raise it later and
  * transparently rehash on next login (see `needsRehash`).
  *
- * Target: OWASP 2023 minimum for PBKDF2-HMAC-SHA256 = 600_000 iterations.
+ * Iteration count is 100_000 — the ceiling the Cloudflare Workers
+ * runtime allows for PBKDF2. OWASP's 2023 recommendation for non-
+ * constrained environments is 600_000; we'd swap to a WASM-backed
+ * Argon2id or scrypt if we ever need stronger-than-100k.
  */
 
-const CURRENT_ITERATIONS = 600_000;
+const CURRENT_ITERATIONS = 100_000;
+const MIN_ACCEPTABLE_ITERATIONS = 10_000;
 const HASH_BYTES = 32;
 const SALT_BYTES = 16;
 
@@ -62,7 +66,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
     const parts = stored.split('$');
     if (parts.length !== 4) return false;
     const iterations = Number.parseInt(parts[1], 10);
-    if (!Number.isFinite(iterations) || iterations < 100_000) return false;
+    if (!Number.isFinite(iterations) || iterations < MIN_ACCEPTABLE_ITERATIONS) return false;
     const salt = b64decode(parts[2]);
     const expected = b64decode(parts[3]);
     const check = await pbkdf2(password, salt, iterations, expected.length);

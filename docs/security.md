@@ -2,7 +2,7 @@
 
 ## Auth model
 
-- Password auth with PBKDF2-HMAC-SHA256 (600k iterations, 16-byte salt, 32-byte hash; Web Crypto). Hashes are stored in a versioned `pbkdf2$iters$salt$hash` format so the cost factor can be raised in-place — users are auto-rehashed on next login via `needsRehash()`.
+- Password auth with PBKDF2-HMAC-SHA256 (100k iterations — the Cloudflare Workers runtime ceiling — 16-byte salt, 32-byte hash; Web Crypto). Hashes are stored in a versioned `pbkdf2$iters$salt$hash` format so the cost factor can be raised in-place — users are auto-rehashed on next login via `needsRehash()`. If stronger-than-100k is ever needed, swap to a WASM-backed Argon2id or scrypt (the storage format already carries the algorithm prefix, so mixed-algorithm verification is straightforward).
 - Session cookie is `ranse_session=<sessionId>.<hmac>`, `HttpOnly`, `Secure` in prod, `SameSite=Lax`.
 - Session rows live in D1 with 30-day expiry and are revocable (`DELETE FROM session WHERE id = ?`).
 - `/setup/bootstrap` requires a single-use `ADMIN_SETUP_TOKEN` Worker secret, which is invalidated the moment setup completes.
