@@ -325,7 +325,25 @@ export function SetupView({ onDone }: { onDone: () => void }) {
                   {provisionSteps.map((s) => (
                     <div key={s.id} className={`step ${s.status === 'ok' ? 'ok' : s.status === 'fail' ? 'fail' : ''}`}>
                       <span className="dot" />
-                      <span>{s.label}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div>{s.label}</div>
+                        {s.status === 'fail' && s.message && (
+                          <pre
+                            style={{
+                              marginTop: 4,
+                              padding: 6,
+                              background: 'var(--bg)',
+                              border: '1px solid var(--border)',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {s.message}
+                          </pre>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {provisionSteps.some((s) => s.dns_records && s.status === 'skipped') && (
