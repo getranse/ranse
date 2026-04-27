@@ -134,16 +134,20 @@ export async function addDnsRecord(token: string, zoneId: string, record: Sendin
 }
 
 export async function enableEmailRouting(token: string, zoneId: string) {
-  // Probe current state. The GET endpoint may itself 10000 on some accounts;
-  // when it does, fall through to the POST and let that be the authority.
+  // Probe current state. If the GET fails, surface the error rather than
+  // silently falling through — earlier "tolerance" here masked real auth
+  // failures and reported the zone as enabled when it wasn't.
   let probed: { enabled?: boolean; status?: string } | null = null;
   try {
     probed = await cfFetch<{ enabled?: boolean; status?: string }>(
       `/zones/${zoneId}/email/routing`,
       { method: 'GET', token },
     );
-  } catch {
-    // ignore — we'll attempt the enable POST below
+  } catch (err: any) {
+    // GET requires Email Routing Addresses: Read (account scope) on most
+    // accounts. If it 10000s, fall through to POST and let that be the
+    // authority; a 10000 there means we genuinely don't have permission.
+    if (err?.cfErrors?.[0]?.code !== 10000) throw err;
   }
   const enabled =
     probed?.enabled === true ||
@@ -155,12 +159,16 @@ export async function enableEmailRouting(token: string, zoneId: string) {
     await cfFetch<any>(`/zones/${zoneId}/email/routing/enable`, { method: 'POST', token });
     return { alreadyEnabled: false };
   } catch (err: any) {
-    // 10000 here often means "already enabled" — the API doesn't expose a
-    // friendly idempotent response. Treat any auth-shaped error as
-    // "probably already enabled"; downstream rule creation will surface a
-    // real problem if routing genuinely isn't on.
     const code = err?.cfErrors?.[0]?.code;
-    if (code === 10000 || code === 1000) return { alreadyEnabled: true };
+    if (code === 10000) {
+      throw new Error(
+        'Token cannot enable Email Routing. The /email/routing/enable endpoint ' +
+          'requires "Account · Email Routing Addresses: Edit" — not just ' +
+          '"Zone · Email Routing Rules: Edit". Recreate the token with that ' +
+          'permission added, or click "Onboard Domain" in the Cloudflare ' +
+          'dashboard (Email → Email Routing) to enable manually.',
+      );
+    }
     throw err;
   }
 }
