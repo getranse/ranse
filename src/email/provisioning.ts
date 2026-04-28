@@ -180,7 +180,10 @@ export async function createRoutingRule(
   mailboxAddress: string,
   workerName: string,
 ) {
-  // Idempotent: skip if a rule matching this exact destination already exists.
+  // Cloudflare creates rules in a *disabled* state regardless of the
+  // `enabled: true` we send in POST (verified empirically in the
+  // dashboard — rule appears with Status toggle off). So we PUT the
+  // rule after POST to actually enable it.
   const existing = await cfFetch<Array<any>>(`/zones/${zoneId}/email/routing/rules`, {
     method: 'GET',
     token,
@@ -188,18 +191,69 @@ export async function createRoutingRule(
   const dup = (existing ?? []).find((r: any) =>
     r.matchers?.some((m: any) => m.type === 'literal' && m.field === 'to' && m.value === mailboxAddress),
   );
-  if (dup) return { created: false, id: dup.id };
-  const rule = await cfFetch<any>(`/zones/${zoneId}/email/routing/rules`, {
-    method: 'POST',
+
+  let rule: any;
+  if (dup) {
+    rule = dup;
+  } else {
+    rule = await cfFetch<any>(`/zones/${zoneId}/email/routing/rules`, {
+      method: 'POST',
+      token,
+      body: {
+        name: `Ranse: ${mailboxAddress}`,
+        enabled: true,
+        matchers: [{ type: 'literal', field: 'to', value: mailboxAddress }],
+        actions: [{ type: 'worker', value: [workerName] }],
+      },
+    });
+  }
+
+  const ruleId = rule.tag ?? rule.id;
+  if (!rule.enabled) {
+    rule = await cfFetch<any>(`/zones/${zoneId}/email/routing/rules/${ruleId}`, {
+      method: 'PUT',
+      token,
+      body: {
+        name: rule.name ?? `Ranse: ${mailboxAddress}`,
+        enabled: true,
+        matchers: rule.matchers ?? [
+          { type: 'literal', field: 'to', value: mailboxAddress },
+        ],
+        actions: rule.actions ?? [{ type: 'worker', value: [workerName] }],
+      },
+    });
+  }
+
+  return { created: !dup, id: ruleId, enabled: rule.enabled === true };
+}
+
+/**
+ * Configure the zone's catch-all rule to route to the Worker. Without
+ * this, mail to any-address-other-than-the-explicit-rule gets dropped
+ * by default. For a support inbox where operators want flexibility
+ * (sales@, billing@, hi@ all going to the same Worker), catch-all =>
+ * Worker is the right default. The Worker can decide internally what
+ * to do with addresses that don't map to known mailboxes.
+ *
+ * Catch-all is special-cased in Cloudflare's API — it's always at the
+ * fixed identifier `catch_all` on the rule path; PUT replaces its
+ * configuration.
+ */
+export async function configureCatchAllToWorker(
+  token: string,
+  zoneId: string,
+  workerName: string,
+) {
+  return cfFetch<any>(`/zones/${zoneId}/email/routing/rules/catch_all`, {
+    method: 'PUT',
     token,
     body: {
-      name: `Ranse: ${mailboxAddress}`,
+      name: 'Ranse catch-all',
       enabled: true,
-      matchers: [{ type: 'literal', field: 'to', value: mailboxAddress }],
+      matchers: [{ type: 'all' }],
       actions: [{ type: 'worker', value: [workerName] }],
     },
   });
-  return { created: true, id: rule.id };
 }
 
 export interface ProvisionStep {
@@ -371,15 +425,36 @@ export async function applyProvisioning(input: ProvisionInput): Promise<Provisio
       input.mailboxAddress,
       input.workerName,
     );
+    const enabledNote = rule.enabled ? '' : ' (note: rule is disabled — toggle on in dashboard)';
     steps.push({
       id: 'rule',
       label: rule.created
-        ? `Routing rule created: ${input.mailboxAddress} → ${input.workerName}`
-        : `Routing rule already present: ${input.mailboxAddress}`,
+        ? `Routing rule created: ${input.mailboxAddress} → ${input.workerName}${enabledNote}`
+        : `Routing rule already present: ${input.mailboxAddress}${enabledNote}`,
       status: 'ok',
     });
   } catch (err: any) {
     steps.push({ id: 'rule', label: 'Create routing rule', status: 'fail', message: err.message });
+    return steps;
+  }
+
+  // Catch-all → Worker, so any other-address mail (sales@, billing@, etc.)
+  // also reaches the inbox. The Worker handles internal routing for
+  // unknown addresses; default Drop would silently lose them.
+  try {
+    await configureCatchAllToWorker(input.apiToken, zone.zoneId, input.workerName);
+    steps.push({
+      id: 'catch-all',
+      label: `Catch-all → ${input.workerName} (any address @ ${input.domain})`,
+      status: 'ok',
+    });
+  } catch (err: any) {
+    steps.push({
+      id: 'catch-all',
+      label: 'Configure catch-all to Worker',
+      status: 'fail',
+      message: err.message,
+    });
   }
 
   return steps;
