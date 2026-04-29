@@ -22,6 +22,14 @@ export interface ThreadedMimeOpts {
   messageId: string; // bare, without surrounding angle brackets
   inReplyTo?: string;
   references?: string[];
+  /**
+   * Reply-To address. Lets us send From a DKIM-signed sending subdomain
+   * (e.g. mail.<apex>, where Email Sending is authorized) while still
+   * routing the customer's reply back to the apex (where Email Routing
+   * lives). Most modern mail clients honor Reply-To when the user hits
+   * Reply.
+   */
+  replyTo?: string;
   date?: Date;
 }
 
@@ -39,6 +47,7 @@ export function buildThreadedMime(opts: ThreadedMimeOpts): Uint8Array {
     `Subject: ${escapeHeaderValue(opts.subject)}`,
     `Message-ID: <${opts.messageId}>`,
   ];
+  if (opts.replyTo) lines.push(`Reply-To: ${escapeHeaderValue(opts.replyTo)}`);
   if (opts.inReplyTo) lines.push(`In-Reply-To: <${opts.inReplyTo}>`);
   if (opts.references && opts.references.length > 0) {
     // RFC 5322 caps a header line at 998 octets; if the chain grows long

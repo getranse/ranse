@@ -154,16 +154,30 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       .all<{ rfc_message_id: string }>();
     const references = (refRows.results ?? []).map((r) => r.rfc_message_id);
 
-    const supportDomain = ctx.mailbox_address.split('@')[1];
-    const fromAddress = await buildReplyAddress({
-      supportDomain,
+    // Two-domain From / Reply-To split:
+    //   From    = support@mail.<apex>     — DKIM-signed by Email Sending,
+    //                                       which is onboarded only on the
+    //                                       mail.<apex> subdomain (Sending
+    //                                       and Routing can't share a zone).
+    //   Reply-To = reply+<ticketId>.<sig>@<apex> — signed reply address on
+    //                                       the apex zone where Email
+    //                                       Routing actually receives mail.
+    //                                       Customer mail clients use this
+    //                                       when the user clicks Reply, so
+    //                                       responses land at the Worker.
+    const apexDomain = ctx.mailbox_address.split('@')[1];
+    const sendingDomain = `mail.${apexDomain}`;
+    const localPart = ctx.mailbox_address.split('@')[0] || 'support';
+    const fromAddress = `${localPart}@${sendingDomain}`;
+    const replyToAddress = await buildReplyAddress({
+      supportDomain: apexDomain,
       ticketId: args.ticketId,
       mailboxSecret: ctx.reply_signing_secret,
     });
 
     const subject = (args.subject ?? `Re: ${ctx.ticket_subject}`).replace(/^(re:\s*)+/i, 'Re: ');
     const messageId = ids.message();
-    const rfcMessageId = `${messageId}@${supportDomain}`;
+    const rfcMessageId = `${messageId}@${sendingDomain}`;
 
     const rawMime = buildThreadedMime({
       from: fromAddress,
@@ -173,6 +187,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       messageId: rfcMessageId,
       inReplyTo: lastInbound?.rfc_message_id,
       references,
+      replyTo: replyToAddress,
     });
 
     const { EmailMessage } = await import('cloudflare:email');
