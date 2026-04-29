@@ -5,6 +5,7 @@ import { createApproval } from '../lib/approvals';
 import { ids } from '../lib/ids';
 import { r2Keys, putRaw } from '../lib/storage';
 import { buildReplyAddress } from '../email/reply-security';
+import { buildThreadedMime } from '../email/threading';
 import { runTriage } from './specialists/triage';
 import { runDraft } from './specialists/draft';
 import { searchKnowledge } from './specialists/knowledge';
@@ -77,6 +78,159 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       .bind(idStr)
       .first<{ id: string; name: string }>();
     return row ? { workspaceId: row.id, workspaceName: row.name } : null;
+  }
+
+  /**
+   * Effective AI-drafts setting for a ticket. Per-ticket override beats
+   * the workspace default; workspace defaults to off.
+   */
+  private async aiDraftsEnabled(ticketId: string): Promise<boolean> {
+    const t = await this.env.DB.prepare(`SELECT ai_drafts_enabled FROM ticket WHERE id = ?`)
+      .bind(ticketId)
+      .first<{ ai_drafts_enabled: number | null }>();
+    if (t?.ai_drafts_enabled === 1) return true;
+    if (t?.ai_drafts_enabled === 0) return false;
+    const w = await this.env.DB.prepare(`SELECT settings_json FROM workspace WHERE id = ?`)
+      .bind(this.state.workspaceId)
+      .first<{ settings_json: string }>();
+    try {
+      const s = w ? JSON.parse(w.settings_json || '{}') : {};
+      return s.ai_drafts_enabled === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Single source of truth for sending an outbound reply on a ticket. Builds
+   * raw MIME with proper Message-ID / In-Reply-To / References headers so
+   * recipient mail clients thread the reply, persists the outbound row in
+   * message_index (with rfc_message_id populated for future inbound match),
+   * stores the body in R2, audits, and bumps the ticket.
+   *
+   * `actorUserId` is the human who clicked send (or null when an automated
+   * AI flow sends, but currently AI never sends without a human approval).
+   */
+  private async sendThreadedReply(args: {
+    ticketId: string;
+    body: string;
+    subject?: string;
+    actorUserId: string | null;
+    source: 'manual' | 'ai_approval';
+    approvalId?: string;
+    edited?: boolean;
+  }): Promise<{ messageId: string }> {
+    const ctx = await this.env.DB.prepare(
+      `SELECT t.subject AS ticket_subject, t.requester_email, t.mailbox_id,
+              m.address AS mailbox_address, m.reply_signing_secret
+         FROM ticket t
+         JOIN mailbox m ON m.id = t.mailbox_id
+        WHERE t.id = ? AND t.workspace_id = ?`,
+    )
+      .bind(args.ticketId, this.state.workspaceId)
+      .first<{
+        ticket_subject: string;
+        requester_email: string;
+        mailbox_id: string;
+        mailbox_address: string;
+        reply_signing_secret: string;
+      }>();
+    if (!ctx) throw new Error('ticket_not_found');
+
+    const lastInbound = await this.env.DB.prepare(
+      `SELECT rfc_message_id FROM message_index
+        WHERE ticket_id = ? AND direction = 'inbound' AND rfc_message_id IS NOT NULL
+        ORDER BY sent_at DESC LIMIT 1`,
+    )
+      .bind(args.ticketId)
+      .first<{ rfc_message_id: string }>();
+
+    const refRows = await this.env.DB.prepare(
+      `SELECT rfc_message_id FROM message_index
+        WHERE ticket_id = ? AND rfc_message_id IS NOT NULL
+        ORDER BY sent_at ASC`,
+    )
+      .bind(args.ticketId)
+      .all<{ rfc_message_id: string }>();
+    const references = (refRows.results ?? []).map((r) => r.rfc_message_id);
+
+    const supportDomain = ctx.mailbox_address.split('@')[1];
+    const fromAddress = await buildReplyAddress({
+      supportDomain,
+      ticketId: args.ticketId,
+      mailboxSecret: ctx.reply_signing_secret,
+    });
+
+    const subject = (args.subject ?? `Re: ${ctx.ticket_subject}`).replace(/^(re:\s*)+/i, 'Re: ');
+    const messageId = ids.message();
+    const rfcMessageId = `${messageId}@${supportDomain}`;
+
+    const rawMime = buildThreadedMime({
+      from: fromAddress,
+      to: ctx.requester_email,
+      subject,
+      body: args.body,
+      messageId: rfcMessageId,
+      inReplyTo: lastInbound?.rfc_message_id,
+      references,
+    });
+
+    const { EmailMessage } = await import('cloudflare:email');
+    // EmailMessage accepts string or ReadableStream — our buildThreadedMime
+    // returns Uint8Array, so decode back to string. Plain-text MIME is
+    // ASCII-safe; UTF-8 content goes through the body unchanged because
+    // we declared `Content-Transfer-Encoding: 8bit`.
+    const rawMimeText = new TextDecoder('utf-8').decode(rawMime);
+    await this.env.EMAIL.send(
+      new EmailMessage(fromAddress, ctx.requester_email, rawMimeText),
+    );
+
+    await this.env.DB.prepare(
+      `INSERT INTO message_index (id, ticket_id, workspace_id, direction, from_address, to_address, subject, rfc_message_id, in_reply_to, preview, body_r2_key, author_user_id, sent_at, created_at)
+       VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        messageId,
+        args.ticketId,
+        this.state.workspaceId,
+        fromAddress,
+        ctx.requester_email,
+        subject,
+        rfcMessageId,
+        lastInbound?.rfc_message_id ?? null,
+        args.body.slice(0, 280),
+        r2Keys.textBody(this.state.workspaceId, args.ticketId, messageId),
+        args.actorUserId,
+        Date.now(),
+        Date.now(),
+      )
+      .run();
+    await putRaw(
+      this.env,
+      r2Keys.textBody(this.state.workspaceId, args.ticketId, messageId),
+      new TextEncoder().encode(args.body),
+      'text/plain; charset=utf-8',
+    );
+    await this.env.DB.prepare(
+      `UPDATE ticket SET status = 'pending', last_message_at = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind(Date.now(), Date.now(), args.ticketId)
+      .run();
+    await audit(this.env, {
+      workspaceId: this.state.workspaceId,
+      ticketId: args.ticketId,
+      actorType: args.actorUserId ? 'user' : 'system',
+      actorId: args.actorUserId ?? undefined,
+      action: 'reply.sent',
+      payload: {
+        messageId,
+        source: args.source,
+        approvalId: args.approvalId,
+        edited: args.edited,
+      },
+    });
+    await this.refreshCounts();
+    return { messageId };
   }
 
   private async workspaceConfig(): Promise<Partial<AgentConfig> | undefined> {
@@ -168,7 +322,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       payload: { messageId, from: payload.from.address, subject: payload.subject, isAutoReply: payload.isAutoReply },
     });
 
-    if (!payload.isAutoReply) {
+    if (!payload.isAutoReply && (await this.aiDraftsEnabled(ticketId))) {
       await this.schedule(0, 'triageAndDraft', { ticketId, messageId, payload });
     }
 
@@ -397,44 +551,15 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     const subject = args.edits?.subject ?? proposed.subject;
     const body = args.edits?.body_markdown ?? proposed.body_markdown;
 
-    const ticket = await this.env.DB.prepare(
-      `SELECT requester_email, requester_name, thread_token FROM ticket WHERE id = ?`,
-    )
-      .bind(row.ticket_id)
-      .first<{ requester_email: string; requester_name: string | null; thread_token: string }>();
-    if (!ticket) return { ok: false, error: 'ticket_not_found' };
-
-    await this.env.EMAIL.send({
-      from: proposed.from,
-      to: ticket.requester_email,
+    const sent = await this.sendThreadedReply({
+      ticketId: row.ticket_id,
+      body,
       subject,
-      text: body,
-    } as any);
-
-    const messageId = ids.message();
-    await this.env.DB.prepare(
-      `INSERT INTO message_index (id, ticket_id, workspace_id, direction, from_address, to_address, subject, preview, author_user_id, sent_at, created_at)
-       VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        messageId,
-        row.ticket_id,
-        this.state.workspaceId,
-        proposed.from,
-        ticket.requester_email,
-        subject,
-        body.slice(0, 280),
-        args.actorUserId,
-        Date.now(),
-        Date.now(),
-      )
-      .run();
-    await putRaw(
-      this.env,
-      r2Keys.textBody(this.state.workspaceId, row.ticket_id, messageId),
-      new TextEncoder().encode(body),
-      'text/plain; charset=utf-8',
-    );
+      actorUserId: args.actorUserId,
+      source: 'ai_approval',
+      approvalId: args.approvalId,
+      edited: !!args.edits,
+    });
 
     await this.env.DB.prepare(
       `UPDATE approval_request SET status = 'approved', decided_by_user_id = ?, decided_at = ? WHERE id = ?`,
@@ -442,22 +567,178 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       .bind(args.actorUserId, Date.now(), args.approvalId)
       .run();
 
-    await this.env.DB.prepare(
-      `UPDATE ticket SET status = 'pending', last_message_at = ?, updated_at = ? WHERE id = ?`,
-    )
-      .bind(Date.now(), Date.now(), row.ticket_id)
-      .run();
+    return { ok: true, messageId: sent.messageId };
+  }
 
+  /**
+   * Operator-initiated send. Skips the AI-draft / approval queue entirely.
+   * Used by the ticket detail page's compose-reply form.
+   */
+  @callable()
+  async replyDirect(args: {
+    ticketId: string;
+    actorUserId: string;
+    body: string;
+    subject?: string;
+  }): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+    if (!args.body || args.body.trim().length === 0) {
+      return { ok: false, error: 'empty_body' };
+    }
+    try {
+      const sent = await this.sendThreadedReply({
+        ticketId: args.ticketId,
+        body: args.body,
+        subject: args.subject,
+        actorUserId: args.actorUserId,
+        source: 'manual',
+      });
+      return { ok: true, messageId: sent.messageId };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? 'send_failed' };
+    }
+  }
+
+  /**
+   * Operator-initiated AI draft. Queues triageAndDraft for a single ticket
+   * regardless of the workspace/ticket auto-draft setting. The result still
+   * lands in the approvals queue — the human reviews + approves before
+   * anything is sent.
+   */
+  @callable()
+  async draftWithAI(args: {
+    ticketId: string;
+    actorUserId: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const t = await this.env.DB.prepare(
+      `SELECT id, mailbox_id, requester_email, subject FROM ticket WHERE id = ? AND workspace_id = ?`,
+    )
+      .bind(args.ticketId, this.state.workspaceId)
+      .first<{ id: string; mailbox_id: string; requester_email: string; subject: string }>();
+    if (!t) return { ok: false, error: 'ticket_not_found' };
+
+    const lastInbound = await this.env.DB.prepare(
+      `SELECT rfc_message_id, in_reply_to, from_address, subject, preview, raw_r2_key
+         FROM message_index
+        WHERE ticket_id = ? AND direction = 'inbound'
+        ORDER BY sent_at DESC LIMIT 1`,
+    )
+      .bind(args.ticketId)
+      .first<{
+        rfc_message_id: string | null;
+        in_reply_to: string | null;
+        from_address: string | null;
+        subject: string | null;
+        preview: string | null;
+        raw_r2_key: string | null;
+      }>();
+    if (!lastInbound) return { ok: false, error: 'no_inbound_message_to_draft_from' };
+
+    const mailbox = await this.env.DB.prepare(
+      `SELECT address, reply_signing_secret FROM mailbox WHERE id = ?`,
+    )
+      .bind(t.mailbox_id)
+      .first<{ address: string; reply_signing_secret: string }>();
+    if (!mailbox) return { ok: false, error: 'mailbox_not_found' };
+
+    const messageId = ids.message();
+    const payload: InboundEmailPayload = {
+      mailboxId: t.mailbox_id,
+      mailboxAddress: mailbox.address,
+      replySigningSecret: mailbox.reply_signing_secret,
+      existingTicketId: args.ticketId,
+      from: { address: lastInbound.from_address ?? t.requester_email },
+      to: [mailbox.address],
+      cc: [],
+      subject: lastInbound.subject ?? t.subject,
+      text: lastInbound.preview ?? '',
+      messageId: lastInbound.rfc_message_id ?? `${messageId}@local`,
+      inReplyTo: lastInbound.in_reply_to ?? undefined,
+      references: [],
+      isAutoReply: false,
+      rawKey: lastInbound.raw_r2_key ?? '',
+      receivedAt: Date.now(),
+      attachmentCount: 0,
+    };
+    await this.schedule(0, 'triageAndDraft', { ticketId: args.ticketId, messageId, payload });
     await audit(this.env, {
       workspaceId: this.state.workspaceId,
-      ticketId: row.ticket_id,
+      ticketId: args.ticketId,
       actorType: 'user',
       actorId: args.actorUserId,
-      action: 'reply.sent',
-      payload: { approvalId: args.approvalId, edited: !!args.edits },
+      action: 'ai_draft.requested',
     });
-    await this.refreshCounts();
-    return { ok: true, messageId };
+    return { ok: true };
+  }
+
+  /**
+   * Toggle the per-ticket AI-drafts override. Pass `enabled: null` to
+   * clear the override (ticket inherits workspace setting).
+   */
+  @callable()
+  async setTicketAiDrafts(args: {
+    ticketId: string;
+    actorUserId: string;
+    enabled: boolean | null;
+  }): Promise<{ ok: boolean }> {
+    const v = args.enabled === null ? null : args.enabled ? 1 : 0;
+    await this.env.DB.prepare(
+      `UPDATE ticket SET ai_drafts_enabled = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
+    )
+      .bind(v, Date.now(), args.ticketId, this.state.workspaceId)
+      .run();
+    await audit(this.env, {
+      workspaceId: this.state.workspaceId,
+      ticketId: args.ticketId,
+      actorType: 'user',
+      actorId: args.actorUserId,
+      action: 'ticket.ai_drafts_changed',
+      payload: { enabled: args.enabled },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * Read/write workspace-level settings (currently just `ai_drafts_enabled`).
+   */
+  @callable()
+  async getWorkspaceSettings(): Promise<{ ai_drafts_enabled: boolean }> {
+    const w = await this.env.DB.prepare(`SELECT settings_json FROM workspace WHERE id = ?`)
+      .bind(this.state.workspaceId)
+      .first<{ settings_json: string }>();
+    try {
+      const s = w ? JSON.parse(w.settings_json || '{}') : {};
+      return { ai_drafts_enabled: s.ai_drafts_enabled === true };
+    } catch {
+      return { ai_drafts_enabled: false };
+    }
+  }
+
+  @callable()
+  async setWorkspaceSettings(args: {
+    actorUserId: string;
+    ai_drafts_enabled: boolean;
+  }): Promise<{ ok: boolean }> {
+    const w = await this.env.DB.prepare(`SELECT settings_json FROM workspace WHERE id = ?`)
+      .bind(this.state.workspaceId)
+      .first<{ settings_json: string }>();
+    let settings: Record<string, unknown> = {};
+    try {
+      settings = w ? JSON.parse(w.settings_json || '{}') : {};
+    } catch {
+      settings = {};
+    }
+    settings.ai_drafts_enabled = !!args.ai_drafts_enabled;
+    await this.env.DB.prepare(`UPDATE workspace SET settings_json = ? WHERE id = ?`)
+      .bind(JSON.stringify(settings), this.state.workspaceId)
+      .run();
+    await audit(this.env, {
+      workspaceId: this.state.workspaceId,
+      actorType: 'user',
+      actorId: args.actorUserId,
+      action: 'workspace.settings_changed',
+      payload: { ai_drafts_enabled: args.ai_drafts_enabled },
+    });
+    return { ok: true };
   }
 
   @callable()

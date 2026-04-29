@@ -71,6 +71,58 @@ apiApp.post('/tickets/:id/note', async (c) => {
   return c.json({ ok: true });
 });
 
+apiApp.post('/tickets/:id/reply', async (c) => {
+  const s = c.get('session');
+  const body = z
+    .object({ body: z.string().min(1).max(50000), subject: z.string().max(998).optional() })
+    .parse(await c.req.json());
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  const result = await (stub as any).replyDirect({
+    ticketId: c.req.param('id'),
+    actorUserId: s.userId,
+    body: body.body,
+    subject: body.subject,
+  });
+  return c.json(result);
+});
+
+apiApp.post('/tickets/:id/draft', async (c) => {
+  const s = c.get('session');
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  const result = await (stub as any).draftWithAI({ ticketId: c.req.param('id'), actorUserId: s.userId });
+  return c.json(result);
+});
+
+apiApp.post('/tickets/:id/ai-drafts', async (c) => {
+  const s = c.get('session');
+  const body = z.object({ enabled: z.boolean().nullable() }).parse(await c.req.json());
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  await (stub as any).setTicketAiDrafts({
+    ticketId: c.req.param('id'),
+    actorUserId: s.userId,
+    enabled: body.enabled,
+  });
+  return c.json({ ok: true });
+});
+
+apiApp.get('/settings/workspace', async (c) => {
+  const s = c.get('session');
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  const settings = await (stub as any).getWorkspaceSettings();
+  return c.json(settings);
+});
+
+apiApp.post('/settings/workspace', async (c) => {
+  const s = c.get('session');
+  const body = z.object({ ai_drafts_enabled: z.boolean() }).parse(await c.req.json());
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  await (stub as any).setWorkspaceSettings({
+    actorUserId: s.userId,
+    ai_drafts_enabled: body.ai_drafts_enabled,
+  });
+  return c.json({ ok: true });
+});
+
 apiApp.get('/approvals', async (c) => {
   const s = c.get('session');
   const stub = await getSupervisor(c.env, s.workspaceId);
