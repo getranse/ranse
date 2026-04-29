@@ -50,6 +50,44 @@ async function resolveModelConfig(action: ActionKey, workspaceConfig?: Partial<A
   return { ...DEFAULT_AGENT_CONFIG[action], ...(workspaceConfig?.[action] ?? {}) };
 }
 
+/**
+ * Call Workers AI via the AI binding directly. Bypasses AI Gateway's
+ * /compat endpoint entirely — that path has finicky auth requirements
+ * (Cloudflare API token with workers-ai:run permission) that aren't
+ * always satisfied by the deploy-time CLOUDFLARE_API_TOKEN. The
+ * binding handles auth automatically and always works.
+ */
+async function callWorkersAI<T extends z.ZodTypeAny>(
+  params: InferParams<T>,
+  modelId: string,
+  cfg: ModelConfig,
+): Promise<z.infer<T> | string> {
+  const schemaInstruction = params.schema
+    ? '\n\nReply with ONLY a single JSON object matching the requested schema. No prose, no code fence, no preamble.'
+    : '';
+  const messages = [
+    { role: 'system' as const, content: params.system },
+    { role: 'user' as const, content: params.user + schemaInstruction },
+  ];
+  const response = await (params.env as any).AI.run(modelId, {
+    messages,
+    max_tokens: cfg.maxTokens,
+    temperature: cfg.temperature,
+  });
+  const text =
+    typeof response === 'string'
+      ? response
+      : (response?.response ?? response?.choices?.[0]?.message?.content ?? '');
+
+  if (!params.schema) return text;
+  // Llama models sometimes wrap JSON in code fences or add stray prose
+  // around it. Extract the largest balanced {...} block; fall through to
+  // raw parse if extraction misses.
+  const fenced = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
+  const candidate = fenced?.[1] ?? text.match(/\{[\s\S]*\}/)?.[0] ?? text;
+  return params.schema.parse(JSON.parse(candidate));
+}
+
 async function callOnce<T extends z.ZodTypeAny>(
   params: InferParams<T>,
   modelName: string,
@@ -62,6 +100,15 @@ async function callOnce<T extends z.ZodTypeAny>(
     metadata: meta,
     modelName,
   } as any);
+
+  // Workers AI: use env.AI.run() directly. Skips AI Gateway /compat (which
+  // has flaky/undocumented auth requirements) and authenticates via the AI
+  // binding — always works as long as env.AI is bound. Adapts the response
+  // shape to match what the OpenAI SDK path returns so downstream parsing
+  // stays the same.
+  if (spec.provider === 'workers-ai' && (params.env as any).AI) {
+    return callWorkersAI<T>(params, modelId, cfg);
+  }
 
   // /compat endpoint of AI Gateway requires `provider/model` format so it
   // knows which provider to dispatch to. Direct provider endpoints (e.g.
