@@ -74,10 +74,23 @@ async function callWorkersAI<T extends z.ZodTypeAny>(
     max_tokens: cfg.maxTokens,
     temperature: cfg.temperature,
   });
-  const text =
+  // Workers AI's response shape varies by model and input — sometimes
+  // `{ response: "text" }`, sometimes `{ response: { content: "text" } }`,
+  // sometimes a raw string, sometimes an OpenAI-style choices array. Coerce
+  // defensively so a shape mismatch doesn't blow up downstream `.match()`.
+  const rawText =
     typeof response === 'string'
       ? response
-      : (response?.response ?? response?.choices?.[0]?.message?.content ?? '');
+      : (response?.response ??
+          response?.choices?.[0]?.message?.content ??
+          response?.output_text ??
+          response?.result?.response);
+  const text =
+    typeof rawText === 'string'
+      ? rawText
+      : rawText && typeof rawText === 'object' && 'content' in rawText && typeof rawText.content === 'string'
+        ? rawText.content
+        : JSON.stringify(rawText ?? response ?? '');
 
   if (!params.schema) return text;
   // Llama models sometimes wrap JSON in code fences or add stray prose
