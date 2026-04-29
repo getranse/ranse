@@ -43,7 +43,13 @@ function pickApiKey(provider: Provider, env: Env, overrides?: RuntimeOverrides):
     case 'google-ai-studio': return env.GOOGLE_AI_STUDIO_API_KEY;
     case 'grok': return env.GROK_API_KEY;
     case 'openrouter': return env.OPENROUTER_API_KEY;
-    case 'workers-ai': return env.CLOUDFLARE_API_TOKEN;
+    // Workers AI through env.AI.gateway() returns a pre-authenticated URL —
+    // the AI binding handles auth at the gateway. The OpenAI SDK still
+    // requires a non-empty apiKey to construct the client, but the value
+    // is decorative for this path. Falling through to a placeholder
+    // means we don't fail when CLOUDFLARE_API_TOKEN is unset or lacks
+    // Workers-AI permission.
+    case 'workers-ai': return env.CLOUDFLARE_API_TOKEN || 'cf-binding-auth';
     case 'cerebras': return env.CEREBRAS_API_KEY;
   }
 }

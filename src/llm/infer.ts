@@ -1,8 +1,30 @@
 import type { z } from 'zod';
 import type { Env } from '../env';
 import { DEFAULT_AGENT_CONFIG } from './config';
+import { MODELS_MASTER } from './config.types';
 import type { ActionKey, AgentConfig, CallMetadata, ModelConfig, RuntimeOverrides } from './config.types';
 import { resolveClient } from './core';
+
+/** Providers that need an external API key configured. workers-ai is auth'd
+ * via env.AI binding — no key required. */
+const PROVIDERS_NEED_KEY: Record<string, keyof Env> = {
+  openai: 'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  'google-ai-studio': 'GOOGLE_AI_STUDIO_API_KEY',
+  grok: 'GROK_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  cerebras: 'CEREBRAS_API_KEY',
+};
+
+function modelHasUsableAuth(modelName: string, env: Env, overrides?: RuntimeOverrides): boolean {
+  const spec = MODELS_MASTER[modelName];
+  if (!spec) return true; // unknown model — let the call attempt happen
+  const provider = spec.provider;
+  if (provider === 'workers-ai') return true;
+  if (overrides?.userApiKeys?.[provider]) return true;
+  const envKey = PROVIDERS_NEED_KEY[provider];
+  return envKey ? !!env[envKey] : true;
+}
 
 export interface InferParams<T extends z.ZodTypeAny = z.ZodTypeAny> {
   env: Env;
@@ -83,7 +105,16 @@ export async function infer(params: InferParams<z.ZodTypeAny> & { schema?: undef
 export async function infer(params: InferParams): Promise<InferResult> {
   const cfg = await resolveModelConfig(params.action, params.workspaceConfig);
   const maxAttempts = params.maxAttempts ?? 3;
-  const candidates = [cfg.model, cfg.fallbackModel].filter(Boolean) as string[];
+  // Filter candidates whose provider needs an API key we don't have. Avoids
+  // burning retries on a 401 fallback (e.g. anthropic without ANTHROPIC_API_KEY).
+  const candidates = [cfg.model, cfg.fallbackModel]
+    .filter(Boolean)
+    .filter((m) => modelHasUsableAuth(m as string, params.env, params.overrides)) as string[];
+  if (candidates.length === 0) {
+    throw new Error(
+      `No usable LLM for action "${params.action}" — primary "${cfg.model}" and fallback "${cfg.fallbackModel ?? '(none)'}" both require API keys that aren't configured. Add a key in /settings/providers, set the corresponding Worker secret, or change the model to a workers-ai/ option.`,
+    );
+  }
 
   let lastError: unknown;
   let attempts = 0;
