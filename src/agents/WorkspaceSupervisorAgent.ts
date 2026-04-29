@@ -5,7 +5,11 @@ import { createApproval } from '../lib/approvals';
 import { ids } from '../lib/ids';
 import { r2Keys, putRaw } from '../lib/storage';
 import { buildReplyAddress } from '../email/reply-security';
-import { buildThreadedMime } from '../email/threading';
+import {
+  buildHtmlWithSignature,
+  buildMultipartReply,
+  buildPlainTextWithSignature,
+} from '../email/html';
 import { runTriage } from './specialists/triage';
 import { runDraft } from './specialists/draft';
 import { searchKnowledge } from './specialists/knowledge';
@@ -122,9 +126,11 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }): Promise<{ messageId: string }> {
     const ctx = await this.env.DB.prepare(
       `SELECT t.subject AS ticket_subject, t.requester_email, t.mailbox_id,
-              m.address AS mailbox_address, m.reply_signing_secret
+              m.address AS mailbox_address, m.reply_signing_secret,
+              w.name AS workspace_name, w.settings_json AS workspace_settings
          FROM ticket t
          JOIN mailbox m ON m.id = t.mailbox_id
+         JOIN workspace w ON w.id = t.workspace_id
         WHERE t.id = ? AND t.workspace_id = ?`,
     )
       .bind(args.ticketId, this.state.workspaceId)
@@ -134,8 +140,26 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
         mailbox_id: string;
         mailbox_address: string;
         reply_signing_secret: string;
+        workspace_name: string;
+        workspace_settings: string;
       }>();
     if (!ctx) throw new Error('ticket_not_found');
+
+    let workspaceSettings: { from_name?: string; logo_url?: string } = {};
+    try {
+      workspaceSettings = JSON.parse(ctx.workspace_settings || '{}');
+    } catch {
+      workspaceSettings = {};
+    }
+
+    let agent: { name: string | null; email: string; signature_markdown: string | null; avatar_url: string | null } | null = null;
+    if (args.actorUserId) {
+      agent = await this.env.DB.prepare(
+        `SELECT name, email, signature_markdown, avatar_url FROM user WHERE id = ?`,
+      )
+        .bind(args.actorUserId)
+        .first<{ name: string | null; email: string; signature_markdown: string | null; avatar_url: string | null }>();
+    }
 
     const lastInbound = await this.env.DB.prepare(
       `SELECT rfc_message_id FROM message_index
@@ -179,23 +203,45 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     const messageId = ids.message();
     const rfcMessageId = `${messageId}@${sendingDomain}`;
 
-    const rawMime = buildThreadedMime({
-      from: fromAddress,
-      to: ctx.requester_email,
-      subject,
-      body: args.body,
-      messageId: rfcMessageId,
-      inReplyTo: lastInbound?.rfc_message_id,
-      references,
-      replyTo: replyToAddress,
-    });
+    // Display-name on From: "<Agent> · <FromName/Workspace> <addr>" — the
+    // pattern Zendesk / Intercom / HelpScout use. Falls back gracefully:
+    //   manual reply by user with name set: `"Sarah · Acme Support" <hello@mail.acme.com>`
+    //   manual reply, no agent profile:    `"Acme Support" <hello@mail.acme.com>`
+    //   AI-approved reply:                 `"Acme Support" <hello@mail.acme.com>`
+    const fromName = workspaceSettings.from_name || ctx.workspace_name || 'Support';
+    const displayName =
+      agent?.name && agent.name.trim()
+        ? `${agent.name.trim()} · ${fromName}`
+        : fromName;
+    const fromHeader = `"${displayName.replace(/"/g, '\\"')}" <${fromAddress}>`;
+
+    const signatureCtx = {
+      agentName: agent?.name ?? null,
+      agentEmail: agent?.email ?? null,
+      agentSignatureMarkdown: agent?.signature_markdown ?? null,
+      agentAvatarUrl: agent?.avatar_url ?? null,
+      workspaceName: ctx.workspace_name,
+      workspaceLogoUrl: workspaceSettings.logo_url ?? null,
+      fromName,
+    };
+    const textBody = buildPlainTextWithSignature(args.body, signatureCtx);
+    const htmlBody = await buildHtmlWithSignature(args.body, signatureCtx);
+
+    const rawMimeText = buildMultipartReply(
+      {
+        from: fromHeader,
+        to: ctx.requester_email,
+        subject,
+        messageId: rfcMessageId,
+        inReplyTo: lastInbound?.rfc_message_id,
+        references,
+        replyTo: replyToAddress,
+      },
+      textBody,
+      htmlBody,
+    );
 
     const { EmailMessage } = await import('cloudflare:email');
-    // EmailMessage accepts string or ReadableStream — our buildThreadedMime
-    // returns Uint8Array, so decode back to string. Plain-text MIME is
-    // ASCII-safe; UTF-8 content goes through the body unchanged because
-    // we declared `Content-Transfer-Encoding: 8bit`.
-    const rawMimeText = new TextDecoder('utf-8').decode(rawMime);
     await this.env.EMAIL.send(
       new EmailMessage(fromAddress, ctx.requester_email, rawMimeText),
     );
@@ -703,25 +749,39 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }
 
   /**
-   * Read/write workspace-level settings (currently just `ai_drafts_enabled`).
+   * Read/write workspace-level settings — ai_drafts_enabled, from_name
+   * (display name on outbound From header), logo_url (for the HTML body
+   * header).
    */
   @callable()
-  async getWorkspaceSettings(): Promise<{ ai_drafts_enabled: boolean }> {
-    const w = await this.env.DB.prepare(`SELECT settings_json FROM workspace WHERE id = ?`)
+  async getWorkspaceSettings(): Promise<{
+    ai_drafts_enabled: boolean;
+    from_name: string;
+    logo_url: string;
+    workspace_name: string;
+  }> {
+    const w = await this.env.DB.prepare(`SELECT name, settings_json FROM workspace WHERE id = ?`)
       .bind(this.state.workspaceId)
-      .first<{ settings_json: string }>();
+      .first<{ name: string; settings_json: string }>();
     try {
       const s = w ? JSON.parse(w.settings_json || '{}') : {};
-      return { ai_drafts_enabled: s.ai_drafts_enabled === true };
+      return {
+        ai_drafts_enabled: s.ai_drafts_enabled === true,
+        from_name: typeof s.from_name === 'string' ? s.from_name : '',
+        logo_url: typeof s.logo_url === 'string' ? s.logo_url : '',
+        workspace_name: w?.name ?? '',
+      };
     } catch {
-      return { ai_drafts_enabled: false };
+      return { ai_drafts_enabled: false, from_name: '', logo_url: '', workspace_name: w?.name ?? '' };
     }
   }
 
   @callable()
   async setWorkspaceSettings(args: {
     actorUserId: string;
-    ai_drafts_enabled: boolean;
+    ai_drafts_enabled?: boolean;
+    from_name?: string;
+    logo_url?: string;
   }): Promise<{ ok: boolean }> {
     const w = await this.env.DB.prepare(`SELECT settings_json FROM workspace WHERE id = ?`)
       .bind(this.state.workspaceId)
@@ -732,7 +792,9 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     } catch {
       settings = {};
     }
-    settings.ai_drafts_enabled = !!args.ai_drafts_enabled;
+    if (args.ai_drafts_enabled !== undefined) settings.ai_drafts_enabled = !!args.ai_drafts_enabled;
+    if (args.from_name !== undefined) settings.from_name = args.from_name.trim().slice(0, 100);
+    if (args.logo_url !== undefined) settings.logo_url = args.logo_url.trim().slice(0, 500);
     await this.env.DB.prepare(`UPDATE workspace SET settings_json = ? WHERE id = ?`)
       .bind(JSON.stringify(settings), this.state.workspaceId)
       .run();
@@ -741,8 +803,64 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       actorType: 'user',
       actorId: args.actorUserId,
       action: 'workspace.settings_changed',
-      payload: { ai_drafts_enabled: args.ai_drafts_enabled },
+      payload: args,
     });
+    return { ok: true };
+  }
+
+  /**
+   * Read/write the agent's profile fields used in outbound email — display
+   * name (on From header), markdown signature, avatar URL.
+   */
+  @callable()
+  async getAgentProfile(args: { userId: string }): Promise<{
+    name: string;
+    email: string;
+    signature_markdown: string;
+    avatar_url: string;
+  } | null> {
+    const u = await this.env.DB.prepare(
+      `SELECT u.name, u.email, u.signature_markdown, u.avatar_url
+         FROM user u JOIN workspace_user wu ON wu.user_id = u.id
+        WHERE u.id = ? AND wu.workspace_id = ?`,
+    )
+      .bind(args.userId, this.state.workspaceId)
+      .first<{ name: string | null; email: string; signature_markdown: string | null; avatar_url: string | null }>();
+    if (!u) return null;
+    return {
+      name: u.name ?? '',
+      email: u.email,
+      signature_markdown: u.signature_markdown ?? '',
+      avatar_url: u.avatar_url ?? '',
+    };
+  }
+
+  @callable()
+  async setAgentProfile(args: {
+    userId: string;
+    name?: string;
+    signature_markdown?: string;
+    avatar_url?: string;
+  }): Promise<{ ok: boolean }> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    if (args.name !== undefined) {
+      fields.push('name = ?');
+      values.push(args.name.trim().slice(0, 100));
+    }
+    if (args.signature_markdown !== undefined) {
+      fields.push('signature_markdown = ?');
+      values.push(args.signature_markdown.slice(0, 5000));
+    }
+    if (args.avatar_url !== undefined) {
+      fields.push('avatar_url = ?');
+      values.push(args.avatar_url.trim().slice(0, 500));
+    }
+    if (fields.length === 0) return { ok: true };
+    values.push(args.userId);
+    await this.env.DB.prepare(`UPDATE user SET ${fields.join(', ')} WHERE id = ?`)
+      .bind(...values)
+      .run();
     return { ok: true };
   }
 

@@ -69,9 +69,21 @@ export const API = {
   setTicketAiDrafts: (id: string, enabled: boolean | null) =>
     api(`/api/tickets/${id}/ai-drafts`, { method: 'POST', body: JSON.stringify({ enabled }) }),
   workspaceSettings: () =>
-    api<{ ai_drafts_enabled: boolean }>('/api/settings/workspace'),
-  setWorkspaceSettings: (settings: { ai_drafts_enabled: boolean }) =>
+    api<{ ai_drafts_enabled: boolean; from_name: string; logo_url: string; workspace_name: string }>(
+      '/api/settings/workspace',
+    ),
+  setWorkspaceSettings: (settings: {
+    ai_drafts_enabled?: boolean;
+    from_name?: string;
+    logo_url?: string;
+  }) =>
     api('/api/settings/workspace', { method: 'POST', body: JSON.stringify(settings) }),
+  myProfile: () =>
+    api<{ name: string; email: string; signature_markdown: string; avatar_url: string }>(
+      '/api/me/profile',
+    ),
+  setMyProfile: (profile: { name?: string; signature_markdown?: string; avatar_url?: string }) =>
+    api('/api/me/profile', { method: 'POST', body: JSON.stringify(profile) }),
   approvals: () => api<any>('/api/approvals'),
   approve: (id: string, edits?: any) =>
     api(`/api/approvals/${id}/approve`, { method: 'POST', body: JSON.stringify({ edits }) }),

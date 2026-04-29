@@ -114,12 +114,36 @@ apiApp.get('/settings/workspace', async (c) => {
 
 apiApp.post('/settings/workspace', async (c) => {
   const s = c.get('session');
-  const body = z.object({ ai_drafts_enabled: z.boolean() }).parse(await c.req.json());
+  const body = z
+    .object({
+      ai_drafts_enabled: z.boolean().optional(),
+      from_name: z.string().max(100).optional(),
+      logo_url: z.union([z.string().url().max(500), z.literal('')]).optional(),
+    })
+    .parse(await c.req.json());
   const stub = await getSupervisor(c.env, s.workspaceId);
-  await (stub as any).setWorkspaceSettings({
-    actorUserId: s.userId,
-    ai_drafts_enabled: body.ai_drafts_enabled,
-  });
+  await (stub as any).setWorkspaceSettings({ actorUserId: s.userId, ...body });
+  return c.json({ ok: true });
+});
+
+apiApp.get('/me/profile', async (c) => {
+  const s = c.get('session');
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  const profile = await (stub as any).getAgentProfile({ userId: s.userId });
+  return c.json(profile ?? {});
+});
+
+apiApp.post('/me/profile', async (c) => {
+  const s = c.get('session');
+  const body = z
+    .object({
+      name: z.string().max(100).optional(),
+      signature_markdown: z.string().max(5000).optional(),
+      avatar_url: z.union([z.string().url().max(500), z.literal('')]).optional(),
+    })
+    .parse(await c.req.json());
+  const stub = await getSupervisor(c.env, s.workspaceId);
+  await (stub as any).setAgentProfile({ userId: s.userId, ...body });
   return c.json({ ok: true });
 });
 

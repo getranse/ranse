@@ -16,21 +16,125 @@ export function SettingsView() {
   const [provDraft, setProvDraft] = useState({ provider: 'openai', api_key: '' });
   const [llmConfig, setLlmConfig] = useState<any[]>([]);
   const [aiDraftsEnabled, setAiDraftsEnabled] = useState(false);
+  const [fromName, setFromName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [profile, setProfile] = useState({ name: '', email: '', signature_markdown: '', avatar_url: '' });
   const [saved, setSaved] = useState('');
 
   async function load() {
-    const [p, l, w] = await Promise.all([API.providers(), API.llmConfig(), API.workspaceSettings()]);
+    const [p, l, w, me] = await Promise.all([
+      API.providers(),
+      API.llmConfig(),
+      API.workspaceSettings(),
+      API.myProfile(),
+    ]);
     setProviders(p.providers ?? []);
     setLlmConfig(l.config ?? []);
     setAiDraftsEnabled(!!w.ai_drafts_enabled);
+    setFromName(w.from_name ?? '');
+    setLogoUrl(w.logo_url ?? '');
+    setProfile({
+      name: me.name ?? '',
+      email: me.email ?? '',
+      signature_markdown: me.signature_markdown ?? '',
+      avatar_url: me.avatar_url ?? '',
+    });
   }
   useEffect(() => { load(); }, []);
+
+  function flashSaved() {
+    setSaved('Saved');
+    setTimeout(() => setSaved(''), 1500);
+  }
 
   const configByAction = Object.fromEntries(llmConfig.map((c) => [c.action_key, c]));
 
   return (
     <>
       <h1>Settings</h1>
+
+      <h2>Workspace branding</h2>
+      <div className="card">
+        <p className="muted" style={{ marginBottom: 8 }}>
+          Shown on outbound replies as the From-header display name and the HTML email header logo.
+        </p>
+        <div className="field">
+          <label>From name</label>
+          <input
+            type="text"
+            value={fromName}
+            placeholder="Acme Support"
+            onChange={(e) => setFromName(e.target.value)}
+            onBlur={async () => {
+              await API.setWorkspaceSettings({ from_name: fromName });
+              flashSaved();
+            }}
+          />
+        </div>
+        <div className="field">
+          <label>Logo URL</label>
+          <input
+            type="url"
+            value={logoUrl}
+            placeholder="https://example.com/logo.png"
+            onChange={(e) => setLogoUrl(e.target.value)}
+            onBlur={async () => {
+              await API.setWorkspaceSettings({ logo_url: logoUrl });
+              flashSaved();
+            }}
+          />
+          {logoUrl && <img src={logoUrl} alt="Logo preview" style={{ maxHeight: 40, marginTop: 8 }} />}
+        </div>
+      </div>
+
+      <h2>My profile</h2>
+      <div className="card">
+        <p className="muted" style={{ marginBottom: 8 }}>
+          Shown on replies you send manually. Display name appears in the From header (e.g. "Sarah · Acme Support"); signature is appended to the HTML body.
+        </p>
+        <div className="field">
+          <label>Display name</label>
+          <input
+            type="text"
+            value={profile.name}
+            placeholder="Sarah"
+            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+            onBlur={async () => {
+              await API.setMyProfile({ name: profile.name });
+              flashSaved();
+            }}
+          />
+        </div>
+        <div className="field">
+          <label>Avatar URL <span className="muted" style={{ fontSize: 12 }}>(falls back to Gravatar from {profile.email || 'your email'})</span></label>
+          <input
+            type="url"
+            value={profile.avatar_url}
+            placeholder="https://example.com/avatar.jpg"
+            onChange={(e) => setProfile({ ...profile, avatar_url: e.target.value })}
+            onBlur={async () => {
+              await API.setMyProfile({ avatar_url: profile.avatar_url });
+              flashSaved();
+            }}
+          />
+          {profile.avatar_url && (
+            <img src={profile.avatar_url} alt="Avatar preview" style={{ width: 40, height: 40, borderRadius: '50%', marginTop: 8, objectFit: 'cover' }} />
+          )}
+        </div>
+        <div className="field">
+          <label>Email signature (markdown)</label>
+          <textarea
+            rows={4}
+            value={profile.signature_markdown}
+            placeholder={'Sarah Smith\nCustomer Success · Acme\n[acme.com](https://acme.com)'}
+            onChange={(e) => setProfile({ ...profile, signature_markdown: e.target.value })}
+            onBlur={async () => {
+              await API.setMyProfile({ signature_markdown: profile.signature_markdown });
+              flashSaved();
+            }}
+          />
+        </div>
+      </div>
 
       <h2>AI auto-drafts</h2>
       <div className="card">
@@ -45,8 +149,7 @@ export function SettingsView() {
               const next = e.target.checked;
               setAiDraftsEnabled(next);
               await API.setWorkspaceSettings({ ai_drafts_enabled: next });
-              setSaved('Saved');
-              setTimeout(() => setSaved(''), 1500);
+              flashSaved();
             }}
           />
           <span>Auto-draft replies for new inbound emails</span>
