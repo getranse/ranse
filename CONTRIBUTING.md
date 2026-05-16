@@ -27,6 +27,29 @@ bun run dev
 - Keep commits focused. One logical change per PR.
 - Include a before/after description in the PR body if the change affects UX, APIs, or the setup flow.
 
+## Commit messages
+
+Use terse Conventional Commit-style subjects:
+
+```text
+type(scope): short summary
+```
+
+Scope is optional. Keep the subject under 72 characters, use imperative mood, and do not add filler words. If the change needs context, put it in the commit body.
+
+Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`.
+
+Good:
+
+```text
+feat(knowledge): add vectorized retrieval
+fix(email): preserve reply threading headers
+docs: document migration filenames
+refactor(api): split route modules
+```
+
+Avoid vague or AI-sounding subjects like `improve code quality`, `implement comprehensive solution`, or `update files`.
+
 ## Reporting issues
 
 Use GitHub issues. For security-sensitive reports, email `security@getranse.com` instead of opening a public issue.
