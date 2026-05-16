@@ -16,6 +16,7 @@ There are two supported install paths: **one-click deploy** (recommended) and **
    You'll give Ranse your admin email, workspace name, and support mailbox address in the `/setup` wizard after the Worker is live — no need to enter them twice.
 3. Cloudflare runs `bun run deploy` which:
    - Generates `COOKIE_SIGNING_KEY` and `ADMIN_SETUP_TOKEN` if not set.
+   - Creates the Vectorize index used for knowledge retrieval if it is missing.
    - Builds the React console (`vite build`).
    - Applies D1 migrations.
    - Pushes Worker secrets in bulk.
@@ -54,6 +55,22 @@ For production:
 export CLOUDFLARE_API_TOKEN=...
 bun run deploy
 ```
+
+`bun run deploy` provisions D1, R2, KV, queues, AI Gateway, and the
+`ranse-knowledge` Vectorize index. If you deploy without that script, create the
+index yourself:
+
+```bash
+wrangler vectorize create ranse-knowledge --preset @cf/baai/bge-small-en-v1.5
+```
+
+Knowledge retrieval uses Workers AI embeddings and a Workers AI reranker by
+default. You can change the reranker per workspace in **Settings → Model per
+agent action → knowledge_query reranker**.
+
+PDF ingestion extracts text-layer content and stores the original PDF in R2.
+Scanned/image-only PDFs are rejected instead of being indexed with empty or
+misleading content; OCR can be added later as a separate explicit pipeline.
 
 ## Email onboarding
 

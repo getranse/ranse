@@ -154,6 +154,22 @@ async function ensureQueue(cf: Cloudflare, accountId: string, queueName: string)
   console.log(`  · Queue "${queueName}" created`);
 }
 
+async function ensureVectorize(cf: Cloudflare, accountId: string, indexName: string): Promise<void> {
+  for await (const index of cf.vectorize.indexes.list({ account_id: accountId })) {
+    if (index.name === indexName) {
+      console.log(`  · Vectorize index "${indexName}" exists`);
+      return;
+    }
+  }
+  await cf.vectorize.indexes.create({
+    account_id: accountId,
+    name: indexName,
+    config: { preset: '@cf/baai/bge-small-en-v1.5' },
+    description: 'Ranse workspace knowledge chunks',
+  });
+  console.log(`  · Vectorize index "${indexName}" created`);
+}
+
 /**
  * List the names of secrets currently set on a Worker. Returns an empty set
  * if the Worker doesn't exist yet (first deploy) or if the call fails — both
@@ -249,6 +265,11 @@ async function provisionAndPatchConfig(
   }
   for (const c of (wrangler.queues?.consumers ?? []) as any[]) {
     c.queue = sub(c.queue);
+  }
+
+  for (const v of (wrangler.vectorize ?? []) as any[]) {
+    v.index_name = sub(v.index_name);
+    await ensureVectorize(cf, accountId, v.index_name);
   }
 
   wrangler.name = workerName;

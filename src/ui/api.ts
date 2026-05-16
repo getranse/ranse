@@ -1,3 +1,9 @@
+import type { KnowledgeHit, KnowledgeInspectionHit, KnowledgeSourceListItem } from '../types/knowledge';
+
+export type KnowledgeSource = KnowledgeSourceListItem;
+export type KnowledgeSearchHit = KnowledgeHit;
+export type AnswerInspectionHit = KnowledgeInspectionHit;
+
 export class ApiRequestError extends Error {
   code: string;
   status: number;
@@ -17,6 +23,24 @@ async function uploadFile(path: string, file: File): Promise<{ ok: boolean; url:
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(path, { method: 'POST', body: form, credentials: 'include' });
+  if (!res.ok) {
+    const body: any = await res.json().catch(() => ({ error: 'http_error', message: res.statusText }));
+    throw new ApiRequestError({
+      code: body?.error ?? 'http_error',
+      message: body?.message ?? `HTTP ${res.status}`,
+      status: res.status,
+      details: body?.details,
+      requestId: body?.requestId,
+    });
+  }
+  return res.json();
+}
+
+async function uploadKnowledgePdf(file: File, title?: string): Promise<{ ok: boolean; id: string; chunks: number; vectorized: boolean }> {
+  const form = new FormData();
+  form.append('file', file);
+  if (title) form.append('title', title);
+  const res = await fetch('/api/knowledge/pdf', { method: 'POST', body: form, credentials: 'include' });
   if (!res.ok) {
     const body: any = await res.json().catch(() => ({ error: 'http_error', message: res.statusText }));
     throw new ApiRequestError({
@@ -71,18 +95,18 @@ export const API = {
   logout: () => api('/auth/logout', { method: 'POST' }),
   me: () => api<any>('/auth/me'),
   tickets: (status?: string) => api<any>(`/api/tickets${status ? `?status=${status}` : ''}`),
-  ticket: (id: string) => api<any>(`/api/tickets/${id}`),
+  ticket: <T = any>(id: string) => api<T>(`/api/tickets/${id}`),
   setStatus: (id: string, status: string) =>
     api(`/api/tickets/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   addNote: (id: string, body: string) =>
     api(`/api/tickets/${id}/note`, { method: 'POST', body: JSON.stringify({ body }) }),
-  reply: (id: string, body: string, subject?: string) =>
+  reply: (id: string, body: string, subject?: string, citedKnowledgeIds?: string[]) =>
     api<{ ok: boolean; messageId?: string; error?: string }>(`/api/tickets/${id}/reply`, {
       method: 'POST',
-      body: JSON.stringify({ body, subject }),
+      body: JSON.stringify({ body, subject, cited_knowledge_ids: citedKnowledgeIds }),
     }),
   draftWithAI: (id: string) =>
-    api<{ ok: boolean; subject?: string; body?: string; error?: string }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
+    api<{ ok: boolean; subject?: string; body?: string; knowledge?: AnswerInspectionHit[]; error?: string }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
   setTicketAiDrafts: (id: string, enabled: boolean | null) =>
     api(`/api/tickets/${id}/ai-drafts`, { method: 'POST', body: JSON.stringify({ enabled }) }),
   workspaceSettings: () =>
@@ -142,6 +166,27 @@ export const API = {
     api(`/api/approvals/${id}/approve`, { method: 'POST', body: JSON.stringify({ edits }) }),
   reject: (id: string, reason?: string) =>
     api(`/api/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  listKnowledge: () =>
+    api<{
+      sources: KnowledgeSource[];
+    }>('/api/knowledge'),
+  createKnowledge: (body: { kind: 'manual' | 'url'; title?: string; body?: string; url?: string }) =>
+    api<{ ok: boolean; id: string; chunks: number; vectorized: boolean }>('/api/knowledge', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  uploadKnowledgePdf,
+  reindexKnowledge: (id: string) =>
+    api<{ ok: boolean; id: string; chunks: number; vectorized: boolean }>(`/api/knowledge/${id}/reindex`, { method: 'POST' }),
+  searchKnowledge: (query: string, limit = 5) =>
+    api<{
+      hits: KnowledgeSearchHit[];
+    }>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query, limit }) }),
+  importResolvedTicketsKnowledge: (limit = 50) =>
+    api<{ ok: boolean; imported: number; skipped: number; failed: number }>('/api/knowledge/import-resolved-tickets', {
+      method: 'POST',
+      body: JSON.stringify({ limit }),
+    }),
   llmConfig: () => api<any>('/api/settings/llm'),
   setLlmConfig: (body: any) =>
     api('/api/settings/llm', { method: 'POST', body: JSON.stringify(body) }),

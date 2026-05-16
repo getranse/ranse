@@ -20,4 +20,6 @@ export const ids = {
   macro: () => id('mac'),
   session: () => id('sess'),
   knowledge: () => id('kb'),
+  knowledgeSource: () => id('ksrc'),
+  knowledgeChunk: () => id('kchk'),
 };

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Env } from '../../env';
 import { infer } from '../../llm/infer';
 import type { AgentConfig } from '../../llm/config.types';
-import type { KnowledgeHit } from './knowledge';
+import type { KnowledgeHit } from '../../types/knowledge';
 
 /**
  * Schema for AI-drafted replies. body_markdown is the only required field

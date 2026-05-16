@@ -27,6 +27,13 @@
 
   "ai": { "binding": "AI" },
 
+  "vectorize": [
+    {
+      "binding": "KNOWLEDGE_INDEX",
+      "index_name": "ranse-knowledge"
+    }
+  ],
+
   "d1_databases": [
     {
       "binding": "DB",

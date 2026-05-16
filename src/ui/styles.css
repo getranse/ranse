@@ -115,6 +115,8 @@ a:hover { text-decoration: underline; }
 .sidebar .badge.hot { background: var(--accent); color: #0a0a0b; }
 
 .main { overflow: auto; padding: 24px 32px; }
+h1 { font-size: 20px; margin: 0 0 16px; }
+h2 { font-size: 16px; margin: 24px 0 10px; }
 
 .card {
   background: var(--bg-soft);
@@ -211,6 +213,69 @@ a:hover { text-decoration: underline; }
 .setting-row .setting-label { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
 .setting-row .setting-desc { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .setting-row .setting-control { flex-shrink: 0; padding-top: 4px; }
+.knowledge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.knowledge-results {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.knowledge-hit {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.knowledge-hit:last-child { border-bottom: 0; }
+.source-list {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.source-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.source-row:last-child { border-bottom: 0; }
+.source-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.source-pills {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.answer-inspection {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(59,130,246,0.06);
+}
+.answer-inspection summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.inspection-hit {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.inspection-hit:first-of-type { margin-top: 8px; }
+.inspection-hit:last-child { padding-bottom: 0; }
 .muted { color: var(--text-muted); font-size: 12px; }
-h1 { font-size: 20px; margin: 0 0 16px; }
-h2 { font-size: 16px; margin: 24px 0 10px; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { padding: 18px; }
+  .ticket-detail, .knowledge-grid { grid-template-columns: 1fr; }
+}

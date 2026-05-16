@@ -63,6 +63,7 @@ All LLM calls go through a single dispatcher (`src/llm/`) that uses the OpenAI S
 - [Architecture](docs/architecture.md) — agents, storage model, event flow.
 - [Operations](docs/operations.md) — ticket lifecycle, approvals, escalations.
 - [Security](docs/security.md) — auth, roles, reply signing, auto-reply handling.
+- [Roadmap](docs/roadmap.md) — the planned path from copilot to autonomous agent.
 - [FAQ](docs/faq.md)
 
 ## Local development
@@ -80,15 +81,11 @@ Then open http://localhost:5173 (or http://localhost:8787 for the Worker directl
 
 ## Roadmap
 
-**Phase 0 — Bootstrap** (this release): repo, one-click deploy, setup wizard, inbound email, supervisor DO, triage + draft + approvals.
+Ranse is heading from "AI-assisted shared inbox" to a full autonomous customer-service agent — but not as an OSS clone of [Fin](https://fin.ai/) or [Decagon](https://decagon.ai/). The goal is the agent those products *structurally cannot become*: sovereign by construction, per-step model choice, procedures-as-code, MCP-native actions, eval-first against your own ticket history, and a forkable procedure library.
 
-**Phase 1 — Inbox core:** rich email rendering, attachment viewer, thread collapsing, saved views, search.
+The shape, in short: **retrieval → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval) and Phase 1 (retrieval foundations) are shipped.
 
-**Phase 2 — Agent assist:** vector-based knowledge search, macro library, tool use, per-workspace prompt tuning.
-
-**Phase 3 — Reliability:** SLA timers, escalations, outbound webhooks, workflows for long jobs, exports.
-
-**Phase 4 — Ecosystem:** MCP integrations, packaged integrations (Slack, Linear, Zendesk import), hosted SaaS wrapper on getranse.com.
+Full pipeline, principles, and how to contribute to a phase: **[docs/roadmap.md](docs/roadmap.md)**. It's directional, not committed — if you want to work on something further down the list, open a discussion and we'll happily reorder.
 
 ## License
 

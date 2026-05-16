@@ -14,7 +14,7 @@ Function-based, not DOs. They live in `src/agents/specialists/` and return struc
 
 - `triage` — category, priority, sentiment, language, spam detection.
 - `summarize` — thread summary + next-step hint.
-- `knowledge` — keyword search over `knowledge_doc` (Phase 2: Vectorize).
+- `knowledge` — manual/URL/PDF/resolved-ticket ingestion, Workers AI embeddings, Vectorize search, reranking, and keyword fallback.
 - `draft` — generate a reply with citations; flag review risks.
 - `escalation` — decide whether to route to a human/team.
 - `sla` — deterministic, no LLM; computes breach status.
@@ -37,7 +37,7 @@ email() handler
 triageAndDraft (runs in DO alarm, async)
   ├─ runTriage (LLM) → category/priority/sentiment
   ├─ (if spam) mark status, stop
-  ├─ searchKnowledge (D1 LIKE scoring v1)
+  ├─ searchKnowledge (Vectorize + rerank; D1 keyword fallback)
   ├─ runDraft (LLM) with knowledge + policy
   ├─ policy gate → createApproval (pending)
   └─ audit approval.created
@@ -51,6 +51,7 @@ triageAndDraft (runs in DO alarm, async)
 | D1 | Tickets, messages, audit, approvals, users, sessions, knowledge, LLM config |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
+| Vectorize | Per-workspace knowledge chunk embeddings |
 | Queues | Webhook delivery, async jobs, retries |
 
 ## R2 key layout
@@ -59,6 +60,7 @@ triageAndDraft (runs in DO alarm, async)
 raw/{workspaceId}/{mailboxId}/{messageId}.eml
 bodies/{workspaceId}/{ticketId}/{messageId}.{txt|html}
 attachments/{workspaceId}/{ticketId}/{attachmentId}/{filename}
+knowledge/{workspaceId}/{sourceId}/{filename}
 exports/{workspaceId}/{exportId}.zip
 ```
 
