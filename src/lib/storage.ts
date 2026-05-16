@@ -9,6 +9,8 @@ export const r2Keys = {
     `bodies/${workspaceId}/${ticketId}/${messageId}.html`,
   attachment: (workspaceId: string, ticketId: string, attachmentId: string, filename: string) =>
     `attachments/${workspaceId}/${ticketId}/${attachmentId}/${filename}`,
+  knowledgePdf: (workspaceId: string, sourceId: string, filename: string) =>
+    `knowledge/${workspaceId}/${sourceId}/${filename}`,
   export: (workspaceId: string, exportId: string) =>
     `exports/${workspaceId}/${exportId}.zip`,
   workspaceAsset: (workspaceId: string, kind: 'logo', filename: string) =>

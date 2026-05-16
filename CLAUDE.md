@@ -1,5 +1,11 @@
 # Ranse — contributor notes
 
+## Implementation quality bar
+
+All implementations must be production-quality by default: reusable code in focused modules, consistent naming and structure with the existing codebase, dynamic behavior that adapts to real data instead of brittle hardcoded checks, explicit failure handling, no partial or failed state presented as valid data, and tests for the risky success and failure paths. Prefer behavior-level tests and explicit domain constants/invariants over assertions that only prove a string or branch exists. Do not mark a roadmap phase shipped until this bar is met.
+
+Shared contracts belong in `src/types/`, not scattered through feature modules. Keep local-only helper types near their implementation, but move any type used across agents, API routes, UI, or tests into a domain file under `src/types/`. Keep modules focused: 100–150 lines is the target average, under 300 lines is the normal ceiling. If a file grows past 300 lines, split it by responsibility before adding more behavior.
+
 ## Migrations
 
 New migrations use a **timestamp prefix**, not a sequential counter:

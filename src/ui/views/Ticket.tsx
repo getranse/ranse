@@ -1,11 +1,72 @@
 import { useEffect, useState } from 'react';
-import { API } from '../api';
+import { API, type AnswerInspectionHit, type KnowledgeSearchHit } from '../api';
+
+type TicketData = {
+  ticket: {
+    id: string;
+    subject: string;
+    requester_email: string;
+    priority: string;
+    category?: string | null;
+    status: string;
+    ai_drafts_enabled?: number | null;
+  };
+  messages: Array<{
+    id: string;
+    direction: 'inbound' | 'outbound' | 'note';
+    from_address?: string | null;
+    to_address?: string | null;
+    preview?: string | null;
+    sent_at: number;
+  }>;
+  approvals: Array<{
+    id: string;
+    status: string;
+    proposed_json: string;
+    risk_reasons_json: string;
+  }>;
+  audit: Array<{
+    id: string;
+    action: string;
+    created_at: number;
+  }>;
+};
+
+type ProposedReply = {
+  subject?: string;
+  body_markdown?: string;
+  cites_knowledge_ids?: string[];
+  knowledge_hits?: KnowledgeSearchHit[];
+};
+
+function AnswerInspection({ hits }: { hits?: AnswerInspectionHit[] }) {
+  if (!hits || hits.length === 0) return null;
+  return (
+    <details className="answer-inspection">
+      <summary>Answer inspection</summary>
+      {hits.map((hit) => (
+        <div key={hit.id} className="inspection-hit">
+          <div>
+            <strong>{hit.title}</strong>
+            {hit.cited && <span className="pill resolved" style={{ marginLeft: 6 }}>cited</span>}
+          </div>
+          <div className="muted">
+            {hit.sourceKind ? `${hit.sourceKind} · ` : ''}score {Number(hit.score ?? 0).toFixed(3)}
+          </div>
+          <div>{hit.snippet}</div>
+          {hit.url && <a href={hit.url} target="_blank" rel="noreferrer">{hit.url}</a>}
+        </div>
+      ))}
+    </details>
+  );
+}
 
 export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<TicketData | null>(null);
   const [note, setNote] = useState('');
   const [reply, setReply] = useState('');
   const [replySubject, setReplySubject] = useState('');
+  const [draftKnowledge, setDraftKnowledge] = useState<AnswerInspectionHit[]>([]);
   const [sending, setSending] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [error, setError] = useState('');
@@ -13,14 +74,14 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
   const [edits, setEdits] = useState<{ subject: string; body_markdown: string }>({ subject: '', body_markdown: '' });
 
   async function load() {
-    setData(await API.ticket(id));
+    setData(await API.ticket<TicketData>(id));
   }
   useEffect(() => { load(); }, [id]);
 
   if (!data) return <div className="muted">Loading…</div>;
 
   const ticket = data.ticket;
-  const approvals = (data.approvals ?? []).filter((a: any) => a.status === 'pending');
+  const approvals = (data.approvals ?? []).filter((a) => a.status === 'pending');
 
   return (
     <div>
@@ -33,10 +94,11 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
             {ticket.category && <> · Category {ticket.category}</>}
           </div>
 
-          {approvals.map((ap: any) => {
-            const proposed = JSON.parse(ap.proposed_json);
-            const reasons = JSON.parse(ap.risk_reasons_json);
+          {approvals.map((ap) => {
+            const proposed = JSON.parse(ap.proposed_json) as ProposedReply;
+            const reasons = JSON.parse(ap.risk_reasons_json) as string[];
             const editing = editingApproval === ap.id;
+            const citedIds = new Set(proposed.cites_knowledge_ids ?? []);
             return (
               <div key={ap.id} className="approval">
                 <strong>Suggested reply — needs your approval</strong>
@@ -54,10 +116,14 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
                   <>
                     <div style={{ marginTop: 8 }}><strong>Subject:</strong> {proposed.subject}</div>
                     <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', marginTop: 6 }}>{proposed.body_markdown}</pre>
+                    <AnswerInspection hits={(proposed.knowledge_hits ?? []).map((hit) => ({
+                      ...hit,
+                      cited: citedIds.has(hit.id),
+                    }))} />
                   </>
                 )}
                 <div className="approval-actions">
-                  {!editing && <button onClick={() => { setEditingApproval(ap.id); setEdits({ subject: proposed.subject, body_markdown: proposed.body_markdown }); }}>Edit</button>}
+                  {!editing && <button onClick={() => { setEditingApproval(ap.id); setEdits({ subject: proposed.subject ?? '', body_markdown: proposed.body_markdown ?? '' }); }}>Edit</button>}
                   <button className="primary" onClick={async () => {
                     await API.approve(ap.id, editing ? edits : undefined);
                     setEditingApproval(null);
@@ -71,7 +137,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
 
           <h2>Thread</h2>
           <div className="thread">
-            {data.messages.map((m: any) => (
+            {data.messages.map((m) => (
               <div key={m.id} className={`msg ${m.direction}`}>
                 <div className="msg-header">
                   <span>{m.direction === 'inbound' ? m.from_address : m.direction === 'outbound' ? `You → ${m.to_address}` : 'Internal note'}</span>
@@ -86,9 +152,13 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           <textarea
             rows={6}
             value={reply}
-            onChange={(e) => setReply(e.target.value)}
+            onChange={(e) => {
+              setReply(e.target.value);
+              if (!e.target.value.trim()) setDraftKnowledge([]);
+            }}
             placeholder={`Reply to ${ticket.requester_email}…`}
           />
+          <AnswerInspection hits={draftKnowledge} />
           {error && <div className="error" style={{ marginTop: 6 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             <button
@@ -98,10 +168,14 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
                 setSending(true);
                 setError('');
                 try {
-                  const res = await API.reply(id, reply);
+                  const citedKnowledgeIds = draftKnowledge
+                    .filter((hit) => hit.cited)
+                    .map((hit) => hit.id);
+                  const res = await API.reply(id, reply, replySubject || undefined, citedKnowledgeIds);
                   if (!res.ok) throw new Error(res.error || 'Send failed');
                   setReply('');
                   setReplySubject('');
+                  setDraftKnowledge([]);
                   await load();
                 } catch (err: any) {
                   setError(err.message || 'Send failed');
@@ -122,6 +196,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
                   if (!res.ok) throw new Error(res.error || 'Draft failed');
                   if (res.body) setReply(res.body);
                   if (res.subject) setReplySubject(res.subject);
+                  setDraftKnowledge(res.knowledge ?? []);
                 } catch (err: any) {
                   setError(err.message || 'Draft failed');
                 } finally {
@@ -167,7 +242,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
           <h2 style={{ marginTop: 16 }}>Audit</h2>
           <div style={{ fontSize: 12 }}>
-            {data.audit.slice(0, 20).map((a: any) => (
+            {data.audit.slice(0, 20).map((a) => (
               <div key={a.id} style={{ marginBottom: 6 }}>
                 <div className="muted">{new Date(a.created_at).toLocaleString()}</div>
                 <div>{a.action}</div>

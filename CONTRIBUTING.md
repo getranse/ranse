@@ -8,6 +8,9 @@ Thanks for your interest in Ranse! This project is early — the fastest way to 
 - **Minimal dependencies.** Prefer Cloudflare-native primitives (DOs, D1, R2, KV, Queues, AI Gateway) over external services.
 - **No `experimentalDecorators`.** The Agents SDK uses TC39 standard decorators — don't enable the legacy flag.
 - **Security first.** Any code path touching outbound email must respect approval gates and auto-reply handling.
+- **Production-quality implementation bar.** Every implementation must be reusable, locally consistent, dynamic enough to adapt to real data, and failure-safe: shared logic belongs in focused modules, state transitions must not expose partial/failed work as valid data, user-visible metrics must match what they claim to measure, and tests must cover the important success and failure paths. Avoid brittle hardcoded checks that only prove a string or branch exists; prefer behavior-level tests and explicit domain constants/invariants. A feature is not complete just because the happy path works.
+- **Shared types live in `src/types/`.** Keep local-only helper types beside their implementation, but move cross-module DTOs/contracts into a domain file under `src/types/`.
+- **Keep modules small.** Aim for 100–150 lines on average. Under 300 lines is the normal ceiling; files over 300 lines should be split by responsibility before more behavior is added.
 
 ## Development
 

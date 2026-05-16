@@ -1,12 +1,25 @@
 import { useEffect, useState } from 'react';
 import { API } from '../api';
 import { NotificationsSection } from './NotificationsSection';
+import { KnowledgeSection } from './KnowledgeSection';
 
 const ACTIONS = ['triage', 'summarize', 'draft', 'knowledge_query', 'escalation', 'conversational'] as const;
+const ACTION_LABELS: Record<(typeof ACTIONS)[number], string> = {
+  triage: 'triage',
+  summarize: 'summarize',
+  draft: 'draft',
+  knowledge_query: 'knowledge_query reranker',
+  escalation: 'escalation',
+  conversational: 'conversational',
+};
 const PROVIDERS = ['openai', 'anthropic', 'google-ai-studio', 'grok', 'openrouter'];
 
 const MODEL_HINTS: Record<string, string[]> = {
-  'workers-ai': ['workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast', 'workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct'],
+  'workers-ai': [
+    'workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+    'workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct',
+    'workers-ai/@cf/baai/bge-reranker-base',
+  ],
   openai: ['openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/gpt-5', 'openai/gpt-5-mini'],
   anthropic: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6', 'anthropic/claude-haiku-4-5'],
   'google-ai-studio': ['google-ai-studio/gemini-2.5-pro', 'google-ai-studio/gemini-2.5-flash'],
@@ -45,8 +58,8 @@ export function SettingsView() {
   }
   useEffect(() => { load(); }, []);
 
-  function flashSaved() {
-    setSaved('Saved');
+  function flashSaved(message = 'Saved') {
+    setSaved(message);
     setTimeout(() => setSaved(''), 1500);
   }
 
@@ -205,6 +218,8 @@ export function SettingsView() {
         </div>
       </div>
 
+      <KnowledgeSection onSaved={flashSaved} />
+
       <NotificationsSection onSaved={flashSaved} />
 
       <h2>LLM providers (BYOK)</h2>
@@ -236,7 +251,7 @@ export function SettingsView() {
           const cur = configByAction[action];
           return (
             <div key={action} className="row" style={{ marginBottom: 8 }}>
-              <div style={{ flex: 0.4, fontWeight: 500 }}>{action}</div>
+              <div style={{ flex: 0.4, fontWeight: 500 }}>{ACTION_LABELS[action]}</div>
               <input
                 placeholder="provider/model-id"
                 defaultValue={cur?.model_name ?? ''}

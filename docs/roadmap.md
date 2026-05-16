@@ -37,9 +37,13 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 0 — Bootstrap** is shipped. One-click deploy, setup wizard, inbound email via Email Routing, `WorkspaceSupervisorAgent` DO orchestrating `triage → knowledge → draft → approval`, multi-provider LLM dispatcher (`src/llm/`), human approval gate before send, notification channels (`src/notifications/`).
 
-That's roughly an early Fin **Copilot** equivalent — assistive drafting for human agents. Everything below is the path from copilot to autonomous agent built around the seven principles above.
+**Phase 1 — Retrieval foundations** is shipped. Workspaces get a Vectorize-backed knowledge index with Workers AI embeddings, manual sources, help-center URL crawling, PDF uploads stored in R2, resolved-ticket import, two-stage retrieve → rerank with a per-workspace reranker override, Content Library freshness/duplicate/usage signals, and Answer Inspection on drafts.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent — assistive drafting for human agents. Everything below is the path from copilot to autonomous agent built around the seven principles above.
 
 ## Phase 1 — Retrieval foundations
+**Status: shipped.**
+
 *Principle 1 (sovereign), Principle 5 (eval-first feeds on this)*
 
 The floor. Without real retrieval, every later phase is hand-waving.
