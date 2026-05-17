@@ -14,7 +14,7 @@ export async function ingestEmail(
     aiDraftsEnabled: (ticketId: string) => Promise<boolean>;
   },
   payload: InboundEmailPayload,
-): Promise<{ ticketId: string; messageId: string }> {
+): Promise<{ ticketId: string; messageId: string; isNewTicket: boolean }> {
   const now = Date.now();
   const matchedTicketId =
     payload.existingTicketId ?? (await findTicketByReferences(ctx.env, ctx.workspaceId, payload));
@@ -30,7 +30,13 @@ export async function ingestEmail(
   const messageId = await insertInboundMessage(ctx.env, ctx.workspaceId, ticketId, payload, now);
   await auditInbound(ctx.env, ctx.workspaceId, ticketId, messageId, payload, isNewTicket);
   if (!isNewTicket && existingTicket && !payload.isAutoReply) {
-    await recordCustomerFollowUp(ctx.env, ctx.workspaceId, ticketId, messageId, existingTicket.status);
+    await recordCustomerFollowUp(
+      ctx.env,
+      ctx.workspaceId,
+      ticketId,
+      messageId,
+      existingTicket.status,
+    );
   }
   if (!payload.isAutoReply)
     await emitInboundEvents(ctx.env, ctx.workspaceId, ticketId, messageId, payload, isNewTicket);
@@ -38,7 +44,7 @@ export async function ingestEmail(
     await ctx.schedule(0, 'triageAndDraft', { ticketId, messageId, payload });
   }
   await ctx.refreshCounts();
-  return { ticketId, messageId };
+  return { ticketId, messageId, isNewTicket };
 }
 
 async function findTicketByReferences(
@@ -135,7 +141,9 @@ async function insertInboundMessage(
       now,
     )
     .run();
-  await env.DB.prepare(`UPDATE ticket SET last_message_at = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`)
+  await env.DB.prepare(
+    `UPDATE ticket SET last_message_at = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
+  )
     .bind(payload.receivedAt, now, ticketId, workspaceId)
     .run();
   return messageId;
@@ -171,7 +179,9 @@ async function recordCustomerFollowUp(
   previousStatus: string,
 ) {
   if (!['pending', 'resolved', 'closed'].includes(previousStatus)) return;
-  await env.DB.prepare(`UPDATE ticket SET status = 'open', updated_at = ? WHERE id = ? AND workspace_id = ?`)
+  await env.DB.prepare(
+    `UPDATE ticket SET status = 'open', updated_at = ? WHERE id = ? AND workspace_id = ?`,
+  )
     .bind(Date.now(), ticketId, workspaceId)
     .run();
   await recordOutcome(env, {

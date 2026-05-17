@@ -177,6 +177,66 @@ export function createWorkspaceTestDb() {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (workspace_id, action_key)
     );
+    CREATE TABLE procedure (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      trigger_type TEXT NOT NULL DEFAULT 'manual',
+      trigger_category TEXT,
+      trigger_intent TEXT,
+      active_version_id TEXT,
+      archived_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, slug)
+    );
+    CREATE TABLE procedure_version (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      procedure_id TEXT NOT NULL,
+      version TEXT NOT NULL,
+      spec_json TEXT NOT NULL,
+      source_kind TEXT NOT NULL DEFAULT 'api',
+      source_ref TEXT,
+      checksum TEXT NOT NULL,
+      created_by_user_id TEXT,
+      created_at INTEGER NOT NULL,
+      UNIQUE(procedure_id, version)
+    );
+    CREATE TABLE procedure_run (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      procedure_id TEXT NOT NULL,
+      version_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      trigger_event_key TEXT,
+      status TEXT NOT NULL,
+      current_step INTEGER NOT NULL DEFAULT 0,
+      context_json TEXT NOT NULL DEFAULT '{}',
+      error TEXT,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, procedure_id, ticket_id, trigger_event_key)
+    );
+    CREATE TABLE procedure_step_run (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      run_id TEXT NOT NULL,
+      step_id TEXT NOT NULL,
+      step_index INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      input_json TEXT NOT NULL DEFAULT '{}',
+      output_json TEXT NOT NULL DEFAULT '{}',
+      error TEXT,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      UNIQUE(run_id, step_index)
+    );
   `);
 
   const envDb = {
@@ -195,7 +255,14 @@ export function createWorkspaceTestDb() {
       Promise.all(statements.map((statement) => statement.run())),
   };
 
-  return { db, env: { DB: envDb, COOKIE_SIGNING_KEY: 'test-secret' } as any };
+  return {
+    db,
+    env: {
+      DB: envDb,
+      COOKIE_SIGNING_KEY: 'test-secret',
+      BLOB: { put: async () => undefined, get: async () => null },
+    } as any,
+  };
 }
 
 export async function seedUser(
@@ -204,8 +271,9 @@ export async function seedUser(
   email: string,
   password = 'long-enough-password',
 ) {
-  db.prepare(`INSERT INTO user (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`)
-    .run(id, email, email.split('@')[0], await hashPassword(password), 1);
+  db.prepare(
+    `INSERT INTO user (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
+  ).run(id, email, email.split('@')[0], await hashPassword(password), 1);
 }
 
 export function seedWorkspace(db: DatabaseSync, id: string, name: string) {
@@ -215,8 +283,9 @@ export function seedWorkspace(db: DatabaseSync, id: string, name: string) {
 }
 
 export function addMember(db: DatabaseSync, workspaceId: string, userId: string, role: string) {
-  db.prepare(`INSERT INTO workspace_user (workspace_id, user_id, role, created_at) VALUES (?, ?, ?, 1)`)
-    .run(workspaceId, userId, role);
+  db.prepare(
+    `INSERT INTO workspace_user (workspace_id, user_id, role, created_at) VALUES (?, ?, ?, 1)`,
+  ).run(workspaceId, userId, role);
 }
 
 export function seedMailbox(
@@ -235,11 +304,15 @@ export function seedMailbox(
 }
 
 export async function login(env: any, email: string, password = 'long-enough-password') {
-  const res = await authApp.request('/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  }, env);
+  const res = await authApp.request(
+    '/login',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    },
+    env,
+  );
   if (res.status !== 200) throw new Error(`login_failed:${email}:${res.status}`);
   return res.headers.get('set-cookie')!.split(';')[0];
 }

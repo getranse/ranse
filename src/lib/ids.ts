@@ -25,4 +25,8 @@ export const ids = {
   knowledgeChunk: () => id('kchk'),
   outcome: () => id('out'),
   feedback: () => id('fb'),
+  procedure: () => id('proc'),
+  procedureVersion: () => id('pver'),
+  procedureRun: () => id('prun'),
+  procedureStepRun: () => id('pstp'),
 };

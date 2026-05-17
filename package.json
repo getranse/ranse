@@ -10,12 +10,16 @@
   "homepage": "https://getranse.com",
   "type": "module",
   "main": "src/index.ts",
+  "bin": {
+    "ranse": "./scripts/ranse.ts"
+  },
   "scripts": {
     "dev": "concurrently -n worker,ui -c blue,magenta \"wrangler dev\" \"vite\"",
     "dev:worker": "wrangler dev",
     "dev:ui": "vite",
     "build": "vite build",
     "deploy": "bun scripts/deploy.ts",
+    "ranse": "bun scripts/ranse.ts",
     "setup": "bun scripts/setup.ts",
     "db:migrate:local": "wrangler d1 migrations apply ranse-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply ranse-db --remote",
@@ -36,6 +40,7 @@
     "postal-mime": "^2.7.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "yaml": "^2.8.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

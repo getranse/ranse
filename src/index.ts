@@ -13,6 +13,7 @@ import { handleQueueBatch } from './queues/handler';
 export { WorkspaceSupervisorAgent } from './agents/WorkspaceSupervisorAgent';
 export { MailboxAgent } from './agents/MailboxAgent';
 export { UserSecretsStore } from './agents/UserSecretsStore';
+export { ProcedureRunnerAgent } from './agents/ProcedureRunnerAgent';
 
 export default {
   fetch: app.fetch,

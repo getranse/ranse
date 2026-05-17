@@ -1,5 +1,9 @@
 import type { Env } from '../../env';
-import { buildHtmlWithSignature, buildMultipartReply, buildPlainTextWithSignature } from '../../email/html';
+import {
+  buildHtmlWithSignature,
+  buildMultipartReply,
+  buildPlainTextWithSignature,
+} from '../../email/html';
 import { buildReplyAddress } from '../../email/reply-security';
 import { audit } from '../../lib/audit';
 import { buildFeedbackLinks } from '../../lib/feedback-links';
@@ -23,7 +27,11 @@ export function makeSendThreadedReply(
     const subject = (args.subject ?? `Re: ${ctx.ticket_subject}`).replace(/^(re:\s*)+/i, 'Re: ');
     const messageId = ids.message();
     const rfcMessageId = `${messageId}@${addresses.sendingDomain}`;
-    const feedbackLinks = await buildFeedbackLinks(env, { workspaceId, ticketId: args.ticketId, messageId });
+    const feedbackLinks = await buildFeedbackLinks(env, {
+      workspaceId,
+      ticketId: args.ticketId,
+      messageId,
+    });
     const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks);
 
     const rawMimeText = buildMultipartReply(
@@ -81,7 +89,12 @@ async function loadReplyContext(env: Env, workspaceId: string, ticketId: string)
 async function loadAgent(env: Env, userId: string) {
   return env.DB.prepare(`SELECT name, email, signature_markdown, avatar_url FROM user WHERE id = ?`)
     .bind(userId)
-    .first<{ name: string | null; email: string; signature_markdown: string | null; avatar_url: string | null }>();
+    .first<{
+      name: string | null;
+      email: string;
+      signature_markdown: string | null;
+      avatar_url: string | null;
+    }>();
 }
 
 async function loadLastInbound(env: Env, workspaceId: string, ticketId: string) {
@@ -133,7 +146,11 @@ async function buildReplyAddresses(
 }
 
 function parseWorkspaceSettings(settingsJson: string): { from_name?: string } {
-  try { return JSON.parse(settingsJson || '{}'); } catch { return {}; }
+  try {
+    return JSON.parse(settingsJson || '{}');
+  } catch {
+    return {};
+  }
 }
 
 async function buildReplyBodies(
@@ -162,7 +179,14 @@ async function persistOutboundReply(
   env: Env,
   workspaceId: string,
   args: Parameters<SendThreadedReply>[0],
-  message: { messageId: string; rfcMessageId: string; fromAddress: string; toAddress: string; subject: string; inReplyTo: string | null },
+  message: {
+    messageId: string;
+    rfcMessageId: string;
+    fromAddress: string;
+    toAddress: string;
+    subject: string;
+    inReplyTo: string | null;
+  },
 ) {
   const key = r2Keys.textBody(workspaceId, args.ticketId, message.messageId);
   const now = Date.now();
@@ -170,8 +194,21 @@ async function persistOutboundReply(
     `INSERT INTO message_index (id, ticket_id, workspace_id, direction, from_address, to_address, subject, rfc_message_id, in_reply_to, preview, body_r2_key, author_user_id, sent_at, created_at)
      VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(message.messageId, args.ticketId, workspaceId, message.fromAddress, message.toAddress, message.subject,
-      message.rfcMessageId, message.inReplyTo, args.body.slice(0, 280), key, args.actorUserId, now, now)
+    .bind(
+      message.messageId,
+      args.ticketId,
+      workspaceId,
+      message.fromAddress,
+      message.toAddress,
+      message.subject,
+      message.rfcMessageId,
+      message.inReplyTo,
+      args.body.slice(0, 280),
+      key,
+      args.actorUserId,
+      now,
+      now,
+    )
     .run();
   await putRaw(env, key, new TextEncoder().encode(args.body), 'text/plain; charset=utf-8');
   await env.DB.prepare(
@@ -183,9 +220,24 @@ async function persistOutboundReply(
   await audit(env, {
     workspaceId,
     ticketId: args.ticketId,
-    actorType: args.actorUserId ? 'user' : args.source === 'ai_autonomous' ? 'agent' : 'system',
-    actorId: args.actorUserId ?? (args.source === 'ai_autonomous' ? 'autonomy' : undefined),
+    actorType: args.actorUserId
+      ? 'user'
+      : ['ai_autonomous', 'procedure'].includes(args.source)
+        ? 'agent'
+        : 'system',
+    actorId:
+      args.actorUserId ??
+      (args.source === 'ai_autonomous'
+        ? 'autonomy'
+        : args.source === 'procedure'
+          ? 'procedure'
+          : undefined),
     action: 'reply.sent',
-    payload: { messageId: message.messageId, source: args.source, approvalId: args.approvalId, edited: args.edited },
+    payload: {
+      messageId: message.messageId,
+      source: args.source,
+      approvalId: args.approvalId,
+      edited: args.edited,
+    },
   });
 }

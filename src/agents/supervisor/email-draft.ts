@@ -50,6 +50,7 @@ export async function triageAndDraft(
     await ctx.refreshCounts();
     return;
   }
+  await startIntentProcedures(ctx, args, triage);
 
   const retrieval = await agenticSearchKnowledge(
     ctx.env,
@@ -141,6 +142,31 @@ export async function triageAndDraft(
     payload: { confidence: draft.confidence, tone: draft.tone, autonomyScore: autonomyScore.score, riskReasons: risks },
   });
   await ctx.refreshCounts();
+}
+
+async function startIntentProcedures(
+  ctx: {
+    env: Env;
+    workspaceId: string;
+  },
+  args: { ticketId: string; messageId: string; payload: InboundEmailPayload },
+  triage: TriageResult,
+) {
+  const { startTriggeredProcedureRuns } = await import('../../procedures/orchestration');
+  await startTriggeredProcedureRuns(ctx.env, ctx.workspaceId, {
+    ticketId: args.ticketId,
+    trigger: { type: 'intent', category: triage.category },
+    context: {
+      ticket: {
+        id: args.ticketId,
+        subject: args.payload.subject,
+        requester_email: args.payload.from.address,
+      },
+      inbound: { message_id: args.messageId, body: args.payload.text },
+      triage,
+    },
+    eventKey: `intent:${args.messageId}:${triage.category}`,
+  });
 }
 
 async function persistTriage(env: Env, workspaceId: string, ticketId: string, triage: TriageResult) {

@@ -67,7 +67,8 @@
     "bindings": [
       { "class_name": "WorkspaceSupervisorAgent", "name": "WorkspaceSupervisorAgent" },
       { "class_name": "MailboxAgent", "name": "MailboxAgent" },
-      { "class_name": "UserSecretsStore", "name": "UserSecretsStore" }
+      { "class_name": "UserSecretsStore", "name": "UserSecretsStore" },
+      { "class_name": "ProcedureRunnerAgent", "name": "ProcedureRunnerAgent" }
     ]
   },
 
@@ -75,6 +76,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["WorkspaceSupervisorAgent", "MailboxAgent", "UserSecretsStore"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["ProcedureRunnerAgent"]
     }
   ],
 

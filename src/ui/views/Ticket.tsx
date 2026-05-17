@@ -192,6 +192,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           audit={data.audit}
           outcomes={data.outcomes}
           feedback={data.feedback}
+          procedureRuns={data.procedureRuns}
           onReload={load}
         />
       </div>

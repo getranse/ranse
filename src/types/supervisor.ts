@@ -52,7 +52,7 @@ export type SendThreadedReply = (args: {
   body: string;
   subject?: string;
   actorUserId: string | null;
-  source: 'manual' | 'ai_approval' | 'ai_autonomous';
+  source: 'manual' | 'ai_approval' | 'ai_autonomous' | 'procedure';
   approvalId?: string;
   edited?: boolean;
 }) => Promise<{ messageId: string }>;
