@@ -16,7 +16,7 @@
 | `agent` | Read tickets, add notes, approve replies, resolve |
 | `viewer` | Read-only |
 
-Enforcement lives in `requireUser` + role checks on sensitive routes (currently all API routes require an authenticated session; fine-grained role gates arrive in Phase 2).
+Enforcement lives in `requireUser` plus route-level role checks on sensitive workspace, mailbox, provider-key, notification, and knowledge-management actions. All API routes require an authenticated workspace session.
 
 ## Reply security
 

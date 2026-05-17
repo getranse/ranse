@@ -25,42 +25,69 @@ function countOccurrences(text: string, token: string): number {
 
 function makeSnippet(body: string, tokens: string[]): string {
   const lower = body.toLowerCase();
-  const idx = tokens.map((t) => lower.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 0;
+  const idx =
+    tokens
+      .map((t) => lower.indexOf(t))
+      .filter((i) => i >= 0)
+      .sort((a, b) => a - b)[0] ?? 0;
   return normalizeWhitespace(body.slice(Math.max(0, idx - 90), idx + 420));
 }
 
-async function keywordSearchKnowledge(env: Env, workspaceId: string, query: string, limit: number): Promise<KnowledgeHit[]> {
+export interface KnowledgeSearchOptions {
+  sourceKinds?: KnowledgeSourceKind[];
+}
+
+function sourceKindClause(kinds?: KnowledgeSourceKind[]) {
+  if (!kinds?.length) return { sql: '', binds: [] as string[] };
+  return { sql: ` AND s.kind IN (${kinds.map(() => '?').join(',')})`, binds: kinds };
+}
+
+async function keywordSearchKnowledge(
+  env: Env,
+  workspaceId: string,
+  query: string,
+  limit: number,
+  options: KnowledgeSearchOptions = {},
+): Promise<KnowledgeHit[]> {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
+  const kindFilter = sourceKindClause(options.sourceKinds);
 
   const rows = await env.DB.prepare(
     `SELECT c.id, c.source_id, c.title, c.url, c.body, c.used_in_answers_count,
             s.kind AS source_kind, s.r2_key
        FROM knowledge_chunk c
        JOIN knowledge_source s ON s.id = c.source_id
-      WHERE c.workspace_id = ? AND s.status = 'ready'
+      WHERE c.workspace_id = ? AND s.status = 'ready'${kindFilter.sql}
       ORDER BY c.updated_at DESC
       LIMIT 2000`,
   )
-    .bind(workspaceId)
+    .bind(workspaceId, ...kindFilter.binds)
     .all<{
-      id: string; source_id: string; title: string; url: string | null; body: string;
-      used_in_answers_count: number; source_kind: KnowledgeSourceKind; r2_key: string | null;
+      id: string;
+      source_id: string;
+      title: string;
+      url: string | null;
+      body: string;
+      used_in_answers_count: number;
+      source_kind: KnowledgeSourceKind;
+      r2_key: string | null;
     }>();
 
   return (rows.results ?? [])
     .map((row) => {
       const title = row.title.toLowerCase();
       const body = row.body.toLowerCase();
-      const score = tokens.reduce((sum, token) => (
-        sum + countOccurrences(title, token) * 3 + countOccurrences(body, token)
-      ), 0);
+      const score = tokens.reduce(
+        (sum, token) => sum + countOccurrences(title, token) * 3 + countOccurrences(body, token),
+        0,
+      );
       return {
         id: row.id,
         sourceId: row.source_id,
         sourceKind: row.source_kind,
         title: row.title,
-        url: row.r2_key ? `/api/knowledge/${row.source_id}/file` : row.url ?? undefined,
+        url: row.r2_key ? `/api/knowledge/${row.source_id}/file` : (row.url ?? undefined),
         snippet: makeSnippet(row.body, tokens),
         score,
         usedInAnswersCount: row.used_in_answers_count,
@@ -71,38 +98,53 @@ async function keywordSearchKnowledge(env: Env, workspaceId: string, query: stri
     .slice(0, limit);
 }
 
-async function hydrateVectorMatches(env: Env, workspaceId: string, matches: Array<{ id: string; score: number }>): Promise<KnowledgeHit[]> {
+async function hydrateVectorMatches(
+  env: Env,
+  workspaceId: string,
+  matches: Array<{ id: string; score: number }>,
+  options: KnowledgeSearchOptions = {},
+): Promise<KnowledgeHit[]> {
   if (matches.length === 0) return [];
   const scoreByVectorId = new Map(matches.map((m) => [m.id, m.score]));
   const placeholders = matches.map(() => '?').join(',');
+  const kindFilter = sourceKindClause(options.sourceKinds);
   const rows = await env.DB.prepare(
     `SELECT c.id, c.source_id, c.title, c.url, c.snippet, c.vector_id, c.used_in_answers_count,
             s.kind AS source_kind, s.r2_key
        FROM knowledge_chunk c
        JOIN knowledge_source s ON s.id = c.source_id
-      WHERE c.workspace_id = ? AND s.status = 'ready' AND c.vector_id IN (${placeholders})`,
+      WHERE c.workspace_id = ? AND s.status = 'ready'${kindFilter.sql} AND c.vector_id IN (${placeholders})`,
   )
-    .bind(workspaceId, ...matches.map((m) => m.id))
+    .bind(workspaceId, ...kindFilter.binds, ...matches.map((m) => m.id))
     .all<{
-      id: string; source_id: string; title: string; url: string | null; snippet: string;
-      vector_id: string; used_in_answers_count: number; source_kind: KnowledgeSourceKind; r2_key: string | null;
+      id: string;
+      source_id: string;
+      title: string;
+      url: string | null;
+      snippet: string;
+      vector_id: string;
+      used_in_answers_count: number;
+      source_kind: KnowledgeSourceKind;
+      r2_key: string | null;
     }>();
 
   const rowByVectorId = new Map((rows.results ?? []).map((row) => [row.vector_id, row]));
-  return matches.map((match) => {
-    const row = rowByVectorId.get(match.id);
-    if (!row) return null;
-    return {
-      id: row.id,
-      sourceId: row.source_id,
-      sourceKind: row.source_kind,
-      title: row.title,
-      url: row.r2_key ? `/api/knowledge/${row.source_id}/file` : row.url ?? undefined,
-      snippet: row.snippet,
-      score: scoreByVectorId.get(match.id) ?? 0,
-      usedInAnswersCount: row.used_in_answers_count,
-    };
-  }).filter(Boolean) as KnowledgeHit[];
+  return matches
+    .map((match) => {
+      const row = rowByVectorId.get(match.id);
+      if (!row) return null;
+      return {
+        id: row.id,
+        sourceId: row.source_id,
+        sourceKind: row.source_kind,
+        title: row.title,
+        url: row.r2_key ? `/api/knowledge/${row.source_id}/file` : (row.url ?? undefined),
+        snippet: row.snippet,
+        score: scoreByVectorId.get(match.id) ?? 0,
+        usedInAnswersCount: row.used_in_answers_count,
+      };
+    })
+    .filter(Boolean) as KnowledgeHit[];
 }
 
 function mergeKnowledgeHits(groups: KnowledgeHit[][]): KnowledgeHit[] {
@@ -111,7 +153,11 @@ function mergeKnowledgeHits(groups: KnowledgeHit[][]): KnowledgeHit[] {
     for (const hit of hits) {
       const existing = byId.get(hit.id);
       if (!existing || hit.score > existing.score) {
-        byId.set(hit.id, { ...existing, ...hit, score: Math.max(hit.score, existing?.score ?? hit.score) });
+        byId.set(hit.id, {
+          ...existing,
+          ...hit,
+          score: Math.max(hit.score, existing?.score ?? hit.score),
+        });
       }
     }
   }
@@ -135,7 +181,13 @@ async function resolveRerankerModel(env: Env, workspaceId: string): Promise<stri
   return normalizeWorkersAiModel(row?.model_name, RERANKER_MODEL);
 }
 
-async function rerankKnowledge(env: Env, workspaceId: string, query: string, hits: KnowledgeHit[], limit: number): Promise<KnowledgeHit[]> {
+async function rerankKnowledge(
+  env: Env,
+  workspaceId: string,
+  query: string,
+  hits: KnowledgeHit[],
+  limit: number,
+): Promise<KnowledgeHit[]> {
   if (hits.length <= 1) return hits.slice(0, limit);
   try {
     const model = await resolveRerankerModel(env, workspaceId);
@@ -146,17 +198,26 @@ async function rerankKnowledge(env: Env, workspaceId: string, query: string, hit
     });
     const ranked = result?.response ?? result?.result ?? result?.data;
     if (!Array.isArray(ranked) || ranked.length === 0) return hits.slice(0, limit);
-    return ranked.map((r: any) => {
-      const id = Number(r.id);
-      if (!Number.isInteger(id) || !hits[id]) return null;
-      return { ...hits[id], score: typeof r.score === 'number' ? r.score : hits[id].score };
-    }).filter(Boolean).slice(0, limit) as KnowledgeHit[];
+    const reranked = ranked
+      .map((r: any) => {
+        const id = Number(r.id);
+        if (!Number.isInteger(id) || !hits[id]) return null;
+        return { ...hits[id], score: typeof r.score === 'number' ? r.score : hits[id].score };
+      })
+      .filter(Boolean) as KnowledgeHit[];
+    return reranked.length ? reranked.slice(0, limit) : hits.slice(0, limit);
   } catch {
     return hits.slice(0, limit);
   }
 }
 
-export async function searchKnowledge(env: Env, workspaceId: string, query: string, limit = 5): Promise<KnowledgeHit[]> {
+export async function searchKnowledge(
+  env: Env,
+  workspaceId: string,
+  query: string,
+  limit = 5,
+  options: KnowledgeSearchOptions = {},
+): Promise<KnowledgeHit[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
@@ -174,18 +235,30 @@ export async function searchKnowledge(env: Env, workspaceId: string, query: stri
       const matches = (result.matches ?? [])
         .filter((m) => m.id && typeof m.score === 'number')
         .map((m) => ({ id: m.id, score: m.score }));
-      vectorHits = await hydrateVectorMatches(env, workspaceId, matches);
+      vectorHits = await hydrateVectorMatches(env, workspaceId, matches, options);
     } catch (error) {
       console.warn('knowledge vector search failed; falling back to keyword search', error);
     }
   }
 
-  const keywordHits = await keywordSearchKnowledge(env, workspaceId, trimmed, Math.max(limit * 2, 10));
+  const keywordHits = await keywordSearchKnowledge(
+    env,
+    workspaceId,
+    trimmed,
+    Math.max(limit * 2, 10),
+    options,
+  );
   const candidates = mergeKnowledgeHits([vectorHits, keywordHits]);
-  return candidates.length === 0 ? [] : rerankKnowledge(env, workspaceId, trimmed, candidates, limit);
+  return candidates.length === 0
+    ? []
+    : rerankKnowledge(env, workspaceId, trimmed, candidates, limit);
 }
 
-export async function recordKnowledgeUsage(env: Env, workspaceId: string, chunkIds: string[]): Promise<void> {
+export async function recordKnowledgeUsage(
+  env: Env,
+  workspaceId: string,
+  chunkIds: string[],
+): Promise<void> {
   const unique = Array.from(new Set(chunkIds.filter(Boolean)));
   if (unique.length === 0) return;
   const placeholders = unique.map(() => '?').join(',');

@@ -8,6 +8,13 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   summarize: { model: DEFAULT_FAST, fallbackModel: 'openai/gpt-4o-mini', temperature: 0.2 },
   draft: { model: DEFAULT_SMART, fallbackModel: 'anthropic/claude-sonnet-4-6', temperature: 0.4 },
   knowledge_query: { model: DEFAULT_FAST, temperature: 0 },
+  knowledge_plan: { model: DEFAULT_FAST, fallbackModel: 'openai/gpt-4o-mini', temperature: 0 },
+  knowledge_judge: {
+    model: DEFAULT_SMART,
+    fallbackModel: 'anthropic/claude-sonnet-4-6',
+    temperature: 0,
+  },
+  knowledge_rewrite: { model: DEFAULT_FAST, fallbackModel: 'openai/gpt-4o-mini', temperature: 0.1 },
   escalation: { model: DEFAULT_FAST, fallbackModel: 'openai/gpt-4o-mini', temperature: 0 },
   conversational: { model: DEFAULT_SMART, temperature: 0.5 },
 };

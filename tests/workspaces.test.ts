@@ -1,179 +1,23 @@
-import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
 import { apiApp } from '../src/api/routes';
 import { authApp } from '../src/auth/routes';
 import { buildReplyAddress } from '../src/email/reply-security';
 import { resolveMailboxForRecipients } from '../src/email/routing';
-import { hashPassword } from '../src/lib/password';
 import { r2Keys } from '../src/lib/storage';
+import {
+  addMember,
+  createWorkspaceTestDb,
+  login,
+  seedMailbox,
+  seedUser,
+  seedWorkspace,
+} from './helpers/workspace-db';
 
 vi.mock('agents', () => ({ getAgentByName: () => ({}) }));
 
-function createD1LikeDb() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(`
-    CREATE TABLE workspace (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      slug TEXT NOT NULL UNIQUE,
-      settings_json TEXT NOT NULL DEFAULT '{}',
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER,
-      archived_at INTEGER,
-      deleted_at INTEGER
-    );
-    CREATE TABLE user (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      name TEXT,
-      password_hash TEXT,
-      created_at INTEGER NOT NULL,
-      last_login_at INTEGER
-    );
-    CREATE TABLE workspace_user (
-      workspace_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      PRIMARY KEY (workspace_id, user_id)
-    );
-    CREATE TABLE session (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      workspace_id TEXT,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE audit_event (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      ticket_id TEXT,
-      actor_type TEXT NOT NULL,
-      actor_id TEXT,
-      action TEXT NOT NULL,
-      payload_json TEXT NOT NULL DEFAULT '{}',
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE workspace_invitation (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      email TEXT NOT NULL,
-      role TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      accepted_at INTEGER,
-      expires_at INTEGER NOT NULL,
-      invited_by_user_id TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE mailbox (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      address TEXT NOT NULL UNIQUE,
-      display_name TEXT,
-      reply_signing_secret TEXT NOT NULL,
-      auto_reply_policy TEXT NOT NULL DEFAULT 'safe',
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE ticket (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      mailbox_id TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'open',
-      last_message_at INTEGER NOT NULL,
-      requester_email TEXT NOT NULL,
-      thread_token TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE message_index (
-      id TEXT PRIMARY KEY,
-      ticket_id TEXT NOT NULL,
-      workspace_id TEXT NOT NULL,
-      direction TEXT NOT NULL,
-      sent_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE knowledge_source (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      title TEXT NOT NULL,
-      status TEXT NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE notification_channel (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      target TEXT NOT NULL,
-      events TEXT NOT NULL,
-      enabled INTEGER NOT NULL,
-      label TEXT,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE workspace_llm_config (
-      workspace_id TEXT NOT NULL,
-      action_key TEXT NOT NULL,
-      model_name TEXT NOT NULL,
-      updated_at INTEGER NOT NULL,
-      PRIMARY KEY (workspace_id, action_key)
-    );
-  `);
-
-  const envDb = {
-    prepare(sql: string) {
-      const run = (params: unknown[]) => ({
-        all: async () => ({ results: db.prepare(sql).all(...(params as any[])) }),
-        first: async () => db.prepare(sql).get(...(params as any[])),
-        run: async () => {
-          db.prepare(sql).run(...(params as any[]));
-          return { success: true };
-        },
-      });
-      return { bind: (...params: unknown[]) => run(params), ...run([]) };
-    },
-    batch: async (statements: { run: () => Promise<unknown> }[]) => Promise.all(statements.map((s) => s.run())),
-  };
-
-  return { db, env: { DB: envDb, COOKIE_SIGNING_KEY: 'test-secret' } as any };
-}
-
-async function seedUser(db: DatabaseSync, id: string, email: string, password = 'long-enough-password') {
-  db.prepare(`INSERT INTO user (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`)
-    .run(id, email, email.split('@')[0], await hashPassword(password), 1);
-}
-
-function seedWorkspace(db: DatabaseSync, id: string, name: string) {
-  db.prepare(`INSERT INTO workspace (id, name, slug, settings_json, created_at, updated_at) VALUES (?, ?, ?, '{}', 1, 1)`)
-    .run(id, name, name.toLowerCase().replace(/\s+/g, '-'));
-}
-
-function addMember(db: DatabaseSync, workspaceId: string, userId: string, role: string) {
-  db.prepare(`INSERT INTO workspace_user (workspace_id, user_id, role, created_at) VALUES (?, ?, ?, 1)`)
-    .run(workspaceId, userId, role);
-}
-
-function seedMailbox(db: DatabaseSync, workspaceId: string, id: string, address: string, secret = `${id}_secret`) {
-  db.prepare(
-    `INSERT INTO mailbox (id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy, created_at)
-     VALUES (?, ?, ?, ?, ?, 'safe', 1)`,
-  ).run(id, workspaceId, address, address.split('@')[0], secret);
-}
-
-async function login(env: any, email: string, password = 'long-enough-password') {
-  const res = await authApp.request('/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  }, env);
-  expect(res.status).toBe(200);
-  return res.headers.get('set-cookie')!.split(';')[0];
-}
-
 describe('workspace platform routes', () => {
   it('does not pick a first workspace when a user belongs to more than one', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'usr_1', 'owner@example.com');
     seedWorkspace(db, 'ws_a', 'Alpha');
     seedWorkspace(db, 'ws_b', 'Beta');
@@ -199,7 +43,7 @@ describe('workspace platform routes', () => {
   });
 
   it('rejects switching to a workspace where the user is not a member', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'usr_1', 'owner@example.com');
     seedWorkspace(db, 'ws_a', 'Alpha');
     seedWorkspace(db, 'ws_b', 'Beta');
@@ -216,7 +60,7 @@ describe('workspace platform routes', () => {
   });
 
   it('creates another workspace and selects it for the session', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'usr_1', 'owner@example.com');
 
     const cookie = await login(env, 'owner@example.com');
@@ -233,7 +77,7 @@ describe('workspace platform routes', () => {
   });
 
   it('enforces invite roles and accepts matching invitations', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'owner', 'owner@example.com');
     await seedUser(db, 'admin', 'admin@example.com');
     await seedUser(db, 'viewer', 'viewer@example.com');
@@ -282,7 +126,7 @@ describe('workspace platform routes', () => {
   });
 
   it('uses middleware role gates across sensitive route families', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'viewer', 'viewer@example.com');
     seedWorkspace(db, 'ws_a', 'Alpha');
     addMember(db, 'ws_a', 'viewer', 'viewer');
@@ -308,7 +152,7 @@ describe('workspace platform routes', () => {
   });
 
   it('keeps mailbox, audit, and usage reads scoped to the active workspace', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'owner', 'owner@example.com');
     seedWorkspace(db, 'ws_a', 'Alpha');
     seedWorkspace(db, 'ws_b', 'Beta');
@@ -331,7 +175,7 @@ describe('workspace platform routes', () => {
   });
 
   it('moves the session to a remaining workspace after archive and delete', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'owner', 'owner@example.com');
     seedWorkspace(db, 'ws_a', 'Alpha');
     seedWorkspace(db, 'ws_b', 'Beta');
@@ -360,7 +204,7 @@ describe('workspace platform routes', () => {
   });
 
   it('keeps mailbox routing and storage keys workspace-safe', async () => {
-    const { db, env } = createD1LikeDb();
+    const { db, env } = createWorkspaceTestDb();
     seedWorkspace(db, 'ws_a', 'Alpha');
     seedWorkspace(db, 'ws_b', 'Beta');
     seedMailbox(db, 'ws_a', 'mb_a', 'support@example.com', 'secret_a');

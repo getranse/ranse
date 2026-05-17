@@ -41,7 +41,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 1.5 — Workspace management & tenant isolation** is shipped. Ranse now has multi-workspace create/switch flows, role middleware, member invitations, ownership transfer, workspace mailboxes, audit/usage/export surfaces, archive/delete policy, and tenant-isolation tests around the critical workspace boundaries.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with the workspace platform layer needed for real multi-workspace operation. Everything below continues the path from copilot to autonomous agent built around the seven principles above.
+**Phase 2 — Agentic retrieval (multi-hop)** is shipped. Knowledge search now plans scoped subqueries, runs bounded multi-hop retrieval, judges sufficiency per hop, rewrites sparse searches, exposes the full trace in Answer Inspection, and provides the same search loop as a procedure primitive.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation and traceable multi-hop retrieval. Everything below continues the path from copilot to autonomous agent built around the seven principles above.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -97,17 +99,21 @@ The codebase is workspace-scoped: tickets, messages, knowledge, settings, provid
   - Put stronger confirmation and audit flows around destructive actions
 
 ## Phase 2 — Agentic retrieval (multi-hop)
+**Status: shipped.**
+
 *Principle 2 (per-step model), Principle 5 (eval cases test the loop)*
 
 Single-pass RAG fails on the hard tickets — the ones where the customer's question implies three sub-questions, or the answer requires combining a help-center article with a piece of account state. This is where Fin's lead is real and where naive OSS RAG loses. Closing it is its own phase, not a footnote on Phase 1.
 
-- **Retrieval planner**: an LLM step that decomposes the customer query into sub-queries before searching, and picks the search scope (KB only / resolved tickets / customer data via MCP / all)
-- **Sufficiency judge**: after each hop, an LLM step decides "do I have enough to answer, or do I need another search?" — bounded by a max-hops budget per autonomy level
-- **Query rewriting per hop**: failed/sparse results trigger a reformulation, not a give-up
-- **Per-hop model routing** (Principle 2): cheap model for rewrites, stronger model for sufficiency judgment, strongest for final synthesis. Three different models in one resolution is normal, not exotic
-- **`search` as a procedure primitive** (Principle 3): Phase 4 procedures can call `search(query, scope, max_hops)` as a step, with the same agentic loop — procedures don't have to pre-bake every fact they need
-- **Answer Inspection shows the trace**: every hop's query → results → judgment → next-query is visible to the operator. Critical for debugging hallucinations and for Phase 6 evals
-- **Eval cases test the loop, not just the final answer** (Principle 5): a regression that adds an extra unnecessary hop is a regression, even if the final answer is correct
+- **Retrieval planner**: shipped. The `knowledge_plan` step decomposes customer questions into scoped subqueries for KB sources, resolved tickets, all local sources, or a reserved `customer_data` scope.
+- **Sufficiency judge**: shipped. The `knowledge_judge` step decides whether accumulated evidence is answerable, bounded by a max-hop budget.
+- **Query rewriting per hop**: shipped. Sparse/insufficient searches call `knowledge_rewrite` before the loop gives up.
+- **Per-hop model routing** (Principle 2): shipped. Planning, judging, rewriting, reranking, and drafting each have independent action keys in workspace model settings.
+- **`search` as a procedure primitive** (Principle 3): shipped. Phase 4 procedures can call `search(query, scope, max_hops)` with the same traceable retrieval loop.
+- **Answer Inspection shows the trace**: shipped. Drafts, approval suggestions, and Content Library test searches show hop query → results → judgment → next-query.
+- **Eval cases test the loop, not just the final answer** (Principle 5): partially shipped as behavior tests around the loop contract. Historical replay belongs in Phase 6.
+
+The `customer_data` scope currently fails closed with an explicit trace until Phase 5 MCP connectors provide real external account-state search.
 
 ## Phase 3 — Autonomous resolution + per-step model routing
 *Principle 1, Principle 2*

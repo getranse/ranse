@@ -1,0 +1,210 @@
+.ticket-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ticket-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.ticket-list li:hover {
+  background: var(--bg-hover);
+}
+.ticket-list .subj {
+  font-weight: 500;
+}
+.ticket-list .from {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pill {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pill.urgent {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+.pill.high {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+.pill.resolved {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.ticket-detail {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+.thread .msg {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  background: var(--bg-soft);
+}
+.thread .msg.outbound {
+  border-left: 3px solid var(--accent);
+}
+.thread .msg.note {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.thread .msg-header {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+.thread .msg-body {
+  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+.approval {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.approval .risk {
+  font-size: 12px;
+  color: var(--warning);
+  margin-top: 4px;
+}
+.approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+}
+.auth-card h1 {
+  margin-top: 0;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.field label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.error {
+  color: var(--danger);
+  font-size: 13px;
+}
+.success-banner {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.review {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+.review dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+.review dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.step .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.step.ok .dot {
+  background: var(--success);
+}
+.step.fail .dot {
+  background: var(--danger);
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.row > * {
+  flex: 1;
+}
+
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+}
+.setting-row + .setting-row {
+  border-top: 1px solid var(--border);
+}
+.setting-row:first-child {
+  padding-top: 4px;
+}
+.setting-row:last-child {
+  padding-bottom: 4px;
+}
+.setting-row .setting-info {
+  flex: 1;
+  min-width: 0;
+}
+.setting-row .setting-label {
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.setting-row .setting-desc {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.setting-row .setting-control {
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .ticket-detail {
+    grid-template-columns: 1fr;
+  }
+}
