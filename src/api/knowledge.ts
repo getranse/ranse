@@ -11,7 +11,7 @@ import type { Env } from '../env';
 import { ids } from '../lib/ids';
 import { apiError } from '../lib/errors';
 import { r2Keys, putRaw, getText } from '../lib/storage';
-import type { Ctx } from './context';
+import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
 import { safeFilename, titleFromFilename } from './files';
 
 const MAX_KNOWLEDGE_PDF_BYTES = 10 * 1024 * 1024;
@@ -41,7 +41,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     });
   });
 
-  apiApp.post('/knowledge', async (c) => {
+  apiApp.post('/knowledge', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({
       kind: z.enum(['manual', 'url']).default('manual'),
@@ -60,7 +60,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true, id: result.sourceId, ...result });
   });
 
-  apiApp.post('/knowledge/pdf', async (c) => {
+  apiApp.post('/knowledge/pdf', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const form = await c.req.formData();
     const file = form.get('file');
@@ -93,7 +93,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     }
   });
 
-  apiApp.post('/knowledge/:id/reindex', async (c) => {
+  apiApp.post('/knowledge/:id/reindex', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const source = await findKnowledgeSource(c.env, s.workspaceId, c.req.param('id'));
     if (!source) return apiError(c, 'not_found', 'Knowledge source not found.');
@@ -119,7 +119,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     return c.json({ hits: await searchKnowledge(c.env, s.workspaceId, body.query, body.limit ?? 5) });
   });
 
-  apiApp.post('/knowledge/import-resolved-tickets', async (c) => {
+  apiApp.post('/knowledge/import-resolved-tickets', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({ limit: z.number().int().min(1).max(200).optional() })
       .parse(await c.req.json().catch(() => ({})));

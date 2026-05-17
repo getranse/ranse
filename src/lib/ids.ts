@@ -16,6 +16,7 @@ export const ids = {
   message: () => id('msg'),
   approval: () => id('apr'),
   audit: () => id('aud'),
+  invitation: () => id('inv'),
   webhook: () => id('hook'),
   macro: () => id('mac'),
   session: () => id('sess'),

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { API } from '../api';
 import { NotificationsSection } from './NotificationsSection';
 import { KnowledgeSection } from './KnowledgeSection';
+import { WorkspaceMembersSection } from './WorkspaceMembersSection';
+import { WorkspaceMailboxesSection } from './WorkspaceMailboxesSection';
+import { WorkspacePlatformSection } from './WorkspacePlatformSection';
 
 const ACTIONS = ['triage', 'summarize', 'draft', 'knowledge_query', 'escalation', 'conversational'] as const;
 const ACTION_LABELS: Record<(typeof ACTIONS)[number], string> = {
@@ -68,6 +71,9 @@ export function SettingsView() {
   return (
     <>
       <h1>Settings</h1>
+
+      <WorkspaceMembersSection onSaved={flashSaved} />
+      <WorkspaceMailboxesSection onSaved={flashSaved} />
 
       <h2>Workspace branding</h2>
       <div className="card">
@@ -221,6 +227,7 @@ export function SettingsView() {
       <KnowledgeSection onSaved={flashSaved} />
 
       <NotificationsSection onSaved={flashSaved} />
+      <WorkspacePlatformSection onSaved={flashSaved} />
 
       <h2>LLM providers (BYOK)</h2>
       <div className="card">

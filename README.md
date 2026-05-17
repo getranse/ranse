@@ -83,7 +83,7 @@ Then open http://localhost:5173 (or http://localhost:8787 for the Worker directl
 
 Ranse is heading from "AI-assisted shared inbox" to a full autonomous customer-service agent — but not as an OSS clone of [Fin](https://fin.ai/) or [Decagon](https://decagon.ai/). The goal is the agent those products *structurally cannot become*: sovereign by construction, per-step model choice, procedures-as-code, MCP-native actions, eval-first against your own ticket history, and a forkable procedure library.
 
-The shape, in short: **retrieval → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval) and Phase 1 (retrieval foundations) are shipped.
+The shape, in short: **retrieval → workspace management → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval), Phase 1 (retrieval foundations), and Phase 1.5 (workspace management & tenant isolation) are shipped.
 
 Full pipeline, principles, and how to contribute to a phase: **[docs/roadmap.md](docs/roadmap.md)**. It's directional, not committed — if you want to work on something further down the list, open a discussion and we'll happily reorder.
 

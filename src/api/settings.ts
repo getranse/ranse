@@ -2,8 +2,7 @@ import { getAgentByName } from 'agents';
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import { r2Keys, putRaw } from '../lib/storage';
-import type { Ctx } from './context';
-import { getSupervisor } from './context';
+import { OWNER_OR_ADMIN, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
 import { readUploadedImage } from './files';
 
 export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
@@ -13,7 +12,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     return c.json(await (stub as any).getWorkspaceSettings());
   });
 
-  apiApp.post('/settings/workspace', async (c) => {
+  apiApp.post('/settings/workspace', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({
       ai_drafts_enabled: z.boolean().optional(),
@@ -25,7 +24,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true });
   });
 
-  apiApp.post('/uploads/workspace-logo', async (c) => {
+  apiApp.post('/uploads/workspace-logo', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const result = await readUploadedImage(c, 2 * 1024 * 1024);
     if (result instanceof Response) return result;
@@ -81,7 +80,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     return c.json({ config: rows.results ?? [] });
   });
 
-  apiApp.post('/settings/llm', async (c) => {
+  apiApp.post('/settings/llm', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({
       action_key: z.enum(['triage', 'summarize', 'draft', 'knowledge_query', 'escalation', 'conversational']),
@@ -112,7 +111,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     return c.json({ providers: await (stub as any).listProviders() });
   });
 
-  apiApp.post('/settings/providers', async (c) => {
+  apiApp.post('/settings/providers', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({ provider: z.string(), api_key: z.string().min(1) }).parse(await c.req.json());
     const stub = await getAgentByName(c.env.UserSecretsStore as never, s.workspaceId);
@@ -120,7 +119,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true });
   });
 
-  apiApp.delete('/settings/providers/:provider', async (c) => {
+  apiApp.delete('/settings/providers/:provider', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const stub = await getAgentByName(c.env.UserSecretsStore as never, s.workspaceId);
     await (stub as any).deleteKey(c.req.param('provider'));

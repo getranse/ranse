@@ -95,6 +95,23 @@ a:hover { text-decoration: underline; }
   color: #0a0a0b;
   font-weight: 900;
 }
+.workspace-switcher {
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  display: grid;
+  gap: 8px;
+}
+.workspace-switcher label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.workspace-create {
+  display: grid;
+  gap: 8px;
+}
 .sidebar nav a {
   display: flex;
   justify-content: space-between;
