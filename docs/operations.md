@@ -45,9 +45,15 @@ wrangler secret put COOKIE_SIGNING_KEY
 
 **"The AI is replying with garbage."** — Open **Settings → Model per agent action** and switch `draft` to a stronger model (e.g. `anthropic/claude-sonnet-4-6`). Or disable auto-draft by setting the draft action's policy to "manual only" (Phase 2).
 
+**"We want a safer auto-send rollout."** — Use **Settings → Mailboxes** to lower the autonomy rollout percentage. The bucket is deterministic per mailbox/ticket, so repeated scheduled retries make the same send-vs-approval decision.
+
+**"Customer feedback links are missing."** — Set `APP_URL` to your public Worker origin and redeploy. Ranse skips feedback links when `APP_URL` or `COOKIE_SIGNING_KEY` is unavailable because the links must be absolute and signed.
+
 **"Auto-reply loop."** — Ranse detects `Auto-Submitted`, `Precedence`, `X-Autoreply` headers and suppresses responses. If a loop still happens, temporarily pause the mailbox:
 ```sql
-UPDATE mailbox SET auto_reply_policy = 'strict' WHERE address = 'support@acme.com';
+UPDATE mailbox
+   SET autonomy_policy = 'draft_only', auto_reply_policy = 'off'
+ WHERE address = 'support@acme.com';
 ```
 
 **"Provider is down."** — Each agent action has a `fallback_model`. The dispatcher retries 3× with exponential backoff, then fails over. Set a fallback in **Settings → Model per agent action**.

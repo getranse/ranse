@@ -1,3 +1,5 @@
+import type { AutonomyPolicy } from './autonomy';
+
 export const WORKSPACE_ROLES = ['owner', 'admin', 'agent', 'viewer'] as const;
 
 export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
@@ -33,6 +35,9 @@ export interface WorkspaceMailbox {
   address: string;
   display_name: string | null;
   auto_reply_policy: string;
+  autonomy_policy: AutonomyPolicy;
+  autonomy_threshold: number;
+  autonomy_rollout_percent: number;
   created_at: number;
 }
 

@@ -1,4 +1,5 @@
 import type { AgenticRetrievalTrace, KnowledgeHit } from './knowledge';
+import type { TicketFeedback, TicketOutcomeEvent } from './autonomy';
 
 export interface TicketViewData {
   ticket: {
@@ -29,11 +30,14 @@ export interface TicketViewData {
     action: string;
     created_at: number;
   }>;
+  outcomes?: TicketOutcomeEvent[];
+  feedback?: TicketFeedback[];
 }
 
 export interface ProposedReply {
   subject?: string;
   body_markdown?: string;
+  source_message_id?: string;
   cites_knowledge_ids?: string[];
   knowledge_hits?: KnowledgeHit[];
   knowledge_trace?: AgenticRetrievalTrace;

@@ -2,6 +2,7 @@ import type { Env } from '../../env';
 import { buildHtmlWithSignature, buildMultipartReply, buildPlainTextWithSignature } from '../../email/html';
 import { buildReplyAddress } from '../../email/reply-security';
 import { audit } from '../../lib/audit';
+import { buildFeedbackLinks } from '../../lib/feedback-links';
 import { ids } from '../../lib/ids';
 import { r2Keys, putRaw } from '../../lib/storage';
 import type { SendThreadedReply } from '../../types/supervisor';
@@ -16,13 +17,14 @@ export function makeSendThreadedReply(
     if (!ctx) throw new Error('ticket_not_found');
 
     const agent = args.actorUserId ? await loadAgent(env, args.actorUserId) : null;
-    const lastInbound = await loadLastInbound(env, args.ticketId);
-    const references = await loadReferences(env, args.ticketId);
+    const lastInbound = await loadLastInbound(env, workspaceId, args.ticketId);
+    const references = await loadReferences(env, workspaceId, args.ticketId);
     const addresses = await buildReplyAddresses(ctx, args.ticketId, agent);
     const subject = (args.subject ?? `Re: ${ctx.ticket_subject}`).replace(/^(re:\s*)+/i, 'Re: ');
     const messageId = ids.message();
     const rfcMessageId = `${messageId}@${addresses.sendingDomain}`;
-    const body = await buildReplyBodies(args.body, ctx, agent);
+    const feedbackLinks = await buildFeedbackLinks(env, { workspaceId, ticketId: args.ticketId, messageId });
+    const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks);
 
     const rawMimeText = buildMultipartReply(
       {
@@ -82,23 +84,23 @@ async function loadAgent(env: Env, userId: string) {
     .first<{ name: string | null; email: string; signature_markdown: string | null; avatar_url: string | null }>();
 }
 
-async function loadLastInbound(env: Env, ticketId: string) {
+async function loadLastInbound(env: Env, workspaceId: string, ticketId: string) {
   return env.DB.prepare(
     `SELECT rfc_message_id FROM message_index
-      WHERE ticket_id = ? AND direction = 'inbound' AND rfc_message_id IS NOT NULL
+      WHERE ticket_id = ? AND workspace_id = ? AND direction = 'inbound' AND rfc_message_id IS NOT NULL
       ORDER BY sent_at DESC LIMIT 1`,
   )
-    .bind(ticketId)
+    .bind(ticketId, workspaceId)
     .first<{ rfc_message_id: string }>();
 }
 
-async function loadReferences(env: Env, ticketId: string): Promise<string[]> {
+async function loadReferences(env: Env, workspaceId: string, ticketId: string): Promise<string[]> {
   const refRows = await env.DB.prepare(
     `SELECT rfc_message_id FROM message_index
-      WHERE ticket_id = ? AND rfc_message_id IS NOT NULL
+      WHERE ticket_id = ? AND workspace_id = ? AND rfc_message_id IS NOT NULL
       ORDER BY sent_at ASC`,
   )
-    .bind(ticketId)
+    .bind(ticketId, workspaceId)
     .all<{ rfc_message_id: string }>();
   return (refRows.results ?? []).map((r) => r.rfc_message_id);
 }
@@ -138,6 +140,7 @@ async function buildReplyBodies(
   body: string,
   ctx: NonNullable<Awaited<ReturnType<typeof loadReplyContext>>>,
   agent: Awaited<ReturnType<typeof loadAgent>>,
+  feedbackLinks: Awaited<ReturnType<typeof buildFeedbackLinks>>,
 ) {
   const settings = parseWorkspaceSettings(ctx.workspace_settings);
   const fromName = settings.from_name || ctx.workspace_name || 'Support';
@@ -150,8 +153,8 @@ async function buildReplyBodies(
     fromName,
   };
   return {
-    text: buildPlainTextWithSignature(body, signatureCtx),
-    html: await buildHtmlWithSignature(body, signatureCtx),
+    text: buildPlainTextWithSignature(body, signatureCtx, feedbackLinks),
+    html: await buildHtmlWithSignature(body, signatureCtx, feedbackLinks),
   };
 }
 
@@ -171,14 +174,17 @@ async function persistOutboundReply(
       message.rfcMessageId, message.inReplyTo, args.body.slice(0, 280), key, args.actorUserId, now, now)
     .run();
   await putRaw(env, key, new TextEncoder().encode(args.body), 'text/plain; charset=utf-8');
-  await env.DB.prepare(`UPDATE ticket SET status = 'pending', last_message_at = ?, updated_at = ? WHERE id = ?`)
-    .bind(now, now, args.ticketId)
+  await env.DB.prepare(
+    `UPDATE ticket SET status = 'pending', last_message_at = ?, updated_at = ?
+      WHERE id = ? AND workspace_id = ?`,
+  )
+    .bind(now, now, args.ticketId, workspaceId)
     .run();
   await audit(env, {
     workspaceId,
     ticketId: args.ticketId,
-    actorType: args.actorUserId ? 'user' : 'system',
-    actorId: args.actorUserId ?? undefined,
+    actorType: args.actorUserId ? 'user' : args.source === 'ai_autonomous' ? 'agent' : 'system',
+    actorId: args.actorUserId ?? (args.source === 'ai_autonomous' ? 'autonomy' : undefined),
     action: 'reply.sent',
     payload: { messageId: message.messageId, source: args.source, approvalId: args.approvalId, edited: args.edited },
   });

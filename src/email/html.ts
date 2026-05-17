@@ -101,19 +101,29 @@ export interface SignatureCtx {
   fromName?: string | null;
 }
 
+export interface EmailFeedbackLinks {
+  positive: string;
+  negative: string;
+}
+
 /**
  * Append a default signature to plain-text body when the agent hasn't
  * written one. Keeps the text/plain alternative readable.
  */
-export function buildPlainTextWithSignature(body: string, ctx: SignatureCtx): string {
+export function buildPlainTextWithSignature(
+  body: string,
+  ctx: SignatureCtx,
+  feedback?: EmailFeedbackLinks | null,
+): string {
+  const withFeedback = (text: string) => appendPlainTextFeedback(text, feedback);
   if (ctx.agentSignatureMarkdown) {
-    return `${body.trimEnd()}\n\n--\n${ctx.agentSignatureMarkdown}`;
+    return withFeedback(`${body.trimEnd()}\n\n--\n${ctx.agentSignatureMarkdown}`);
   }
   const parts: string[] = [];
   if (ctx.agentName) parts.push(ctx.agentName);
   if (ctx.fromName || ctx.workspaceName) parts.push(ctx.fromName ?? ctx.workspaceName ?? '');
-  if (parts.length === 0) return body;
-  return `${body.trimEnd()}\n\n--\n${parts.join('\n')}`;
+  if (parts.length === 0) return withFeedback(body);
+  return withFeedback(`${body.trimEnd()}\n\n--\n${parts.join('\n')}`);
 }
 
 /**
@@ -127,6 +137,7 @@ export function buildPlainTextWithSignature(body: string, ctx: SignatureCtx): st
 export async function buildHtmlWithSignature(
   bodyMarkdown: string,
   ctx: SignatureCtx,
+  feedback?: EmailFeedbackLinks | null,
 ): Promise<string> {
   const bodyHtml = markdownToHtml(bodyMarkdown);
 
@@ -152,7 +163,17 @@ export async function buildHtmlWithSignature(
     }</td></tr></table>`;
   }
 
-  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}</body></html>`;
+  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}${feedbackHtml(feedback)}</body></html>`;
+}
+
+function appendPlainTextFeedback(text: string, feedback?: EmailFeedbackLinks | null): string {
+  if (!feedback) return text;
+  return `${text.trimEnd()}\n\nWas this helpful?\nYes: ${feedback.positive}\nNo: ${feedback.negative}`;
+}
+
+function feedbackHtml(feedback?: EmailFeedbackLinks | null): string {
+  if (!feedback) return '';
+  return `<div style="margin-top:32px;padding-top:14px;border-top:1px solid #eee;color:#555;font-size:13px;">Was this helpful? <a href="${escapeHtml(feedback.positive)}" style="display:inline-block;margin-left:8px;color:#0f766e;text-decoration:none;">Yes</a> <a href="${escapeHtml(feedback.negative)}" style="display:inline-block;margin-left:8px;color:#991b1b;text-decoration:none;">No</a></div>`;
 }
 
 /**

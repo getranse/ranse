@@ -65,6 +65,9 @@ export function createWorkspaceTestDb() {
       display_name TEXT,
       reply_signing_secret TEXT NOT NULL,
       auto_reply_policy TEXT NOT NULL DEFAULT 'safe',
+      autonomy_policy TEXT NOT NULL DEFAULT 'draft_only',
+      autonomy_threshold REAL NOT NULL DEFAULT 0.85,
+      autonomy_rollout_percent INTEGER NOT NULL DEFAULT 100,
       created_at INTEGER NOT NULL
     );
     CREATE TABLE ticket (
@@ -73,17 +76,79 @@ export function createWorkspaceTestDb() {
       mailbox_id TEXT NOT NULL,
       subject TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      category TEXT,
+      sentiment TEXT,
+      assignee_user_id TEXT,
       last_message_at INTEGER NOT NULL,
       requester_email TEXT NOT NULL,
+      requester_name TEXT,
+      first_message_id TEXT,
       thread_token TEXT NOT NULL,
+      ai_drafts_enabled INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE ticket_outcome_event (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      source TEXT NOT NULL,
+      confidence_score REAL,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE ticket_feedback (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      message_id TEXT,
+      rating TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'agent',
+      comment TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE approval_request (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      proposed_json TEXT NOT NULL,
+      risk_reasons_json TEXT NOT NULL DEFAULT '[]',
+      decided_by_user_id TEXT,
+      decided_at INTEGER,
+      expires_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE workspace_outcome_daily (
+      workspace_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      resolved_autonomously_count INTEGER NOT NULL DEFAULT 0,
+      resolved_via_procedure_count INTEGER NOT NULL DEFAULT 0,
+      escalated_count INTEGER NOT NULL DEFAULT 0,
+      customer_followed_up_count INTEGER NOT NULL DEFAULT 0,
+      positive_feedback_count INTEGER NOT NULL DEFAULT 0,
+      negative_feedback_count INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, day)
     );
     CREATE TABLE message_index (
       id TEXT PRIMARY KEY,
       ticket_id TEXT NOT NULL,
       workspace_id TEXT NOT NULL,
       direction TEXT NOT NULL,
+      from_address TEXT,
+      to_address TEXT,
+      subject TEXT,
+      rfc_message_id TEXT,
+      in_reply_to TEXT,
+      preview TEXT,
+      raw_r2_key TEXT,
+      body_r2_key TEXT,
+      has_attachments INTEGER NOT NULL DEFAULT 0,
+      author_user_id TEXT,
       sent_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL
     );
@@ -162,8 +227,10 @@ export function seedMailbox(
   secret = `${id}_secret`,
 ) {
   db.prepare(
-    `INSERT INTO mailbox (id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy, created_at)
-     VALUES (?, ?, ?, ?, ?, 'safe', 1)`,
+    `INSERT INTO mailbox (
+       id, workspace_id, address, display_name, reply_signing_secret,
+       auto_reply_policy, autonomy_policy, autonomy_threshold, autonomy_rollout_percent, created_at
+     ) VALUES (?, ?, ?, ?, ?, 'safe', 'auto_send_if_confident', 0.85, 100, 1)`,
   ).run(id, workspaceId, address, address.split('@')[0], secret);
 }
 

@@ -2,11 +2,21 @@ import type { Env } from '../env';
 import { audit } from './audit';
 import { randomToken } from './crypto';
 import { ids } from './ids';
+import { listWorkspaceOutcomeRollups } from './outcomes';
 import type { WorkspaceAuditEvent, WorkspaceMailbox, WorkspaceUsage } from '../types/workspace';
+import {
+  type AutonomyPolicy,
+  DEFAULT_AUTONOMY_THRESHOLD,
+  legacyAutoReplyPolicy,
+  normalizeAutonomyPolicy,
+  normalizeAutonomyRolloutPercent,
+  normalizeAutonomyThreshold,
+} from '../types/autonomy';
 
 export async function listWorkspaceMailboxes(env: Env, workspaceId: string): Promise<WorkspaceMailbox[]> {
   const rows = await env.DB.prepare(
-    `SELECT id, address, display_name, auto_reply_policy, created_at
+    `SELECT id, address, display_name, auto_reply_policy, autonomy_policy,
+            autonomy_threshold, autonomy_rollout_percent, created_at
        FROM mailbox
       WHERE workspace_id = ?
       ORDER BY created_at ASC`,
@@ -18,7 +28,14 @@ export async function createWorkspaceMailbox(
   env: Env,
   workspaceId: string,
   actorUserId: string,
-  input: { address: string; displayName?: string | null; autoReplyPolicy?: string },
+  input: {
+    address: string;
+    displayName?: string | null;
+    autoReplyPolicy?: string;
+    autonomyPolicy?: AutonomyPolicy;
+    autonomyThreshold?: number;
+    autonomyRolloutPercent?: number;
+  },
 ): Promise<WorkspaceMailbox> {
   const now = Date.now();
   const existing = await env.DB.prepare(`SELECT id FROM mailbox WHERE address = ?`)
@@ -29,13 +46,30 @@ export async function createWorkspaceMailbox(
     id: ids.mailbox(),
     address: input.address.toLowerCase(),
     display_name: input.displayName ?? null,
-    auto_reply_policy: input.autoReplyPolicy ?? 'safe',
+    autonomy_policy: normalizeAutonomyPolicy(input.autonomyPolicy ?? input.autoReplyPolicy),
+    autonomy_threshold: normalizeAutonomyThreshold(input.autonomyThreshold ?? DEFAULT_AUTONOMY_THRESHOLD),
+    autonomy_rollout_percent: normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent),
     created_at: now,
   };
+  const autoReplyPolicy = input.autoReplyPolicy ?? legacyAutoReplyPolicy(mailbox.autonomy_policy);
+  const result = { ...mailbox, auto_reply_policy: autoReplyPolicy };
   await env.DB.prepare(
-    `INSERT INTO mailbox (id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(mailbox.id, workspaceId, mailbox.address, mailbox.display_name, randomToken(32), mailbox.auto_reply_policy, now).run();
+    `INSERT INTO mailbox (
+       id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy,
+       autonomy_policy, autonomy_threshold, autonomy_rollout_percent, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    mailbox.id,
+    workspaceId,
+    mailbox.address,
+    mailbox.display_name,
+    randomToken(32),
+    autoReplyPolicy,
+    mailbox.autonomy_policy,
+    mailbox.autonomy_threshold,
+    mailbox.autonomy_rollout_percent,
+    now,
+  ).run();
   await audit(env, {
     workspaceId,
     actorType: 'user',
@@ -43,7 +77,7 @@ export async function createWorkspaceMailbox(
     action: 'mailbox.created',
     payload: { mailboxId: mailbox.id, address: mailbox.address },
   });
-  return mailbox;
+  return result;
 }
 
 export async function updateWorkspaceMailbox(
@@ -51,7 +85,13 @@ export async function updateWorkspaceMailbox(
   workspaceId: string,
   actorUserId: string,
   mailboxId: string,
-  input: { displayName?: string | null; autoReplyPolicy?: string },
+  input: {
+    displayName?: string | null;
+    autoReplyPolicy?: string;
+    autonomyPolicy?: AutonomyPolicy;
+    autonomyThreshold?: number;
+    autonomyRolloutPercent?: number;
+  },
 ): Promise<'ok' | 'not_found'> {
   const existing = await env.DB.prepare(`SELECT id FROM mailbox WHERE id = ? AND workspace_id = ?`)
     .bind(mailboxId, workspaceId)
@@ -66,6 +106,19 @@ export async function updateWorkspaceMailbox(
   if (input.autoReplyPolicy !== undefined) {
     updates.push('auto_reply_policy = ?');
     binds.push(input.autoReplyPolicy);
+  }
+  if (input.autonomyPolicy !== undefined) {
+    updates.push('autonomy_policy = ?');
+    updates.push('auto_reply_policy = ?');
+    binds.push(input.autonomyPolicy, legacyAutoReplyPolicy(input.autonomyPolicy));
+  }
+  if (input.autonomyThreshold !== undefined) {
+    updates.push('autonomy_threshold = ?');
+    binds.push(normalizeAutonomyThreshold(input.autonomyThreshold));
+  }
+  if (input.autonomyRolloutPercent !== undefined) {
+    updates.push('autonomy_rollout_percent = ?');
+    binds.push(normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent));
   }
   if (updates.length > 0) {
     await env.DB.prepare(`UPDATE mailbox SET ${updates.join(', ')} WHERE id = ? AND workspace_id = ?`)
@@ -130,6 +183,7 @@ export async function workspaceExportManifest(env: Env, workspaceId: string) {
     members: await env.DB.prepare(`SELECT workspace_id, user_id, role, created_at FROM workspace_user WHERE workspace_id = ?`)
       .bind(workspaceId).all().then((r) => r.results ?? []),
     mailboxes: await listWorkspaceMailboxes(env, workspaceId),
+    outcomeRollups: await listWorkspaceOutcomeRollups(env, workspaceId, 365),
     audit: await workspaceAuditLog(env, workspaceId, 500),
   };
 }

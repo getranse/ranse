@@ -76,4 +76,23 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     await (stub as any).setTicketAiDrafts({ ticketId: c.req.param('id'), actorUserId: s.userId, enabled: body.enabled });
     return c.json({ ok: true });
   });
+
+  apiApp.post('/tickets/:id/feedback', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
+    const s = c.get('session');
+    const body = z.object({
+      rating: z.enum(['positive', 'negative']),
+      message_id: z.string().nullable().optional(),
+      comment: z.string().max(2000).nullable().optional(),
+    }).parse(await c.req.json());
+    const stub = await getSupervisor(c.env, s.workspaceId);
+    const result = await (stub as any).recordFeedback({
+      ticketId: c.req.param('id'),
+      actorUserId: s.userId,
+      messageId: body.message_id,
+      rating: body.rating,
+      comment: body.comment,
+    });
+    if (!result.ok) return apiError(c, 'not_found', 'Ticket not found.');
+    return c.json(result);
+  });
 }

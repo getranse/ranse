@@ -54,7 +54,7 @@ async function keywordSearchKnowledge(
   const kindFilter = sourceKindClause(options.sourceKinds);
 
   const rows = await env.DB.prepare(
-    `SELECT c.id, c.source_id, c.title, c.url, c.body, c.used_in_answers_count,
+    `SELECT c.id, c.source_id, c.title, c.url, c.body, c.used_in_answers_count, c.updated_at,
             s.kind AS source_kind, s.r2_key
        FROM knowledge_chunk c
        JOIN knowledge_source s ON s.id = c.source_id
@@ -70,6 +70,7 @@ async function keywordSearchKnowledge(
       url: string | null;
       body: string;
       used_in_answers_count: number;
+      updated_at: number;
       source_kind: KnowledgeSourceKind;
       r2_key: string | null;
     }>();
@@ -91,6 +92,7 @@ async function keywordSearchKnowledge(
         snippet: makeSnippet(row.body, tokens),
         score,
         usedInAnswersCount: row.used_in_answers_count,
+        updatedAt: row.updated_at,
       };
     })
     .filter((hit) => hit.score > 0)
@@ -110,6 +112,7 @@ async function hydrateVectorMatches(
   const kindFilter = sourceKindClause(options.sourceKinds);
   const rows = await env.DB.prepare(
     `SELECT c.id, c.source_id, c.title, c.url, c.snippet, c.vector_id, c.used_in_answers_count,
+            c.updated_at,
             s.kind AS source_kind, s.r2_key
        FROM knowledge_chunk c
        JOIN knowledge_source s ON s.id = c.source_id
@@ -124,6 +127,7 @@ async function hydrateVectorMatches(
       snippet: string;
       vector_id: string;
       used_in_answers_count: number;
+      updated_at: number;
       source_kind: KnowledgeSourceKind;
       r2_key: string | null;
     }>();
@@ -142,6 +146,7 @@ async function hydrateVectorMatches(
         snippet: row.snippet,
         score: scoreByVectorId.get(match.id) ?? 0,
         usedInAnswersCount: row.used_in_answers_count,
+        updatedAt: row.updated_at,
       };
     })
     .filter(Boolean) as KnowledgeHit[];

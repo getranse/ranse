@@ -30,10 +30,10 @@ export async function draftReply(
 
   const lastInbound = await env.DB.prepare(
     `SELECT from_address, subject, preview FROM message_index
-      WHERE ticket_id = ? AND direction = 'inbound'
+      WHERE ticket_id = ? AND workspace_id = ? AND direction = 'inbound'
       ORDER BY sent_at DESC LIMIT 1`,
   )
-    .bind(args.ticketId)
+    .bind(args.ticketId, workspaceId)
     .first<{ from_address: string | null; subject: string | null; preview: string | null }>();
   if (!lastInbound) return { ok: false, error: 'no_inbound_message_to_draft_from' };
 

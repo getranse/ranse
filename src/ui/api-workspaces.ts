@@ -7,6 +7,8 @@ import type {
   WorkspaceSummary,
   WorkspaceUsage,
 } from '../types/workspace';
+import type { AutonomyPolicy } from '../types/autonomy';
+import type { WorkspaceOutcomeDaily } from '../types/autonomy';
 import { api, uploadFile } from './api-core';
 
 export const workspaceApi = {
@@ -56,6 +58,8 @@ export const workspaceApi = {
     }),
   workspaceUsage: () => api<{ usage: WorkspaceUsage }>('/api/workspaces/current/usage'),
   workspaceAudit: () => api<{ events: WorkspaceAuditEvent[] }>('/api/workspaces/current/audit'),
+  workspaceOutcomeRollup: (days = 30) =>
+    api<{ days: WorkspaceOutcomeDaily[] }>(`/api/workspaces/current/outcomes/rollup?days=${days}`),
   workspaceExport: () => api<any>('/api/workspaces/current/export'),
   workspaceMailboxes: () =>
     api<{ mailboxes: WorkspaceMailbox[] }>('/api/workspaces/current/mailboxes'),
@@ -63,6 +67,9 @@ export const workspaceApi = {
     address: string;
     display_name?: string;
     auto_reply_policy?: string;
+    autonomy_policy?: AutonomyPolicy;
+    autonomy_threshold?: number;
+    autonomy_rollout_percent?: number;
   }) =>
     api<{ ok: boolean; mailbox: WorkspaceMailbox }>('/api/workspaces/current/mailboxes', {
       method: 'POST',
@@ -70,7 +77,13 @@ export const workspaceApi = {
     }),
   updateWorkspaceMailbox: (
     id: string,
-    body: { display_name?: string | null; auto_reply_policy?: string },
+    body: {
+      display_name?: string | null;
+      auto_reply_policy?: string;
+      autonomy_policy?: AutonomyPolicy;
+      autonomy_threshold?: number;
+      autonomy_rollout_percent?: number;
+    },
   ) =>
     api(`/api/workspaces/current/mailboxes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   workspaceMembers: () => api<{ members: WorkspaceMember[] }>('/api/workspaces/current/members'),

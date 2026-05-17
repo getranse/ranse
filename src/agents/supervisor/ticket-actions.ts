@@ -1,6 +1,7 @@
 import type { Env } from '../../env';
 import { audit } from '../../lib/audit';
 import { ids } from '../../lib/ids';
+import { listTicketFeedback, listTicketOutcomes, recordTicketFeedback } from '../../lib/outcomes';
 import { r2Keys, putRaw } from '../../lib/storage';
 import { recordKnowledgeUsage } from '../../knowledge';
 import type { SendThreadedReply, TicketListItem } from '../../types/supervisor';
@@ -33,24 +34,28 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     .bind(ticketId, workspaceId)
     .first();
   if (!ticket) return null;
-  const [messages, auditRows, approvals] = await Promise.all([
-    env.DB.prepare(`SELECT * FROM message_index WHERE ticket_id = ? ORDER BY sent_at ASC`)
-      .bind(ticketId)
+  const [messages, auditRows, approvals, outcomes, feedback] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`)
+      .bind(ticketId, workspaceId)
       .all(),
     env.DB.prepare(
-      `SELECT * FROM audit_event WHERE ticket_id = ? ORDER BY created_at DESC LIMIT 100`,
+      `SELECT * FROM audit_event WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT 100`,
     )
-      .bind(ticketId)
+      .bind(ticketId, workspaceId)
       .all(),
-    env.DB.prepare(`SELECT * FROM approval_request WHERE ticket_id = ? ORDER BY created_at DESC`)
-      .bind(ticketId)
+    env.DB.prepare(`SELECT * FROM approval_request WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC`)
+      .bind(ticketId, workspaceId)
       .all(),
+    listTicketOutcomes(env, workspaceId, ticketId),
+    listTicketFeedback(env, workspaceId, ticketId),
   ]);
   return {
     ticket,
     messages: messages.results ?? [],
     audit: auditRows.results ?? [],
     approvals: approvals.results ?? [],
+    outcomes,
+    feedback,
   };
 }
 
@@ -145,9 +150,10 @@ export async function approveAndSend(
   sendThreadedReply: SendThreadedReply,
 ) {
   const row = await env.DB.prepare(
-    `SELECT workspace_id, ticket_id, kind, proposed_json, status FROM approval_request WHERE id = ?`,
+    `SELECT workspace_id, ticket_id, kind, proposed_json, status
+       FROM approval_request WHERE id = ? AND workspace_id = ?`,
   )
-    .bind(args.approvalId)
+    .bind(args.approvalId, workspaceId)
     .first<{
       workspace_id: string;
       ticket_id: string;
@@ -156,7 +162,6 @@ export async function approveAndSend(
       status: string;
     }>();
   if (!row || row.status !== 'pending') return { ok: false, error: 'not_pending' };
-  if (row.workspace_id !== workspaceId) return { ok: false, error: 'wrong_workspace' };
 
   const proposed = JSON.parse(row.proposed_json);
   const sent = await sendThreadedReply({
@@ -172,9 +177,10 @@ export async function approveAndSend(
     console.warn('failed to record knowledge usage', err),
   );
   await env.DB.prepare(
-    `UPDATE approval_request SET status = 'approved', decided_by_user_id = ?, decided_at = ? WHERE id = ?`,
+    `UPDATE approval_request SET status = 'approved', decided_by_user_id = ?, decided_at = ?
+      WHERE id = ? AND workspace_id = ?`,
   )
-    .bind(args.actorUserId, Date.now(), args.approvalId)
+    .bind(args.actorUserId, Date.now(), args.approvalId, workspaceId)
     .run();
   return { ok: true, messageId: sent.messageId };
 }
@@ -227,6 +233,41 @@ export async function setTicketAiDrafts(
     payload: { enabled: args.enabled },
   });
   return { ok: true };
+}
+
+export async function recordFeedback(
+  env: Env,
+  workspaceId: string,
+  args: {
+    ticketId: string;
+    actorUserId: string;
+    messageId?: string | null;
+    rating: 'positive' | 'negative';
+    comment?: string | null;
+  },
+) {
+  const ticket = await env.DB.prepare(`SELECT id FROM ticket WHERE id = ? AND workspace_id = ?`)
+    .bind(args.ticketId, workspaceId)
+    .first<{ id: string }>();
+  if (!ticket) return { ok: false, error: 'ticket_not_found' };
+  if (args.messageId) {
+    const message = await env.DB.prepare(
+      `SELECT id FROM message_index WHERE id = ? AND ticket_id = ? AND workspace_id = ?`,
+    )
+      .bind(args.messageId, args.ticketId, workspaceId)
+      .first<{ id: string }>();
+    if (!message) return { ok: false, error: 'message_not_found' };
+  }
+  const feedbackId = await recordTicketFeedback(env, {
+    workspaceId,
+    ticketId: args.ticketId,
+    actorUserId: args.actorUserId,
+    messageId: args.messageId,
+    rating: args.rating,
+    source: 'agent',
+    comment: args.comment,
+  });
+  return { ok: true, feedbackId };
 }
 
 export async function rejectApproval(

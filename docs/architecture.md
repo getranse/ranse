@@ -32,15 +32,18 @@ email() handler
        ├─ find-or-create ticket (thread by In-Reply-To, References, then 72h fallback)
        ├─ insert message_index row
        ├─ audit ticket.created | ticket.message_received
+       ├─ record customer_followed_up outcome when a closed/pending ticket reopens
        └─ this.schedule(0, 'triageAndDraft', …)
 
 triageAndDraft (runs in DO alarm, async)
+  ├─ skip if this inbound already has a pending approval or threaded reply
   ├─ runTriage (LLM) → category/priority/sentiment
   ├─ (if spam) mark status, stop
-  ├─ searchKnowledge (Vectorize + rerank; D1 keyword fallback)
-  ├─ runDraft (LLM) with knowledge + policy
-  ├─ policy gate → createApproval (pending)
-  └─ audit approval.created
+  ├─ agenticSearchKnowledge (bounded multi-hop Vectorize/keyword/rerank loop)
+  ├─ runDraft (LLM) with retrieved evidence
+  ├─ score autonomy (LLM confidence + retrieval score + groundedness + freshness)
+  ├─ mailbox policy gate → auto-send or createApproval (pending)
+  └─ audit approval.created | reply.auto_sent
 ```
 
 ## Storage model
@@ -48,7 +51,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, users, sessions, knowledge, LLM config |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -92,5 +95,6 @@ Fallback: each action in `DEFAULT_AGENT_CONFIG` can declare a `fallbackModel`. A
 
 - **No per-ticket DOs in v1.** Tickets are relational rows in D1. If/when we need per-ticket agent identity (presence, live collaboration, per-ticket reinforcement learning), we can introduce `TicketAgent` without changing the supervisor's public API.
 - **OpenAI SDK as universal client.** Matches vibesdk. Avoids the weight of Vercel AI SDK; Gateway's OpenAI-compat endpoint unifies everything.
-- **Approvals are data, not code.** Every outbound reply is an `approval_request` row until a human acts. The policy that decides "auto-send vs gate" is in the supervisor — extend there.
+- **Approvals are data, not code.** Risky AI replies are `approval_request` rows until a human acts. The mailbox autonomy gate decides whether a grounded draft can auto-send or must enter the approval queue.
+- **Customer feedback is signed.** Outbound replies include HMAC-signed feedback links when `APP_URL` is configured; recipients can rate a reply without a session, and the token only grants feedback on that message.
 - **Single Worker repo.** One-click deploy works best with isolated apps; splitting into monorepo breaks the UX.

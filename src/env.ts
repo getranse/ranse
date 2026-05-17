@@ -5,6 +5,7 @@ import type { UserSecretsStore } from './agents/UserSecretsStore';
 
 export interface Env {
   APP_NAME: string;
+  APP_URL?: string;
   LLM_DEFAULT_MODEL: string;
 
   // Optional — only set if the user adds a custom AI Gateway URL in the

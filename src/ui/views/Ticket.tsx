@@ -187,7 +187,13 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           </button>
         </div>
 
-        <TicketSidebar ticket={ticket} audit={data.audit} onReload={load} />
+        <TicketSidebar
+          ticket={ticket}
+          audit={data.audit}
+          outcomes={data.outcomes}
+          feedback={data.feedback}
+          onReload={load}
+        />
       </div>
     </div>
   );

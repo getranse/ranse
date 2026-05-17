@@ -12,6 +12,7 @@
   // Users fill these in during one-click install; we promote sensitive ones
   // to Worker secrets post-deploy via scripts/deploy.ts.
   "vars": {
+    "APP_URL": "",
     "APP_NAME": "Ranse",
     "LLM_DEFAULT_MODEL": "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast"
   },

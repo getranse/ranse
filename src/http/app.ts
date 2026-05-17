@@ -5,6 +5,7 @@ import type { Env } from '../env';
 import { apiApp } from '../api/routes';
 import { assetsApp } from '../assets/routes';
 import { authApp } from '../auth/routes';
+import { feedbackApp } from '../feedback/routes';
 import { setupApp } from '../setup/wizard';
 
 export const app = new Hono<{ Bindings: Env }>();
@@ -41,6 +42,7 @@ app.onError((err, c) => {
 
 app.route('/setup', setupApp);
 app.route('/auth', authApp);
+app.route('/feedback', feedbackApp);
 app.route('/api', apiApp);
 app.route('/assets', assetsApp);
 
