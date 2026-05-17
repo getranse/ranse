@@ -45,7 +45,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 3 — Autonomous resolution + outcome telemetry** is shipped. Mailboxes now choose a per-mailbox autonomy policy, drafts are scored from evidence quality and confidence, safe cases can auto-send, and ticket outcomes plus feedback/follow-up signals are stored for evals and insights.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, and a conservative autonomous-send path. Everything below continues the path from copilot to procedure-driven agent built around the seven principles above.
+**Phase 4 — Procedures as code** is shipped. Workspaces can publish versioned procedure specs, run them against tickets through a checkpointed `ProcedureRunnerAgent`, pause/resume across customer turns, simulate procedures locally, and keep previous versions addressable for in-flight runs.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, and the first procedure-driven agent loop. Everything below continues the path from procedures to MCP-native action execution, evals, and insights.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -134,14 +136,18 @@ The `customer_data` scope currently fails closed with an explicit trace until Ph
 - Daily outcome rollups are shipped in D1 and available through the workspace admin API/export for Phase 6 evals and Phase 8 insights.
 
 ## Phase 4 — Procedures as code
+**Status: shipped.**
+
 *Principle 3 — the biggest single differentiator*
 
-- Procedures defined as YAML or TS files in `procedures/` directory of the workspace's repo
-- Schema includes: trigger, steps (NL + deterministic), version, owner, eval cases
-- Procedure runner as a Durable Object — checkpointed, resumable across multi-day customer turns
-- Step primitives: `ask_customer`, `call_action` (MCP tool), `search` (Phase 2 loop), `escalate_to(team)`, `set_ticket_field`, `wait_for_event`, `if/else`, `loop`
-- **GitOps deploy**: PR merges to `main` → procedures auto-published to the workspace; previous version stays addressable for in-flight conversations
-- `ranse simulate <procedure>` CLI for local dry-run before opening the PR
+- Procedures are defined as YAML, JSON, or TS files and published as immutable versions.
+- Schema includes trigger, steps, version, owner, and eval case metadata.
+- `ProcedureRunnerAgent` runs each procedure as a Durable Object, with D1 checkpoints, deterministic replay of branch/loop decisions, resumable waits, and scheduled timeout handling.
+- Step primitives are shipped for `ask_customer`, `search` (Phase 2 loop), `add_note`, `escalate_to`, `set_ticket_field`, `wait_for_event`, `if/else`, and `loop`.
+- Manual, ticket-created, and triage-category triggers are shipped; trigger event keys dedupe replayed events.
+- `call_action` is intentionally fail-closed until Phase 5 wires real MCP servers and guardrails.
+- GitOps-style publishing is available through `ranse publish <procedure>` using the Git source ref; previous versions stay addressable for in-flight runs.
+- `ranse simulate <procedure>` performs local dry-runs before opening a PR.
 
 ## Phase 5 — MCP-native actions
 *Principle 4*

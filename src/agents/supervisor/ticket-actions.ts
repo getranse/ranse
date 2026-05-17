@@ -4,6 +4,7 @@ import { ids } from '../../lib/ids';
 import { listTicketFeedback, listTicketOutcomes, recordTicketFeedback } from '../../lib/outcomes';
 import { r2Keys, putRaw } from '../../lib/storage';
 import { recordKnowledgeUsage } from '../../knowledge';
+import { listTicketProcedureRuns } from '../../procedures/storage';
 import type { SendThreadedReply, TicketListItem } from '../../types/supervisor';
 
 export { draftReply } from './ticket-draft';
@@ -34,8 +35,10 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     .bind(ticketId, workspaceId)
     .first();
   if (!ticket) return null;
-  const [messages, auditRows, approvals, outcomes, feedback] = await Promise.all([
-    env.DB.prepare(`SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`)
+  const [messages, auditRows, approvals, outcomes, feedback, procedureRuns] = await Promise.all([
+    env.DB.prepare(
+      `SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`,
+    )
       .bind(ticketId, workspaceId)
       .all(),
     env.DB.prepare(
@@ -43,11 +46,14 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     )
       .bind(ticketId, workspaceId)
       .all(),
-    env.DB.prepare(`SELECT * FROM approval_request WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC`)
+    env.DB.prepare(
+      `SELECT * FROM approval_request WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC`,
+    )
       .bind(ticketId, workspaceId)
       .all(),
     listTicketOutcomes(env, workspaceId, ticketId),
     listTicketFeedback(env, workspaceId, ticketId),
+    listTicketProcedureRuns(env, workspaceId, ticketId),
   ]);
   return {
     ticket,
@@ -56,6 +62,7 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     approvals: approvals.results ?? [],
     outcomes,
     feedback,
+    procedureRuns,
   };
 }
 

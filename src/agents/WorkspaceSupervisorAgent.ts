@@ -1,5 +1,9 @@
 import { Agent, callable } from 'agents';
 import type { Env } from '../env';
+import {
+  resumeWaitingProcedureRuns,
+  startTriggeredProcedureRuns,
+} from '../procedures/orchestration';
 import type { AgenticRetrievalTrace, KnowledgeInspectionHit } from '../types/knowledge';
 import {
   DEFAULT_SUPERVISOR_STATE,
@@ -8,7 +12,10 @@ import {
   type SupervisorState,
   type TicketListItem,
 } from '../types/supervisor';
-import { ingestEmail as ingestInboundEmail, triageAndDraft as runTriageAndDraft } from './supervisor/email-flow';
+import {
+  ingestEmail as ingestInboundEmail,
+  triageAndDraft as runTriageAndDraft,
+} from './supervisor/email-flow';
 import { makeSendThreadedReply } from './supervisor/replies';
 import {
   aiDraftsEnabled,
@@ -56,38 +63,85 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }
 
   private sendThreadedReply(args: Parameters<SendThreadedReply>[0]) {
-    return makeSendThreadedReply(this.env, this.state.workspaceId, () => this.refreshCounts())(args);
+    return makeSendThreadedReply(this.env, this.state.workspaceId, () => this.refreshCounts())(
+      args,
+    );
   }
 
-  async ingestEmail(payload: InboundEmailPayload): Promise<{ ticketId: string; messageId: string }> {
-    return ingestInboundEmail({
-      env: this.env,
-      workspaceId: this.state.workspaceId,
-      schedule: async (delay, name, scheduledPayload) => {
-        await this.schedule(delay, name as any, scheduledPayload as any);
+  async ingestEmail(
+    payload: InboundEmailPayload,
+  ): Promise<{ ticketId: string; messageId: string }> {
+    const result = await ingestInboundEmail(
+      {
+        env: this.env,
+        workspaceId: this.state.workspaceId,
+        schedule: async (delay, name, scheduledPayload) => {
+          await this.schedule(delay, name as any, scheduledPayload as any);
+        },
+        refreshCounts: () => this.refreshCounts(),
+        aiDraftsEnabled: (ticketId) => this.aiDraftsEnabled(ticketId),
       },
-      refreshCounts: () => this.refreshCounts(),
-      aiDraftsEnabled: (ticketId) => this.aiDraftsEnabled(ticketId),
-    }, payload);
+      payload,
+    );
+    if (!payload.isAutoReply) {
+      await resumeWaitingProcedureRuns(this.env, this.state.workspaceId, {
+        ticketId: result.ticketId,
+        event: 'customer_reply',
+        payload: {
+          messageId: result.messageId,
+          subject: payload.subject,
+          from: payload.from.address,
+        },
+      });
+    }
+    if (result.isNewTicket && !payload.isAutoReply) {
+      await startTriggeredProcedureRuns(this.env, this.state.workspaceId, {
+        ticketId: result.ticketId,
+        trigger: { type: 'ticket_created' },
+        context: {
+          ticket: {
+            subject: payload.subject,
+            requester_email: payload.from.address,
+            requester_name: payload.from.name ?? null,
+          },
+          inbound: { message_id: result.messageId, body: payload.text },
+        },
+        eventKey: `ticket_created:${result.ticketId}`,
+      });
+    }
+    return { ticketId: result.ticketId, messageId: result.messageId };
   }
 
-  async triageAndDraft(args: { ticketId: string; messageId: string; payload: InboundEmailPayload }) {
-    return runTriageAndDraft({
-      env: this.env,
-      workspaceId: this.state.workspaceId,
-      refreshCounts: () => this.refreshCounts(),
-      sendThreadedReply: (replyArgs) => this.sendThreadedReply(replyArgs),
-      workspaceConfig,
-    }, args);
+  async triageAndDraft(args: {
+    ticketId: string;
+    messageId: string;
+    payload: InboundEmailPayload;
+  }) {
+    return runTriageAndDraft(
+      {
+        env: this.env,
+        workspaceId: this.state.workspaceId,
+        refreshCounts: () => this.refreshCounts(),
+        sendThreadedReply: (replyArgs) => this.sendThreadedReply(replyArgs),
+        workspaceConfig,
+      },
+      args,
+    );
   }
 
   @callable()
-  async listTickets(params: { status?: string; limit?: number; offset?: number }): Promise<TicketListItem[]> {
+  async listTickets(params: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TicketListItem[]> {
     return listTickets(this.env, this.state.workspaceId, params);
   }
 
   @callable()
-  async getTicket(ticketId: string): Promise<{ ticket: any; messages: any[]; audit: any[]; approvals: any[] } | null> {
+  async getTicket(
+    ticketId: string,
+  ): Promise<{ ticket: any; messages: any[]; audit: any[]; approvals: any[] } | null> {
     return getTicket(this.env, this.state.workspaceId, ticketId);
   }
 
@@ -97,7 +151,11 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }
 
   @callable()
-  async setTicketStatus(args: { ticketId: string; status: 'open' | 'pending' | 'resolved' | 'closed' | 'spam'; actorUserId: string }) {
+  async setTicketStatus(args: {
+    ticketId: string;
+    status: 'open' | 'pending' | 'resolved' | 'closed' | 'spam';
+    actorUserId: string;
+  }) {
     return setTicketStatus(this.env, this.state.workspaceId, args, () => this.refreshCounts());
   }
 
@@ -107,8 +165,14 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }
 
   @callable()
-  async approveAndSend(args: { approvalId: string; actorUserId: string; edits?: { subject?: string; body_markdown?: string } }) {
-    return approveAndSend(this.env, this.state.workspaceId, args, (replyArgs) => this.sendThreadedReply(replyArgs));
+  async approveAndSend(args: {
+    approvalId: string;
+    actorUserId: string;
+    edits?: { subject?: string; body_markdown?: string };
+  }) {
+    return approveAndSend(this.env, this.state.workspaceId, args, (replyArgs) =>
+      this.sendThreadedReply(replyArgs),
+    );
   }
 
   @callable()
@@ -119,14 +183,13 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     subject?: string;
     citedKnowledgeIds?: string[];
   }) {
-    return replyDirect(this.env, this.state.workspaceId, args, (replyArgs) => this.sendThreadedReply(replyArgs));
+    return replyDirect(this.env, this.state.workspaceId, args, (replyArgs) =>
+      this.sendThreadedReply(replyArgs),
+    );
   }
 
   @callable()
-  async draftReply(args: {
-    ticketId: string;
-    actorUserId: string;
-  }): Promise<{
+  async draftReply(args: { ticketId: string; actorUserId: string }): Promise<{
     ok: boolean;
     subject?: string;
     body?: string;

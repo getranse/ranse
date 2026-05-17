@@ -1,15 +1,36 @@
 import type { TicketViewData } from '../../types/ticket';
-import { API } from '../api';
+import { useEffect, useState } from 'react';
+import { API, type ProcedureListEntry } from '../api';
 
 interface TicketSidebarProps {
   ticket: TicketViewData['ticket'];
   audit: TicketViewData['audit'];
   outcomes?: TicketViewData['outcomes'];
   feedback?: TicketViewData['feedback'];
+  procedureRuns?: TicketViewData['procedureRuns'];
   onReload: () => Promise<void>;
 }
 
-export function TicketSidebar({ ticket, audit, outcomes = [], feedback = [], onReload }: TicketSidebarProps) {
+export function TicketSidebar({
+  ticket,
+  audit,
+  outcomes = [],
+  feedback = [],
+  procedureRuns = [],
+  onReload,
+}: TicketSidebarProps) {
+  const [procedures, setProcedures] = useState<ProcedureListEntry[]>([]);
+  const [selectedProcedure, setSelectedProcedure] = useState('');
+
+  useEffect(() => {
+    API.listProcedures()
+      .then((res) => {
+        setProcedures(res.procedures ?? []);
+        setSelectedProcedure(res.procedures?.[0]?.slug ?? '');
+      })
+      .catch(() => undefined);
+  }, []);
+
   async function recordFeedback(rating: 'positive' | 'negative') {
     await API.recordTicketFeedback(ticket.id, rating);
     await onReload();
@@ -83,6 +104,55 @@ export function TicketSidebar({ ticket, audit, outcomes = [], feedback = [], onR
           </div>
         </>
       )}
+      <h2 style={{ marginTop: 16 }}>Procedures</h2>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {procedures.length > 0 ? (
+          <>
+            <select
+              value={selectedProcedure}
+              onChange={(e) => setSelectedProcedure(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              {procedures.map((procedure) => (
+                <option key={procedure.id} value={procedure.slug}>
+                  {procedure.name} · {procedure.active_version}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={async () => {
+                if (!selectedProcedure) return;
+                await API.startProcedureRun(selectedProcedure, ticket.id, {
+                  ticket: {
+                    id: ticket.id,
+                    subject: ticket.subject,
+                    requester_email: ticket.requester_email,
+                    status: ticket.status,
+                    priority: ticket.priority,
+                    category: ticket.category ?? null,
+                  },
+                });
+                await onReload();
+              }}
+            >
+              Run procedure
+            </button>
+          </>
+        ) : (
+          <div className="muted">No active procedures.</div>
+        )}
+        {procedureRuns.slice(0, 5).map((run) => (
+          <div key={run.id} style={{ fontSize: 12 }}>
+            <div>
+              <span className={`pill ${run.status === 'completed' ? 'resolved' : ''}`}>
+                {run.status}
+              </span>{' '}
+              {run.procedure_id}
+            </div>
+            {run.error && <div className="error">{run.error}</div>}
+          </div>
+        ))}
+      </div>
       <h2 style={{ marginTop: 16 }}>Audit</h2>
       <div style={{ fontSize: 12 }}>
         {audit.slice(0, 20).map((event) => (

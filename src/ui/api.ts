@@ -4,6 +4,12 @@ import type {
   KnowledgeInspectionHit,
   KnowledgeSourceListItem,
 } from '../types/knowledge';
+import type {
+  ProcedureListItem,
+  ProcedureRun,
+  ProcedureRunDetail,
+  ProcedureSpec,
+} from '../types/procedure';
 import type { AuthMe } from '../types/workspace';
 import { api, uploadFile, uploadKnowledgePdf } from './api-core';
 import { workspaceApi } from './api-workspaces';
@@ -14,6 +20,7 @@ export type KnowledgeSource = KnowledgeSourceListItem;
 export type KnowledgeSearchHit = KnowledgeHit;
 export type AnswerInspectionHit = KnowledgeInspectionHit;
 export type AnswerInspectionTrace = AgenticRetrievalTrace;
+export type ProcedureListEntry = ProcedureListItem;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -140,6 +147,32 @@ export const API = {
       hits: KnowledgeSearchHit[];
       trace?: AnswerInspectionTrace;
     }>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query, limit }) }),
+  listProcedures: () => api<{ procedures: ProcedureListEntry[] }>('/api/procedures'),
+  procedure: (id: string) =>
+    api<{
+      procedure: ProcedureListItem;
+      version: unknown;
+      spec: ProcedureSpec;
+    }>(`/api/procedures/${id}`),
+  publishProcedure: (spec: ProcedureSpec) =>
+    api('/api/procedures', { method: 'POST', body: JSON.stringify({ spec }) }),
+  startProcedureRun: (procedureId: string, ticketId: string, context?: Record<string, unknown>) =>
+    api<{ run: ProcedureRun }>(`/api/procedures/${procedureId}/runs`, {
+      method: 'POST',
+      body: JSON.stringify({ ticket_id: ticketId, context }),
+    }),
+  procedureRun: (runId: string) => api<ProcedureRunDetail>(`/api/procedure-runs/${runId}`),
+  resumeProcedureRun: (
+    runId: string,
+    event: 'customer_reply' | 'approval_decided' | 'manual_resume',
+    payload?: Record<string, unknown>,
+  ) =>
+    api<ProcedureRunDetail>(`/api/procedure-runs/${runId}/resume`, {
+      method: 'POST',
+      body: JSON.stringify({ event, payload }),
+    }),
+  cancelProcedureRun: (runId: string) =>
+    api<{ ok: boolean }>(`/api/procedure-runs/${runId}/cancel`, { method: 'POST' }),
   importResolvedTicketsKnowledge: (limit = 50) =>
     api<{ ok: boolean; imported: number; skipped: number; failed: number }>(
       '/api/knowledge/import-resolved-tickets',

@@ -1,5 +1,6 @@
 import type { AgenticRetrievalTrace, KnowledgeHit } from './knowledge';
 import type { TicketFeedback, TicketOutcomeEvent } from './autonomy';
+import type { ProcedureRun } from './procedure';
 
 export interface TicketViewData {
   ticket: {
@@ -32,6 +33,7 @@ export interface TicketViewData {
   }>;
   outcomes?: TicketOutcomeEvent[];
   feedback?: TicketFeedback[];
+  procedureRuns?: ProcedureRun[];
 }
 
 export interface ProposedReply {
