@@ -174,6 +174,82 @@ describe('workspace platform routes', () => {
     expect(audit.events.map((e: any) => e.id)).toEqual(['aud_a']);
   });
 
+  it('stores mailbox autonomy policy and threshold through workspace admin routes', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    await seedUser(db, 'owner', 'owner@example.com');
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    addMember(db, 'ws_a', 'owner', 'owner');
+
+    const cookie = await login(env, 'owner@example.com');
+    const created = await apiApp.request('/workspaces/current/mailboxes', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        address: 'support@example.com',
+        autonomy_policy: 'auto_send_if_confident',
+        autonomy_threshold: 0.91,
+        autonomy_rollout_percent: 25,
+      }),
+    }, env);
+    const createdBody: any = await created.json();
+
+    expect(created.status).toBe(200);
+    expect(createdBody.mailbox.autonomy_policy).toBe('auto_send_if_confident');
+    expect(createdBody.mailbox.autonomy_rollout_percent).toBe(25);
+    expect(createdBody.mailbox.auto_reply_policy).toBe('safe');
+
+    const patched = await apiApp.request(`/workspaces/current/mailboxes/${createdBody.mailbox.id}`, {
+      method: 'PATCH',
+      headers: { cookie, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        autonomy_policy: 'draft_only',
+        autonomy_threshold: 0.77,
+        autonomy_rollout_percent: 10,
+      }),
+    }, env);
+
+    expect(patched.status).toBe(200);
+    expect(db.prepare(
+      `SELECT autonomy_policy, autonomy_threshold, autonomy_rollout_percent, auto_reply_policy
+         FROM mailbox WHERE id = ?`,
+    ).get(createdBody.mailbox.id)).toEqual({
+      autonomy_policy: 'draft_only',
+      autonomy_threshold: 0.77,
+      autonomy_rollout_percent: 10,
+      auto_reply_policy: 'off',
+    });
+  });
+
+  it('exposes workspace outcome rollups to admins only', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    await seedUser(db, 'owner', 'owner@example.com');
+    await seedUser(db, 'viewer', 'viewer@example.com');
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    addMember(db, 'ws_a', 'owner', 'owner');
+    addMember(db, 'ws_a', 'viewer', 'viewer');
+    db.prepare(
+      `INSERT INTO workspace_outcome_daily (
+        workspace_id, day, resolved_autonomously_count, positive_feedback_count, updated_at
+      ) VALUES ('ws_a', '2026-05-17', 2, 1, 1)`,
+    ).run();
+
+    const ownerCookie = await login(env, 'owner@example.com');
+    const rollup = await apiApp.request('/workspaces/current/outcomes/rollup', {
+      headers: { cookie: ownerCookie },
+    }, env);
+    const body: any = await rollup.json();
+    expect(body.days[0]).toMatchObject({
+      resolved_autonomously_count: 2,
+      positive_feedback_count: 1,
+    });
+
+    const viewerCookie = await login(env, 'viewer@example.com');
+    const forbidden = await apiApp.request('/workspaces/current/outcomes/rollup', {
+      headers: { cookie: viewerCookie },
+    }, env);
+    expect(forbidden.status).toBe(403);
+  });
+
   it('moves the session to a remaining workspace after archive and delete', async () => {
     const { db, env } = createWorkspaceTestDb();
     await seedUser(db, 'owner', 'owner@example.com');

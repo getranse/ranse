@@ -58,6 +58,11 @@ export const API = {
     }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
   setTicketAiDrafts: (id: string, enabled: boolean | null) =>
     api(`/api/tickets/${id}/ai-drafts`, { method: 'POST', body: JSON.stringify({ enabled }) }),
+  recordTicketFeedback: (id: string, rating: 'positive' | 'negative', messageId?: string) =>
+    api<{ ok: boolean; feedbackId?: string }>(`/api/tickets/${id}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, message_id: messageId ?? null }),
+    }),
   myProfile: () =>
     api<{ name: string; email: string; signature_markdown: string; avatar_url: string }>(
       '/api/me/profile',

@@ -23,6 +23,7 @@ describe('searchKnowledge', () => {
     const hits = await searchKnowledge({ DB: db.envDb } as any, 'ws_1', 'refund policy', 10);
 
     expect(hits.map((hit) => hit.id)).toEqual(['ready_chunk']);
+    expect(hits[0].updatedAt).toBe(1);
   });
 
   it('vector search hydration excludes non-ready matched chunks by behavior', async () => {

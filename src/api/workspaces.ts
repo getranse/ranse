@@ -8,6 +8,7 @@ import {
   workspaceExportManifest,
   workspaceUsage,
 } from '../lib/workspace-admin';
+import { listWorkspaceOutcomeRollups } from '../lib/outcomes';
 import { sendWorkspaceInvitationEmail } from '../email/invitations';
 import {
   archiveWorkspace,
@@ -23,8 +24,18 @@ import {
   updateWorkspaceName,
 } from '../lib/workspaces';
 import { WORKSPACE_ROLES, type WorkspaceInvitation } from '../types/workspace';
+import { AUTONOMY_POLICIES } from '../types/autonomy';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
 import { apiError } from '../lib/errors';
+
+const mailboxBody = z.object({
+  address: z.string().email().optional(),
+  display_name: z.string().max(100).nullable().optional(),
+  auto_reply_policy: z.enum(['off', 'safe', 'always']).optional(),
+  autonomy_policy: z.enum(AUTONOMY_POLICIES).optional(),
+  autonomy_threshold: z.number().min(0.5).max(0.99).optional(),
+  autonomy_rollout_percent: z.number().min(0).max(100).optional(),
+});
 
 export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/workspaces/current/members', async (c) => {
@@ -72,6 +83,12 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
     return c.json({ events: await workspaceAuditLog(c.env, s.workspaceId, limit) });
   });
 
+  apiApp.get('/workspaces/current/outcomes/rollup', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365);
+    return c.json({ days: await listWorkspaceOutcomeRollups(c.env, s.workspaceId, days) });
+  });
+
   apiApp.get('/workspaces/current/export', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     return c.json(await workspaceExportManifest(c.env, s.workspaceId));
@@ -84,16 +101,15 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/workspaces/current/mailboxes', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      address: z.string().email(),
-      display_name: z.string().max(100).optional(),
-      auto_reply_policy: z.enum(['off', 'safe', 'always']).optional(),
-    }).parse(await c.req.json());
+    const body = mailboxBody.extend({ address: z.string().email() }).parse(await c.req.json());
     try {
       const mailbox = await createWorkspaceMailbox(c.env, s.workspaceId, s.userId, {
         address: body.address,
         displayName: body.display_name,
         autoReplyPolicy: body.auto_reply_policy,
+        autonomyPolicy: body.autonomy_policy,
+        autonomyThreshold: body.autonomy_threshold,
+        autonomyRolloutPercent: body.autonomy_rollout_percent,
       });
       return c.json({ ok: true, mailbox });
     } catch (err) {
@@ -106,13 +122,13 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/workspaces/current/mailboxes/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      display_name: z.string().max(100).nullable().optional(),
-      auto_reply_policy: z.enum(['off', 'safe', 'always']).optional(),
-    }).parse(await c.req.json());
+    const body = mailboxBody.omit({ address: true }).parse(await c.req.json());
     const result = await updateWorkspaceMailbox(c.env, s.workspaceId, s.userId, c.req.param('id'), {
       displayName: body.display_name,
       autoReplyPolicy: body.auto_reply_policy,
+      autonomyPolicy: body.autonomy_policy,
+      autonomyThreshold: body.autonomy_threshold,
+      autonomyRolloutPercent: body.autonomy_rollout_percent,
     });
     if (result === 'not_found') return apiError(c, 'not_found', 'Mailbox not found.');
     return c.json({ ok: true });

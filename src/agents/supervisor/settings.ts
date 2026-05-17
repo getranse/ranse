@@ -12,8 +12,8 @@ export async function loadWorkspaceByDOName(env: Env, name?: string): Promise<{ 
 }
 
 export async function aiDraftsEnabled(env: Env, workspaceId: string, ticketId: string): Promise<boolean> {
-  const t = await env.DB.prepare(`SELECT ai_drafts_enabled FROM ticket WHERE id = ?`)
-    .bind(ticketId)
+  const t = await env.DB.prepare(`SELECT ai_drafts_enabled FROM ticket WHERE id = ? AND workspace_id = ?`)
+    .bind(ticketId, workspaceId)
     .first<{ ai_drafts_enabled: number | null }>();
   if (t?.ai_drafts_enabled === 1) return true;
   if (t?.ai_drafts_enabled === 0) return false;

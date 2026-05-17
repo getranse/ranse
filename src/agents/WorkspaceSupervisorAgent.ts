@@ -1,9 +1,10 @@
 import { Agent, callable } from 'agents';
 import type { Env } from '../env';
-import type { KnowledgeInspectionHit } from '../types/knowledge';
+import type { AgenticRetrievalTrace, KnowledgeInspectionHit } from '../types/knowledge';
 import {
   DEFAULT_SUPERVISOR_STATE,
   type InboundEmailPayload,
+  type SendThreadedReply,
   type SupervisorState,
   type TicketListItem,
 } from '../types/supervisor';
@@ -26,6 +27,7 @@ import {
   draftReply,
   getTicket,
   listTickets,
+  recordFeedback,
   rejectApproval,
   replyDirect,
   setTicketAiDrafts,
@@ -53,7 +55,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     return aiDraftsEnabled(this.env, this.state.workspaceId, ticketId);
   }
 
-  private sendThreadedReply(args: Parameters<ReturnType<typeof makeSendThreadedReply>>[0]) {
+  private sendThreadedReply(args: Parameters<SendThreadedReply>[0]) {
     return makeSendThreadedReply(this.env, this.state.workspaceId, () => this.refreshCounts())(args);
   }
 
@@ -74,6 +76,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
       env: this.env,
       workspaceId: this.state.workspaceId,
       refreshCounts: () => this.refreshCounts(),
+      sendThreadedReply: (replyArgs) => this.sendThreadedReply(replyArgs),
       workspaceConfig,
     }, args);
   }
@@ -123,7 +126,14 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   async draftReply(args: {
     ticketId: string;
     actorUserId: string;
-  }): Promise<{ ok: boolean; subject?: string; body?: string; knowledge?: KnowledgeInspectionHit[]; error?: string }> {
+  }): Promise<{
+    ok: boolean;
+    subject?: string;
+    body?: string;
+    knowledge?: KnowledgeInspectionHit[];
+    knowledgeTrace?: AgenticRetrievalTrace;
+    error?: string;
+  }> {
     return draftReply(this.env, this.state.workspaceId, args, workspaceConfig);
   }
 
@@ -134,6 +144,17 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
     enabled: boolean | null;
   }): Promise<{ ok: boolean }> {
     return setTicketAiDrafts(this.env, this.state.workspaceId, args);
+  }
+
+  @callable()
+  async recordFeedback(args: {
+    ticketId: string;
+    actorUserId: string;
+    messageId?: string | null;
+    rating: 'positive' | 'negative';
+    comment?: string | null;
+  }): Promise<{ ok: boolean; feedbackId?: string; error?: string }> {
+    return recordFeedback(this.env, this.state.workspaceId, args);
   }
 
   @callable()

@@ -4,10 +4,17 @@ import { API } from '../api';
 interface TicketSidebarProps {
   ticket: TicketViewData['ticket'];
   audit: TicketViewData['audit'];
+  outcomes?: TicketViewData['outcomes'];
+  feedback?: TicketViewData['feedback'];
   onReload: () => Promise<void>;
 }
 
-export function TicketSidebar({ ticket, audit, onReload }: TicketSidebarProps) {
+export function TicketSidebar({ ticket, audit, outcomes = [], feedback = [], onReload }: TicketSidebarProps) {
+  async function recordFeedback(rating: 'positive' | 'negative') {
+    await API.recordTicketFeedback(ticket.id, rating);
+    await onReload();
+  }
+
   return (
     <aside className="card">
       <strong>Status</strong>
@@ -48,6 +55,34 @@ export function TicketSidebar({ ticket, audit, onReload }: TicketSidebarProps) {
           <option value="off">Off for this ticket</option>
         </select>
       </div>
+      <h2 style={{ marginTop: 16 }}>Feedback</h2>
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <button onClick={() => recordFeedback('positive')}>Helpful</button>
+        <button onClick={() => recordFeedback('negative')}>Needs work</button>
+      </div>
+      {feedback.length > 0 && (
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+          Latest: {feedback[0].rating}
+        </div>
+      )}
+      {outcomes.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 16 }}>Outcomes</h2>
+          <div style={{ fontSize: 12 }}>
+            {outcomes.slice(0, 6).map((event) => (
+              <div key={event.id} style={{ marginBottom: 6 }}>
+                <div className="muted">{new Date(event.created_at).toLocaleString()}</div>
+                <div>
+                  {event.kind}
+                  {typeof event.confidence_score === 'number'
+                    ? ` · ${Math.round(event.confidence_score * 100)}%`
+                    : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <h2 style={{ marginTop: 16 }}>Audit</h2>
       <div style={{ fontSize: 12 }}>
         {audit.slice(0, 20).map((event) => (

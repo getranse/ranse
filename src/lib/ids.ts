@@ -23,4 +23,6 @@ export const ids = {
   knowledge: () => id('kb'),
   knowledgeSource: () => id('ksrc'),
   knowledgeChunk: () => id('kchk'),
+  outcome: () => id('out'),
+  feedback: () => id('fb'),
 };

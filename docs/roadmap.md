@@ -43,7 +43,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 2 — Agentic retrieval (multi-hop)** is shipped. Knowledge search now plans scoped subqueries, runs bounded multi-hop retrieval, judges sufficiency per hop, rewrites sparse searches, exposes the full trace in Answer Inspection, and provides the same search loop as a procedure primitive.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation and traceable multi-hop retrieval. Everything below continues the path from copilot to autonomous agent built around the seven principles above.
+**Phase 3 — Autonomous resolution + outcome telemetry** is shipped. Mailboxes now choose a per-mailbox autonomy policy, drafts are scored from evidence quality and confidence, safe cases can auto-send, and ticket outcomes plus feedback/follow-up signals are stored for evals and insights.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, and a conservative autonomous-send path. Everything below continues the path from copilot to procedure-driven agent built around the seven principles above.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -116,13 +118,20 @@ Single-pass RAG fails on the hard tickets — the ones where the customer's ques
 The `customer_data` scope currently fails closed with an explicit trace until Phase 5 MCP connectors provide real external account-state search.
 
 ## Phase 3 — Autonomous resolution + per-step model routing
+**Status: shipped.**
+
 *Principle 1, Principle 2*
 
-- Per-mailbox autonomy: `draft-only` / `auto-send-if-confidence-above-threshold` / `auto-send-always`
-- Confidence scoring (groundedness + reranker score + LLM self-report + retrieved-chunk freshness)
-- **Per-step model config** in workspace settings: `triage.model`, `draft.model`, `procedure_step.model` etc., each independently swappable
-- Outcome event model in D1 — `resolved-autonomously`, `resolved-via-procedure`, `escalated`, `customer-followed-up` — primitive for Phase 6 (evals) and Phase 8 (insights)
-- Customer feedback hooks (thumbs up/down, follow-up detection)
+- Per-mailbox autonomy is shipped as `draft_only`, `auto_send_if_confident`, and `auto_send_always`, with a mailbox-level confidence threshold.
+- Confidence scoring is shipped from groundedness, top retrieval scores, LLM draft self-report, and retrieved-chunk freshness.
+- **Per-step model config** is shipped in workspace settings for triage, draft, retrieval planning/judging/rewrite, reranking, and future procedure steps.
+- Outcome event model in D1 is shipped for `resolved_autonomously`, `resolved_via_procedure`, `escalated`, and `customer_followed_up`.
+- Customer feedback hooks are shipped for operator thumbs up/down, and inbound follow-up detection records `customer_followed_up`.
+- The autonomous path fails closed: spam, hostile/urgent tickets, insufficient evidence, uncited evidence, and human-review flags create approvals instead of sending. The confidence-threshold policy also gates weak scores and stale evidence.
+- Scheduled autonomy is idempotent for a source inbound message: retries skip if the message already has a pending approval or threaded outbound reply.
+- Autonomous send rollout is shipped as a deterministic mailbox-level percentage, so operators can canary auto-send before expanding it.
+- Signed customer feedback links are shipped for outbound replies when `APP_URL` is configured; clicks record customer feedback without a logged-in session.
+- Daily outcome rollups are shipped in D1 and available through the workspace admin API/export for Phase 6 evals and Phase 8 insights.
 
 ## Phase 4 — Procedures as code
 *Principle 3 — the biggest single differentiator*

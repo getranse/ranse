@@ -11,6 +11,7 @@ export interface KnowledgeHit {
   snippet: string;
   score: number;
   usedInAnswersCount: number;
+  updatedAt?: number;
 }
 
 export interface AgenticRetrievalPlan {
