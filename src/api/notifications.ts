@@ -4,7 +4,7 @@ import { ids } from '../lib/ids';
 import { apiError } from '../lib/errors';
 import { EVENTS, EVENT_NAMES, type EventName } from '../notifications/events';
 import { CHANNEL_KINDS, getHandler, listHandlers } from '../notifications/channels';
-import type { Ctx } from './context';
+import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
 
 export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/notifications/meta', async (c) => c.json({
@@ -30,7 +30,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
     return c.json({ channels: (rows.results ?? []).map((r) => ({ ...r, enabled: r.enabled === 1, events: parseEvents(r.events) })) });
   });
 
-  apiApp.post('/notifications/channels', async (c) => {
+  apiApp.post('/notifications/channels', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({
       kind: z.enum(CHANNEL_KINDS as [string, ...string[]]),
@@ -55,7 +55,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true, id });
   });
 
-  apiApp.patch('/notifications/channels/:id', async (c) => {
+  apiApp.patch('/notifications/channels/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = z.object({
       enabled: z.boolean().optional(),
@@ -76,7 +76,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true });
   });
 
-  apiApp.delete('/notifications/channels/:id', async (c) => {
+  apiApp.delete('/notifications/channels/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     await c.env.DB.prepare(`DELETE FROM notification_channel WHERE id = ? AND workspace_id = ?`)
       .bind(c.req.param('id'), s.workspaceId)
@@ -84,7 +84,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
     return c.json({ ok: true });
   });
 
-  apiApp.post('/notifications/channels/:id/test', async (c) => {
+  apiApp.post('/notifications/channels/:id/test', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const row = await c.env.DB.prepare(
       `SELECT kind, target FROM notification_channel WHERE id = ? AND workspace_id = ?`,

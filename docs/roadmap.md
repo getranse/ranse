@@ -39,7 +39,11 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 1 — Retrieval foundations** is shipped. Workspaces get a Vectorize-backed knowledge index with Workers AI embeddings, manual sources, help-center URL crawling, PDF uploads stored in R2, resolved-ticket import, two-stage retrieve → rerank with a per-workspace reranker override, Content Library freshness/duplicate/usage signals, and Answer Inspection on drafts.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent — assistive drafting for human agents. Everything below is the path from copilot to autonomous agent built around the seven principles above.
+**Phase 1.5 — Workspace management & tenant isolation** is shipped. Ranse now has multi-workspace create/switch flows, role middleware, member invitations, ownership transfer, workspace mailboxes, audit/usage/export surfaces, archive/delete policy, and tenant-isolation tests around the critical workspace boundaries.
+
+**Phase 2 — Agentic retrieval (multi-hop)** is shipped. Knowledge search now plans scoped subqueries, runs bounded multi-hop retrieval, judges sufficiency per hop, rewrites sparse searches, exposes the full trace in Answer Inspection, and provides the same search loop as a procedure primitive.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation and traceable multi-hop retrieval. Everything below continues the path from copilot to autonomous agent built around the seven principles above.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -55,18 +59,61 @@ The floor. Without real retrieval, every later phase is hand-waving.
 - "Answer Inspection" in operator console — every draft shows which chunks grounded it, click-through to source
 - **Stays in your account** — no embeddings ever leave the workspace's Cloudflare tenant
 
+## Phase 1.5 — Workspace management & tenant isolation
+**Status: shipped.**
+
+*Principle 1 (sovereign), platform foundation for every later phase*
+
+The codebase is workspace-scoped: tickets, messages, knowledge, settings, provider keys, notifications, agents, R2 keys, and sessions all carry a workspace boundary. Phase 1.5 adds the platform surface so operators can create, switch, administer, and isolate multiple workspaces without setup-time shortcuts.
+
+- **Workspace lifecycle**
+  - Create additional workspaces after initial setup
+  - Rename, archive, and delete workspaces with confirmation and audit events
+  - Transfer ownership between users
+  - Harden slug generation and uniqueness beyond the first setup workspace
+- **Workspace switching**
+  - Add an API endpoint to change the active workspace for the current session
+  - Add a workspace picker to the app shell
+  - Remove "first workspace wins" login behavior; require an explicit current workspace when a user belongs to more than one
+- **Team management**
+  - Invite users to a workspace
+  - Accept invitations and join the correct workspace with the intended role
+  - Remove users from a workspace
+  - Change member roles
+- **Role enforcement**
+  - Enforce `owner`, `admin`, `agent`, and `viewer` permissions per route
+  - Restrict workspace settings, provider keys, mailbox provisioning, notification channels, destructive actions, and member management to the right roles
+  - Add authorization tests for every sensitive route
+- **Tenant isolation tests**
+  - Prove a user in workspace A cannot read or mutate tickets, knowledge, settings, notifications, provider keys, assets, or mailboxes from workspace B
+  - Prove inbound mailbox routing cannot attach a message to the wrong workspace
+  - Prove Durable Object names, Vectorize namespaces, R2 keys, and audit events remain workspace-safe
+- **Workspace admin UX**
+  - Show the active workspace in the sidebar/header
+  - Add workspace settings sections for members, invitations, mailboxes, provider keys, notification channels, and workspace metadata
+  - Keep mailbox provisioning and verification scoped to the selected workspace
+- **Operational platform features**
+  - Add a workspace audit log viewer
+  - Add workspace-level usage metrics for tickets, messages, knowledge sources, LLM calls, and notifications
+  - Define export, archive, and delete policies for workspace data
+  - Put stronger confirmation and audit flows around destructive actions
+
 ## Phase 2 — Agentic retrieval (multi-hop)
+**Status: shipped.**
+
 *Principle 2 (per-step model), Principle 5 (eval cases test the loop)*
 
 Single-pass RAG fails on the hard tickets — the ones where the customer's question implies three sub-questions, or the answer requires combining a help-center article with a piece of account state. This is where Fin's lead is real and where naive OSS RAG loses. Closing it is its own phase, not a footnote on Phase 1.
 
-- **Retrieval planner**: an LLM step that decomposes the customer query into sub-queries before searching, and picks the search scope (KB only / resolved tickets / customer data via MCP / all)
-- **Sufficiency judge**: after each hop, an LLM step decides "do I have enough to answer, or do I need another search?" — bounded by a max-hops budget per autonomy level
-- **Query rewriting per hop**: failed/sparse results trigger a reformulation, not a give-up
-- **Per-hop model routing** (Principle 2): cheap model for rewrites, stronger model for sufficiency judgment, strongest for final synthesis. Three different models in one resolution is normal, not exotic
-- **`search` as a procedure primitive** (Principle 3): Phase 4 procedures can call `search(query, scope, max_hops)` as a step, with the same agentic loop — procedures don't have to pre-bake every fact they need
-- **Answer Inspection shows the trace**: every hop's query → results → judgment → next-query is visible to the operator. Critical for debugging hallucinations and for Phase 6 evals
-- **Eval cases test the loop, not just the final answer** (Principle 5): a regression that adds an extra unnecessary hop is a regression, even if the final answer is correct
+- **Retrieval planner**: shipped. The `knowledge_plan` step decomposes customer questions into scoped subqueries for KB sources, resolved tickets, all local sources, or a reserved `customer_data` scope.
+- **Sufficiency judge**: shipped. The `knowledge_judge` step decides whether accumulated evidence is answerable, bounded by a max-hop budget.
+- **Query rewriting per hop**: shipped. Sparse/insufficient searches call `knowledge_rewrite` before the loop gives up.
+- **Per-hop model routing** (Principle 2): shipped. Planning, judging, rewriting, reranking, and drafting each have independent action keys in workspace model settings.
+- **`search` as a procedure primitive** (Principle 3): shipped. Phase 4 procedures can call `search(query, scope, max_hops)` with the same traceable retrieval loop.
+- **Answer Inspection shows the trace**: shipped. Drafts, approval suggestions, and Content Library test searches show hop query → results → judgment → next-query.
+- **Eval cases test the loop, not just the final answer** (Principle 5): partially shipped as behavior tests around the loop contract. Historical replay belongs in Phase 6.
+
+The `customer_data` scope currently fails closed with an explicit trace until Phase 5 MCP connectors provide real external account-state search.
 
 ## Phase 3 — Autonomous resolution + per-step model routing
 *Principle 1, Principle 2*

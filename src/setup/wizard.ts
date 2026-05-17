@@ -3,9 +3,10 @@ import { z } from 'zod';
 import type { Env } from '../env';
 import { hashPassword, createSession, setSessionCookie, getSession } from '../lib/auth';
 import { ids } from '../lib/ids';
-import { randomToken } from '../lib/crypto';
 import { audit } from '../lib/audit';
 import { apiError } from '../lib/errors';
+import { createWorkspaceMailbox } from '../lib/workspace-admin';
+import { getMembershipRole, nextWorkspaceSlug } from '../lib/workspaces';
 import { applyProvisioning } from '../email/provisioning';
 
 export const setupApp = new Hono<{ Bindings: Env }>();
@@ -57,7 +58,7 @@ setupApp.post('/bootstrap', async (c) => {
   const workspaceId = ids.workspace();
   const userId = ids.user();
   const now = Date.now();
-  const slug = body.workspace_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'workspace';
+  const slug = await nextWorkspaceSlug(c.env, body.workspace_name);
   const pwHash = await hashPassword(body.admin_password);
 
   // Seed settings_json with from_name = workspace_name. The runtime falls
@@ -66,8 +67,8 @@ setupApp.post('/bootstrap', async (c) => {
   const initialSettings = JSON.stringify({ from_name: body.workspace_name });
   await c.env.DB.batch([
     c.env.DB.prepare(
-      `INSERT INTO workspace (id, name, slug, settings_json, created_at) VALUES (?, ?, ?, ?, ?)`,
-    ).bind(workspaceId, body.workspace_name, slug, initialSettings, now),
+      `INSERT INTO workspace (id, name, slug, settings_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    ).bind(workspaceId, body.workspace_name, slug, initialSettings, now, now),
     c.env.DB.prepare(
       `INSERT INTO user (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`,
     ).bind(userId, body.admin_email.toLowerCase(), body.admin_name ?? null, pwHash, now),
@@ -95,6 +96,10 @@ setupApp.post('/bootstrap', async (c) => {
 setupApp.post('/mailbox', async (c) => {
   const session = await getSession(c);
   if (!session?.workspaceId) return apiError(c, 'unauthorized', 'Sign in required.');
+  const role = await getMembershipRole(c.env, session.userId, session.workspaceId);
+  if (!role || !['owner', 'admin'].includes(role)) {
+    return apiError(c, 'forbidden', 'Only workspace owners and admins can add mailboxes.');
+  }
 
   const body = z
     .object({
@@ -103,26 +108,12 @@ setupApp.post('/mailbox', async (c) => {
     })
     .parse(await c.req.json());
 
-  const mailboxId = ids.mailbox();
-  const signingSecret = randomToken(32);
-  const now = Date.now();
-
-  await c.env.DB.prepare(
-    `INSERT INTO mailbox (id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy, created_at)
-     VALUES (?, ?, ?, ?, ?, 'safe', ?)`,
-  )
-    .bind(mailboxId, session.workspaceId, body.address.toLowerCase(), body.display_name ?? null, signingSecret, now)
-    .run();
-
-  await audit(c.env, {
-    workspaceId: session.workspaceId,
-    actorType: 'user',
-    actorId: session.userId,
-    action: 'mailbox.created',
-    payload: { mailboxId, address: body.address },
+  const mailbox = await createWorkspaceMailbox(c.env, session.workspaceId, session.userId, {
+    address: body.address,
+    displayName: body.display_name,
   });
 
-  return c.json({ ok: true, mailboxId, address: body.address });
+  return c.json({ ok: true, mailboxId: mailbox.id, address: mailbox.address });
 });
 
 /**

@@ -1,82 +1,19 @@
-import type { KnowledgeHit, KnowledgeInspectionHit, KnowledgeSourceListItem } from '../types/knowledge';
+import type {
+  AgenticRetrievalTrace,
+  KnowledgeHit,
+  KnowledgeInspectionHit,
+  KnowledgeSourceListItem,
+} from '../types/knowledge';
+import type { AuthMe } from '../types/workspace';
+import { api, uploadFile, uploadKnowledgePdf } from './api-core';
+import { workspaceApi } from './api-workspaces';
+
+export { ApiRequestError, api } from './api-core';
 
 export type KnowledgeSource = KnowledgeSourceListItem;
 export type KnowledgeSearchHit = KnowledgeHit;
 export type AnswerInspectionHit = KnowledgeInspectionHit;
-
-export class ApiRequestError extends Error {
-  code: string;
-  status: number;
-  details?: unknown;
-  requestId?: string;
-  constructor(init: { code: string; message: string; status: number; details?: unknown; requestId?: string }) {
-    super(init.message);
-    this.name = 'ApiRequestError';
-    this.code = init.code;
-    this.status = init.status;
-    this.details = init.details;
-    this.requestId = init.requestId;
-  }
-}
-
-async function uploadFile(path: string, file: File): Promise<{ ok: boolean; url: string }> {
-  const form = new FormData();
-  form.append('file', file);
-  const res = await fetch(path, { method: 'POST', body: form, credentials: 'include' });
-  if (!res.ok) {
-    const body: any = await res.json().catch(() => ({ error: 'http_error', message: res.statusText }));
-    throw new ApiRequestError({
-      code: body?.error ?? 'http_error',
-      message: body?.message ?? `HTTP ${res.status}`,
-      status: res.status,
-      details: body?.details,
-      requestId: body?.requestId,
-    });
-  }
-  return res.json();
-}
-
-async function uploadKnowledgePdf(file: File, title?: string): Promise<{ ok: boolean; id: string; chunks: number; vectorized: boolean }> {
-  const form = new FormData();
-  form.append('file', file);
-  if (title) form.append('title', title);
-  const res = await fetch('/api/knowledge/pdf', { method: 'POST', body: form, credentials: 'include' });
-  if (!res.ok) {
-    const body: any = await res.json().catch(() => ({ error: 'http_error', message: res.statusText }));
-    throw new ApiRequestError({
-      code: body?.error ?? 'http_error',
-      message: body?.message ?? `HTTP ${res.status}`,
-      status: res.status,
-      details: body?.details,
-      requestId: body?.requestId,
-    });
-  }
-  return res.json();
-}
-
-export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    let body: any;
-    try {
-      body = await res.json();
-    } catch {
-      body = { error: 'http_error', message: res.statusText };
-    }
-    throw new ApiRequestError({
-      code: body?.error ?? 'http_error',
-      message: body?.message ?? body?.error ?? `HTTP ${res.status}`,
-      status: res.status,
-      details: body?.details,
-      requestId: body?.requestId,
-    });
-  }
-  return res.json();
-}
+export type AnswerInspectionTrace = AgenticRetrievalTrace;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -88,12 +25,17 @@ export const API = {
     domain: string;
     mailbox_address: string;
     worker_name: string;
-  }) => api<{ ok: boolean; steps: any[] }>('/setup/provision', { method: 'POST', body: JSON.stringify(body) }),
+  }) =>
+    api<{ ok: boolean; steps: any[] }>('/setup/provision', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   verify: () => api('/setup/verify', { method: 'POST' }),
   login: (email: string, password: string) =>
     api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => api('/auth/logout', { method: 'POST' }),
-  me: () => api<any>('/auth/me'),
+  me: () => api<AuthMe>('/auth/me'),
+  ...workspaceApi,
   tickets: (status?: string) => api<any>(`/api/tickets${status ? `?status=${status}` : ''}`),
   ticket: <T = any>(id: string) => api<T>(`/api/tickets/${id}`),
   setStatus: (id: string, status: string) =>
@@ -106,26 +48,22 @@ export const API = {
       body: JSON.stringify({ body, subject, cited_knowledge_ids: citedKnowledgeIds }),
     }),
   draftWithAI: (id: string) =>
-    api<{ ok: boolean; subject?: string; body?: string; knowledge?: AnswerInspectionHit[]; error?: string }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
+    api<{
+      ok: boolean;
+      subject?: string;
+      body?: string;
+      knowledge?: AnswerInspectionHit[];
+      knowledgeTrace?: AnswerInspectionTrace;
+      error?: string;
+    }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
   setTicketAiDrafts: (id: string, enabled: boolean | null) =>
     api(`/api/tickets/${id}/ai-drafts`, { method: 'POST', body: JSON.stringify({ enabled }) }),
-  workspaceSettings: () =>
-    api<{ ai_drafts_enabled: boolean; from_name: string; logo_url: string; workspace_name: string }>(
-      '/api/settings/workspace',
-    ),
-  setWorkspaceSettings: (settings: {
-    ai_drafts_enabled?: boolean;
-    from_name?: string;
-    logo_url?: string;
-  }) =>
-    api('/api/settings/workspace', { method: 'POST', body: JSON.stringify(settings) }),
   myProfile: () =>
     api<{ name: string; email: string; signature_markdown: string; avatar_url: string }>(
       '/api/me/profile',
     ),
   setMyProfile: (profile: { name?: string; signature_markdown?: string; avatar_url?: string }) =>
     api('/api/me/profile', { method: 'POST', body: JSON.stringify(profile) }),
-  uploadWorkspaceLogo: (file: File) => uploadFile('/api/uploads/workspace-logo', file),
   uploadAvatar: (file: File) => uploadFile('/api/uploads/avatar', file),
   notificationsMeta: () =>
     api<{
@@ -155,9 +93,15 @@ export const API = {
     target: string;
     events: string[];
     label?: string;
-  }) => api<{ ok: boolean; id: string }>('/api/notifications/channels', { method: 'POST', body: JSON.stringify(body) }),
-  updateNotificationChannel: (id: string, body: { enabled?: boolean; events?: string[]; label?: string | null }) =>
-    api(`/api/notifications/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  }) =>
+    api<{ ok: boolean; id: string }>('/api/notifications/channels', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateNotificationChannel: (
+    id: string,
+    body: { enabled?: boolean; events?: string[]; label?: string | null },
+  ) => api(`/api/notifications/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteNotificationChannel: (id: string) =>
     api(`/api/notifications/channels/${id}`, { method: 'DELETE' }),
   testNotificationChannel: (id: string) =>
@@ -170,23 +114,35 @@ export const API = {
     api<{
       sources: KnowledgeSource[];
     }>('/api/knowledge'),
-  createKnowledge: (body: { kind: 'manual' | 'url'; title?: string; body?: string; url?: string }) =>
+  createKnowledge: (body: {
+    kind: 'manual' | 'url';
+    title?: string;
+    body?: string;
+    url?: string;
+  }) =>
     api<{ ok: boolean; id: string; chunks: number; vectorized: boolean }>('/api/knowledge', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
   uploadKnowledgePdf,
   reindexKnowledge: (id: string) =>
-    api<{ ok: boolean; id: string; chunks: number; vectorized: boolean }>(`/api/knowledge/${id}/reindex`, { method: 'POST' }),
+    api<{ ok: boolean; id: string; chunks: number; vectorized: boolean }>(
+      `/api/knowledge/${id}/reindex`,
+      { method: 'POST' },
+    ),
   searchKnowledge: (query: string, limit = 5) =>
     api<{
       hits: KnowledgeSearchHit[];
+      trace?: AnswerInspectionTrace;
     }>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query, limit }) }),
   importResolvedTicketsKnowledge: (limit = 50) =>
-    api<{ ok: boolean; imported: number; skipped: number; failed: number }>('/api/knowledge/import-resolved-tickets', {
-      method: 'POST',
-      body: JSON.stringify({ limit }),
-    }),
+    api<{ ok: boolean; imported: number; skipped: number; failed: number }>(
+      '/api/knowledge/import-resolved-tickets',
+      {
+        method: 'POST',
+        body: JSON.stringify({ limit }),
+      },
+    ),
   llmConfig: () => api<any>('/api/settings/llm'),
   setLlmConfig: (body: any) =>
     api('/api/settings/llm', { method: 'POST', body: JSON.stringify(body) }),

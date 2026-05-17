@@ -1,4 +1,6 @@
 export type KnowledgeSourceKind = 'manual' | 'url' | 'pdf' | 'resolved_ticket';
+export type KnowledgeSearchScope = 'knowledge' | 'resolved_tickets' | 'customer_data' | 'all';
+export type AgenticRetrievalStepSource = 'llm' | 'fallback' | 'injected' | 'system';
 
 export interface KnowledgeHit {
   id: string;
@@ -9,6 +11,49 @@ export interface KnowledgeHit {
   snippet: string;
   score: number;
   usedInAnswersCount: number;
+}
+
+export interface AgenticRetrievalPlan {
+  originalQuery: string;
+  scope: KnowledgeSearchScope;
+  subqueries: string[];
+  maxHops: number;
+  source?: AgenticRetrievalStepSource;
+  model?: string;
+}
+
+export interface AgenticRetrievalJudgment {
+  sufficient: boolean;
+  reasoning: string;
+  missing: string[];
+  nextQuery?: string;
+  source?: AgenticRetrievalStepSource;
+  model?: string;
+}
+
+export interface AgenticRetrievalHop {
+  hop: number;
+  query: string;
+  scope: KnowledgeSearchScope;
+  hits: KnowledgeHit[];
+  judgment: AgenticRetrievalJudgment;
+  accumulatedHitCount?: number;
+  searchMs?: number;
+  judgeMs?: number;
+}
+
+export interface AgenticRetrievalTrace {
+  plan: AgenticRetrievalPlan;
+  hops: AgenticRetrievalHop[];
+  finalAnswerable: boolean;
+  stopReason: 'sufficient' | 'max_hops' | 'no_next_query' | 'no_hits';
+  startedAt?: number;
+  durationMs?: number;
+}
+
+export interface AgenticKnowledgeResult {
+  hits: KnowledgeHit[];
+  trace: AgenticRetrievalTrace;
 }
 
 export type KnowledgeInspectionHit = KnowledgeHit & { cited?: boolean };

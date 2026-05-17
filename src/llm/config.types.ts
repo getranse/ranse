@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import type { ActionKey } from '../types/llm';
+
+export type { ActionKey } from '../types/llm';
 
 export const Provider = z.enum([
   'workers-ai',
@@ -40,24 +43,65 @@ export const MODELS_MASTER: Record<string, ModelSpec> = {
     supportsTools: true,
     supportsJsonSchema: true,
   },
-  'openai/gpt-4o': { provider: 'openai', contextSize: 128_000, nonReasoning: true, supportsTools: true, supportsJsonSchema: true },
-  'openai/gpt-4o-mini': { provider: 'openai', contextSize: 128_000, nonReasoning: true, supportsTools: true, supportsJsonSchema: true },
-  'openai/gpt-5': { provider: 'openai', contextSize: 400_000, supportsTools: true, supportsJsonSchema: true },
-  'openai/gpt-5-mini': { provider: 'openai', contextSize: 400_000, supportsTools: true, supportsJsonSchema: true },
-  'anthropic/claude-opus-4-7': { provider: 'anthropic', contextSize: 1_000_000, supportsTools: true, supportsJsonSchema: true },
-  'anthropic/claude-sonnet-4-6': { provider: 'anthropic', contextSize: 1_000_000, supportsTools: true, supportsJsonSchema: true },
-  'anthropic/claude-haiku-4-5': { provider: 'anthropic', contextSize: 200_000, nonReasoning: true, supportsTools: true, supportsJsonSchema: true },
-  'google-ai-studio/gemini-2.5-pro': { provider: 'google-ai-studio', contextSize: 1_000_000, supportsTools: true, supportsJsonSchema: true },
-  'google-ai-studio/gemini-2.5-flash': { provider: 'google-ai-studio', contextSize: 1_000_000, nonReasoning: true, supportsTools: true, supportsJsonSchema: true },
+  'openai/gpt-4o': {
+    provider: 'openai',
+    contextSize: 128_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'openai/gpt-4o-mini': {
+    provider: 'openai',
+    contextSize: 128_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'openai/gpt-5': {
+    provider: 'openai',
+    contextSize: 400_000,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'openai/gpt-5-mini': {
+    provider: 'openai',
+    contextSize: 400_000,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'anthropic/claude-opus-4-7': {
+    provider: 'anthropic',
+    contextSize: 1_000_000,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'anthropic/claude-sonnet-4-6': {
+    provider: 'anthropic',
+    contextSize: 1_000_000,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'anthropic/claude-haiku-4-5': {
+    provider: 'anthropic',
+    contextSize: 200_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'google-ai-studio/gemini-2.5-pro': {
+    provider: 'google-ai-studio',
+    contextSize: 1_000_000,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
+  'google-ai-studio/gemini-2.5-flash': {
+    provider: 'google-ai-studio',
+    contextSize: 1_000_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: true,
+  },
 };
-
-export type ActionKey =
-  | 'triage'
-  | 'summarize'
-  | 'draft'
-  | 'knowledge_query'
-  | 'escalation'
-  | 'conversational';
 
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 

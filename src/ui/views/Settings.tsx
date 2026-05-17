@@ -2,28 +2,12 @@ import { useEffect, useState } from 'react';
 import { API } from '../api';
 import { NotificationsSection } from './NotificationsSection';
 import { KnowledgeSection } from './KnowledgeSection';
+import { WorkspaceMembersSection } from './WorkspaceMembersSection';
+import { WorkspaceMailboxesSection } from './WorkspaceMailboxesSection';
+import { WorkspacePlatformSection } from './WorkspacePlatformSection';
+import { ModelSettingsSection } from './ModelSettingsSection';
 
-const ACTIONS = ['triage', 'summarize', 'draft', 'knowledge_query', 'escalation', 'conversational'] as const;
-const ACTION_LABELS: Record<(typeof ACTIONS)[number], string> = {
-  triage: 'triage',
-  summarize: 'summarize',
-  draft: 'draft',
-  knowledge_query: 'knowledge_query reranker',
-  escalation: 'escalation',
-  conversational: 'conversational',
-};
 const PROVIDERS = ['openai', 'anthropic', 'google-ai-studio', 'grok', 'openrouter'];
-
-const MODEL_HINTS: Record<string, string[]> = {
-  'workers-ai': [
-    'workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-    'workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct',
-    'workers-ai/@cf/baai/bge-reranker-base',
-  ],
-  openai: ['openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/gpt-5', 'openai/gpt-5-mini'],
-  anthropic: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6', 'anthropic/claude-haiku-4-5'],
-  'google-ai-studio': ['google-ai-studio/gemini-2.5-pro', 'google-ai-studio/gemini-2.5-flash'],
-};
 
 export function SettingsView() {
   const [providers, setProviders] = useState<string[]>([]);
@@ -33,7 +17,12 @@ export function SettingsView() {
   const [fromName, setFromName] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [profile, setProfile] = useState({ name: '', email: '', signature_markdown: '', avatar_url: '' });
+  const [profile, setProfile] = useState({
+    name: '',
+    email: '',
+    signature_markdown: '',
+    avatar_url: '',
+  });
   const [saved, setSaved] = useState('');
 
   async function load() {
@@ -56,23 +45,28 @@ export function SettingsView() {
       avatar_url: me.avatar_url ?? '',
     });
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   function flashSaved(message = 'Saved') {
     setSaved(message);
     setTimeout(() => setSaved(''), 1500);
   }
 
-  const configByAction = Object.fromEntries(llmConfig.map((c) => [c.action_key, c]));
-
   return (
     <>
       <h1>Settings</h1>
 
+      <WorkspaceMembersSection onSaved={flashSaved} />
+      <WorkspaceMailboxesSection onSaved={flashSaved} />
+
       <h2>Workspace branding</h2>
       <div className="card">
         <p className="muted" style={{ marginBottom: 8 }}>
-          From-header display name on outbound replies. The logo is uploaded to your R2 bucket — handy for BIMI/Gravatar setup so it appears in Gmail's sender avatar (the email body itself stays clean, no inline header).
+          From-header display name on outbound replies. The logo is uploaded to your R2 bucket —
+          handy for BIMI/Gravatar setup so it appears in Gmail's sender avatar (the email body
+          itself stays clean, no inline header).
         </p>
         <div className="field">
           <label>From name</label>
@@ -119,13 +113,20 @@ export function SettingsView() {
             />
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            Paste a URL or upload an image (≤ 2MB, PNG/JPEG/WebP/GIF). Uploads are stored in your R2 bucket.
+            Paste a URL or upload an image (≤ 2MB, PNG/JPEG/WebP/GIF). Uploads are stored in your R2
+            bucket.
           </div>
           {logoUrl && (
             <img
               src={logoUrl}
               alt="Logo preview"
-              style={{ maxHeight: 40, maxWidth: 200, width: 'auto', marginTop: 8, alignSelf: 'flex-start' }}
+              style={{
+                maxHeight: 40,
+                maxWidth: 200,
+                width: 'auto',
+                marginTop: 8,
+                alignSelf: 'flex-start',
+              }}
             />
           )}
         </div>
@@ -134,7 +135,8 @@ export function SettingsView() {
       <h2>My profile</h2>
       <div className="card">
         <p className="muted" style={{ marginBottom: 8 }}>
-          Shown on replies you send manually. Display name appears in the From header (e.g. "Sarah · Acme Support"); signature is appended to the HTML body.
+          Shown on replies you send manually. Display name appears in the From header (e.g. "Sarah ·
+          Acme Support"); signature is appended to the HTML body.
         </p>
         <div className="field">
           <label>Display name</label>
@@ -150,7 +152,12 @@ export function SettingsView() {
           />
         </div>
         <div className="field">
-          <label>Avatar <span className="muted" style={{ fontSize: 12 }}>(falls back to Gravatar from {profile.email || 'your email'})</span></label>
+          <label>
+            Avatar{' '}
+            <span className="muted" style={{ fontSize: 12 }}>
+              (falls back to Gravatar from {profile.email || 'your email'})
+            </span>
+          </label>
           <div className="row">
             <input
               type="url"
@@ -176,7 +183,18 @@ export function SettingsView() {
             />
           </div>
           {profile.avatar_url && (
-            <img src={profile.avatar_url} alt="Avatar preview" style={{ width: 40, height: 40, borderRadius: '50%', marginTop: 8, objectFit: 'cover', alignSelf: 'flex-start' }} />
+            <img
+              src={profile.avatar_url}
+              alt="Avatar preview"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                marginTop: 8,
+                objectFit: 'cover',
+                alignSelf: 'flex-start',
+              }}
+            />
           )}
         </div>
         <div className="field">
@@ -200,7 +218,9 @@ export function SettingsView() {
           <div className="setting-info">
             <div className="setting-label">Auto-draft replies</div>
             <div className="setting-desc">
-              Generate a suggested reply for every inbound email and post it to the approvals queue for a human to review and send. When off, the "Suggest with AI" button on a ticket still works on demand.
+              Generate a suggested reply for every inbound email and post it to the approvals queue
+              for a human to review and send. When off, the "Suggest with AI" button on a ticket
+              still works on demand.
             </div>
           </div>
           <div className="setting-control">
@@ -221,71 +241,60 @@ export function SettingsView() {
       <KnowledgeSection onSaved={flashSaved} />
 
       <NotificationsSection onSaved={flashSaved} />
+      <WorkspacePlatformSection onSaved={flashSaved} />
 
       <h2>LLM providers (BYOK)</h2>
       <div className="card">
-        <p className="muted">Add API keys for providers you want to use. Without a key, Ranse falls back to Workers AI.</p>
+        <p className="muted">
+          Add API keys for providers you want to use. Without a key, Ranse falls back to Workers AI.
+        </p>
         {providers.length > 0 && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-            {providers.map((p) => <span key={p} className="pill">{p} ✓</span>)}
+            {providers.map((p) => (
+              <span key={p} className="pill">
+                {p} ✓
+              </span>
+            ))}
           </div>
         )}
         <div className="row">
-          <select value={provDraft.provider} onChange={(e) => setProvDraft({ ...provDraft, provider: e.target.value })}>
-            {PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
+          <select
+            value={provDraft.provider}
+            onChange={(e) => setProvDraft({ ...provDraft, provider: e.target.value })}
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
           </select>
-          <input type="password" placeholder="API key" value={provDraft.api_key} onChange={(e) => setProvDraft({ ...provDraft, api_key: e.target.value })} />
-          <button className="primary" onClick={async () => {
-            await API.setProvider(provDraft.provider, provDraft.api_key);
-            setProvDraft({ ...provDraft, api_key: '' });
-            setSaved('Provider key saved');
-            await load();
-          }}>Save</button>
+          <input
+            type="password"
+            placeholder="API key"
+            value={provDraft.api_key}
+            onChange={(e) => setProvDraft({ ...provDraft, api_key: e.target.value })}
+          />
+          <button
+            className="primary"
+            onClick={async () => {
+              await API.setProvider(provDraft.provider, provDraft.api_key);
+              setProvDraft({ ...provDraft, api_key: '' });
+              setSaved('Provider key saved');
+              await load();
+            }}
+          >
+            Save
+          </button>
         </div>
       </div>
 
-      <h2>Model per agent action</h2>
-      <div className="card">
-        <p className="muted">Which model does each specialist use? Leave blank to use the defaults.</p>
-        {ACTIONS.map((action) => {
-          const cur = configByAction[action];
-          return (
-            <div key={action} className="row" style={{ marginBottom: 8 }}>
-              <div style={{ flex: 0.4, fontWeight: 500 }}>{ACTION_LABELS[action]}</div>
-              <input
-                placeholder="provider/model-id"
-                defaultValue={cur?.model_name ?? ''}
-                onBlur={async (e) => {
-                  if (!e.target.value) return;
-                  await API.setLlmConfig({ action_key: action, model_name: e.target.value });
-                  setSaved(`Saved ${action}`);
-                  await load();
-                }}
-              />
-              <input
-                placeholder="fallback (optional)"
-                defaultValue={cur?.fallback_model ?? ''}
-                onBlur={async (e) => {
-                  if (!e.target.value) return;
-                  await API.setLlmConfig({ action_key: action, model_name: cur?.model_name, fallback_model: e.target.value });
-                  await load();
-                }}
-              />
-            </div>
-          );
-        })}
-        <details style={{ marginTop: 12 }}>
-          <summary className="muted">Known model IDs</summary>
-          {Object.entries(MODEL_HINTS).map(([p, list]) => (
-            <div key={p} style={{ marginTop: 6 }}>
-              <strong>{p}</strong>
-              <div style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>{list.map((m) => <div key={m}>{m}</div>)}</div>
-            </div>
-          ))}
-        </details>
-      </div>
+      <ModelSettingsSection llmConfig={llmConfig} reload={load} onSaved={flashSaved} />
 
-      {saved && <div className="success-banner" style={{ position: 'fixed', bottom: 20, right: 20 }}>{saved}</div>}
+      {saved && (
+        <div className="success-banner" style={{ position: 'fixed', bottom: 20, right: 20 }}>
+          {saved}
+        </div>
+      )}
     </>
   );
 }

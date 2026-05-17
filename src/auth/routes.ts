@@ -5,6 +5,8 @@ import type { Env } from '../env';
 import { createSession, getSession, setSessionCookie, verifyPassword } from '../lib/auth';
 import { hashPassword, needsRehash } from '../lib/password';
 import { apiError } from '../lib/errors';
+import { listUserWorkspaces } from '../lib/workspaces';
+import { registerAuthWorkspaceRoutes } from './workspaces';
 
 export const authApp = new Hono<{ Bindings: Env }>();
 
@@ -30,19 +32,15 @@ authApp.post('/login', async (c) => {
     await c.env.DB.prepare(`UPDATE user SET password_hash = ? WHERE id = ?`).bind(fresh, user.id).run();
   }
 
-  const ws = await c.env.DB.prepare(
-    `SELECT workspace_id FROM workspace_user WHERE user_id = ? ORDER BY created_at ASC LIMIT 1`,
-  )
-    .bind(user.id)
-    .first<{ workspace_id: string }>();
-
-  const sessionId = await createSession(c.env, user.id, ws?.workspace_id);
+  const workspaces = await listUserWorkspaces(c.env, user.id);
+  const currentWorkspaceId = workspaces.length === 1 ? workspaces[0].id : undefined;
+  const sessionId = await createSession(c.env, user.id, currentWorkspaceId);
   await setSessionCookie(c, sessionId);
   await c.env.DB.prepare(`UPDATE user SET last_login_at = ? WHERE id = ?`)
     .bind(Date.now(), user.id)
     .run();
 
-  return c.json({ ok: true, userId: user.id, workspaceId: ws?.workspace_id });
+  return c.json({ ok: true, userId: user.id, workspaceId: currentWorkspaceId });
 });
 
 authApp.post('/logout', async (c) => {
@@ -62,15 +60,14 @@ authApp.get('/me', async (c) => {
   )
     .bind(s.userId)
     .first<{ id: string; email: string; name: string | null }>();
-  const workspaces = await c.env.DB.prepare(
-    `SELECT w.id, w.name, wu.role FROM workspace_user wu JOIN workspace w ON w.id = wu.workspace_id WHERE wu.user_id = ?`,
-  )
-    .bind(s.userId)
-    .all<{ id: string; name: string; role: string }>();
+  const workspaces = await listUserWorkspaces(c.env, s.userId);
+  const currentWorkspaceId = workspaces.some((w) => w.id === s.workspaceId) ? s.workspaceId : undefined;
   return c.json({
     authenticated: true,
     user,
-    workspaces: workspaces.results ?? [],
-    currentWorkspaceId: s.workspaceId,
+    workspaces,
+    currentWorkspaceId,
   });
 });
+
+registerAuthWorkspaceRoutes(authApp);
