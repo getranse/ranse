@@ -13,7 +13,7 @@ const refundIntake = normalizeProcedureSpec({
   name: 'Refund intake',
   version: '1.0.0',
   description:
-    'Collect refund context, inspect policy evidence, and leave the ticket ready for action.',
+    'Collect refund context, inspect policy evidence, lookup the customer, and gate approved refunds.',
   owner: 'ranse-library',
   trigger: { type: 'manual' },
   steps: [
@@ -26,16 +26,69 @@ const refundIntake = normalizeProcedureSpec({
       save_as: 'policy',
     },
     {
-      id: 'add_context_note',
-      type: 'add_note',
-      body: 'Refund intake started. Top policy hit: {{ policy.hits.0.title }}',
+      id: 'lookup_customer',
+      type: 'call_action',
+      tool: 'stripe.customers.search',
+      args: { email: '{{ customer.email }}' },
+      requires_approval: false,
+      save_as: 'stripe_customer',
+    },
+    {
+      id: 'refund_gate',
+      type: 'if',
+      condition: { var: 'refund.approved', equals: true },
+      // biome-ignore lint/suspicious/noThenProperty: Procedure specs intentionally use if/then/else terminology.
+      then: [
+        {
+          id: 'create_refund',
+          type: 'call_action',
+          tool: 'stripe.refunds.create',
+          args: {
+            charge_id: '{{ refund.charge_id }}',
+            amount_cents: '{{ refund.amount_cents }}',
+          },
+          requires_approval: true,
+          save_as: 'refund_result',
+        },
+      ],
+      else: [
+        {
+          id: 'add_context_note',
+          type: 'add_note',
+          body: 'Refund intake started. Top policy hit: {{ policy.hits.0.title }}',
+        },
+      ],
     },
   ],
   evals: [
     {
       name: 'basic_refund_ticket',
-      input: { ticket: { subject: 'Refund request' } },
-      expect: { status: 'completed', steps: ['find_policy', 'add_context_note'] },
+      input: {
+        ticket: { subject: 'Refund request' },
+        customer: { email: 'customer@example.com' },
+        refund: { approved: false },
+      },
+      expect: {
+        status: 'completed',
+        steps: ['find_policy', 'lookup_customer', 'refund_gate', 'add_context_note'],
+        step_statuses: { lookup_customer: 'completed' },
+      },
+    },
+    {
+      name: 'approved_refund_waits_for_operator',
+      input: {
+        ticket: { subject: 'Refund request' },
+        customer: { email: 'customer@example.com' },
+        refund: { approved: true, charge_id: 'ch_123', amount_cents: 2500 },
+      },
+      expect: {
+        status: 'waiting',
+        steps: ['find_policy', 'lookup_customer', 'refund_gate', 'create_refund'],
+        step_statuses: { create_refund: 'waiting' },
+        step_inputs: {
+          create_refund: { 'args.charge_id': 'ch_123', 'args.amount_cents': 2500 },
+        },
+      },
     },
   ],
 });
@@ -57,18 +110,82 @@ const passwordReset = normalizeProcedureSpec({
       save_as: 'policy',
     },
     {
-      id: 'ask_identifier',
-      type: 'ask_customer',
-      subject: 'Re: {{ ticket.subject }}',
-      message:
-        'I can help with that. Please send the account email or username, and do not include your password or one-time codes.',
+      id: 'has_identifier',
+      type: 'if',
+      condition: { var: 'customer.identifier', exists: true },
+      // biome-ignore lint/suspicious/noThenProperty: Procedure specs intentionally use if/then/else terminology.
+      then: [
+        {
+          id: 'lookup_identity',
+          type: 'call_action',
+          tool: 'identity.users.lookup',
+          args: { identifier: '{{ customer.identifier }}' },
+          requires_approval: false,
+          save_as: 'identity_lookup',
+        },
+        {
+          id: 'has_user_id',
+          type: 'if',
+          condition: { var: 'customer.user_id', exists: true },
+          // biome-ignore lint/suspicious/noThenProperty: Procedure specs intentionally use if/then/else terminology.
+          then: [
+            {
+              id: 'create_reset_request',
+              type: 'call_action',
+              tool: 'identity.password_resets.create',
+              args: { user_id: '{{ customer.user_id }}' },
+              requires_approval: true,
+              save_as: 'password_reset_request',
+            },
+          ],
+          else: [
+            {
+              id: 'ask_user_id',
+              type: 'ask_customer',
+              subject: 'Re: {{ ticket.subject }}',
+              message:
+                'I found the account context. Please confirm the account email or username again, and do not include passwords or one-time codes.',
+            },
+          ],
+        },
+      ],
+      else: [
+        {
+          id: 'ask_identifier',
+          type: 'ask_customer',
+          subject: 'Re: {{ ticket.subject }}',
+          message:
+            'I can help with that. Please send the account email or username, and do not include your password or one-time codes.',
+        },
+      ],
     },
   ],
   evals: [
     {
       name: 'waits_for_identifier',
       input: { ticket: { subject: 'I cannot log in' } },
-      expect: { status: 'waiting', steps: ['find_policy', 'ask_identifier'] },
+      expect: { status: 'waiting', steps: ['find_policy', 'has_identifier', 'ask_identifier'] },
+    },
+    {
+      name: 'reset_request_waits_for_operator',
+      input: {
+        ticket: { subject: 'I cannot log in' },
+        customer: { identifier: 'customer@example.com', user_id: 'user_123' },
+      },
+      expect: {
+        status: 'waiting',
+        steps: [
+          'find_policy',
+          'has_identifier',
+          'lookup_identity',
+          'has_user_id',
+          'create_reset_request',
+        ],
+        step_statuses: { lookup_identity: 'completed', create_reset_request: 'waiting' },
+        step_inputs: {
+          create_reset_request: { 'args.user_id': 'user_123' },
+        },
+      },
     },
   ],
 });
@@ -91,11 +208,34 @@ const shippingDispute = normalizeProcedureSpec({
     },
     { id: 'set_category', type: 'set_ticket_field', field: 'category', value: 'shipping' },
     {
-      id: 'ask_order',
-      type: 'ask_customer',
-      subject: 'Re: {{ ticket.subject }}',
-      message:
-        'Please send your order number and confirm whether the shipment is delayed, missing, or arrived damaged.',
+      id: 'has_order_query',
+      type: 'if',
+      condition: { var: 'order.query', exists: true },
+      // biome-ignore lint/suspicious/noThenProperty: Procedure specs intentionally use if/then/else terminology.
+      then: [
+        {
+          id: 'search_order',
+          type: 'call_action',
+          tool: 'shopify.orders.search',
+          args: { query: '{{ order.query }}' },
+          requires_approval: false,
+          save_as: 'order_matches',
+        },
+        {
+          id: 'add_order_note',
+          type: 'add_note',
+          body: 'Shipping dispute prepared for {{ order.query }}.',
+        },
+      ],
+      else: [
+        {
+          id: 'ask_order',
+          type: 'ask_customer',
+          subject: 'Re: {{ ticket.subject }}',
+          message:
+            'Please send your order number and confirm whether the shipment is delayed, missing, or arrived damaged.',
+        },
+      ],
     },
   ],
   evals: [
@@ -105,7 +245,29 @@ const shippingDispute = normalizeProcedureSpec({
       expect: {
         status: 'waiting',
         context: { 'ticket.category': 'shipping' },
-        steps: ['find_shipping_policy', 'set_category', 'ask_order'],
+        steps: ['find_shipping_policy', 'set_category', 'has_order_query', 'ask_order'],
+      },
+    },
+    {
+      name: 'looks_up_known_order',
+      input: {
+        ticket: { subject: 'Package never arrived' },
+        order: { query: '#1001' },
+      },
+      expect: {
+        status: 'completed',
+        context: { 'ticket.category': 'shipping' },
+        steps: [
+          'find_shipping_policy',
+          'set_category',
+          'has_order_query',
+          'search_order',
+          'add_order_note',
+        ],
+        step_statuses: { search_order: 'completed' },
+        step_inputs: {
+          search_order: { 'args.query': '#1001' },
+        },
       },
     },
   ],
@@ -128,15 +290,27 @@ const gdprRequest = normalizeProcedureSpec({
       severity: 'high',
       reason: 'Potential data access/deletion request requires privacy-owner review.',
     },
+    {
+      id: 'create_privacy_request',
+      type: 'call_action',
+      tool: 'privacy.requests.create',
+      args: { ticket_id: '{{ ticket_id }}' },
+      requires_approval: true,
+      save_as: 'privacy_request',
+    },
   ],
   evals: [
     {
       name: 'escalates_privacy_request',
-      input: { ticket: { subject: 'Delete my account data' } },
+      input: { ticket_id: 'tkt_privacy', ticket: { subject: 'Delete my account data' } },
       expect: {
-        status: 'completed',
+        status: 'waiting',
         context: { 'ticket.priority': 'high', 'ticket.category': 'privacy' },
-        steps: ['set_priority', 'set_category', 'escalate_privacy'],
+        steps: ['set_priority', 'set_category', 'escalate_privacy', 'create_privacy_request'],
+        step_statuses: { create_privacy_request: 'waiting' },
+        step_inputs: {
+          create_privacy_request: { 'args.ticket_id': 'tkt_privacy' },
+        },
       },
     },
   ],

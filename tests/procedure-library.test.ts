@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { apiApp } from '../src/api/routes';
+import { createMcpServer, upsertDiscoveredMcpTools } from '../src/mcp/storage';
 import {
   getProcedureLibraryItem,
   getProcedureLibraryManifest,
+  getProcedureLibraryReadiness,
   listProcedureLibrary,
   validateProcedureLibrary,
 } from '../src/procedures/library';
@@ -40,8 +42,16 @@ describe('procedure library', () => {
       expect(item?.reference_mcp_tools.length).toBeGreaterThan(0);
       expect(item?.spec.evals?.length).toBeGreaterThan(0);
       expect(runProcedureSpecEvals(item!.spec).status).toBe('passed');
+      const actionTools = collectActionTools(item!.spec.steps);
       for (const tool of item!.reference_mcp_tools) {
         expect(tool.annotations?.openWorldHint).not.toBeUndefined();
+        expect(actionTools).toContain(`${tool.server}.${tool.tool}`);
+        const matchingActions = collectActions(item!.spec.steps).filter(
+          (step) => step.tool === `${tool.server}.${tool.tool}`,
+        );
+        if (tool.annotations?.readOnlyHint !== true) {
+          expect(matchingActions.every((step) => step.requires_approval !== false)).toBe(true);
+        }
       }
     }
   });
@@ -91,6 +101,7 @@ describe('procedure library', () => {
     expect(listRes.status).toBe(200);
     expect(listBody.procedures.some((entry: any) => entry.slug === 'password-reset')).toBe(true);
     expect(listBody.procedures[0].spec).toBeUndefined();
+    expect(listBody.procedures[0].readiness.status).toBe('needs_setup');
     expect(manifestRes.status).toBe(200);
     expect(detailRes.status).toBe(200);
     expect(detailBody.procedure.provenance.spec_checksum).toMatch(/^[a-f0-9]{64}$/);
@@ -105,6 +116,44 @@ describe('procedure library', () => {
       source_ref: detailBody.procedure.provenance.source_ref,
     });
     expect(stored.source_ref).toContain('#sha256:');
+  });
+
+  it('reports MCP readiness for library installs', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    const missing = await getProcedureLibraryReadiness(env, 'ws_a', 'refund-intake');
+    expect(missing?.status).toBe('needs_setup');
+    expect(missing?.tools.map((tool) => tool.status)).toEqual(['missing_server', 'missing_server']);
+
+    const server = await createMcpServer(env, {
+      workspaceId: 'ws_a',
+      name: 'stripe',
+      endpointUrl: 'https://mcp.example.com/stripe',
+    });
+    await upsertDiscoveredMcpTools(env, 'ws_a', server.id, [
+      {
+        name: 'customers.search',
+        inputSchema: {},
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+      },
+      {
+        name: 'refunds.create',
+        inputSchema: {},
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: true,
+        },
+      },
+    ]);
+
+    const ready = await getProcedureLibraryReadiness(env, 'ws_a', 'refund-intake');
+    expect(ready).toMatchObject({
+      status: 'ready',
+      ready_tool_count: 2,
+      required_tool_count: 2,
+    });
   });
 
   it('fails closed on unknown procedures and non-admin installs', async () => {
@@ -129,3 +178,19 @@ describe('procedure library', () => {
     expect(installRes.status).toBe(403);
   });
 });
+
+function collectActionTools(steps: any[]): string[] {
+  return collectActions(steps).map((step) => step.tool);
+}
+
+function collectActions(steps: any[]): any[] {
+  const actions: any[] = [];
+  for (const step of steps) {
+    if (step.type === 'call_action') actions.push(step);
+    if (step.type === 'if') {
+      actions.push(...collectActions(step.then ?? []), ...collectActions(step.else ?? []));
+    }
+    if (step.type === 'loop') actions.push(...collectActions(step.steps ?? []));
+  }
+  return actions;
+}

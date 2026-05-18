@@ -131,6 +131,7 @@ Procedure evals are local and deterministic. `ranse eval <procedure-file>` loads
 ```
 Settings -> Procedures
   ├─ GET /api/procedures/library
+  │    └─ compare library MCP contracts against discovered workspace MCP tools
   ├─ GET /api/procedures/library/manifest
   ├─ POST /api/procedures/library/:slug/install
   └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>#sha256:<checksum>)
@@ -143,7 +144,7 @@ ranse procedure add <slug>
   └─ write procedures/<slug>.provenance.json
 ```
 
-The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, and the MCP schema version used for reference ToolAnnotations.
+The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, MCP readiness for the selected workspace, and the MCP schema version used for reference ToolAnnotations. Validation requires each required MCP reference to be exercised by a `call_action` step; write and destructive actions cannot opt out of approval.
 
 ## Scaling model
 

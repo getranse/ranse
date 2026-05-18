@@ -62,7 +62,7 @@ The bundled GitHub Actions workflow always runs procedure evals for relevant PRs
 
 ## Procedure library
 
-Owners and admins can install vetted procedure templates from **Settings → Procedures**. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>`.
+Owners and admins can install vetted procedure templates from **Settings → Procedures**. The catalog shows whether the selected workspace has the required MCP servers and tools discovered before install. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>#sha256:<checksum>`.
 
 Local fork workflow:
 
@@ -74,7 +74,7 @@ bun scripts/ranse.ts procedure add shipping-dispute --dir procedures
 bun scripts/ranse.ts eval procedures/shipping-dispute.yaml
 ```
 
-The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.json`. The provenance file records the library version, source ref, procedure SHA-256 checksum, and standards metadata used when the procedure was forked. Treat the MCP specs as contracts: either implement matching MCP tools, map the procedure to your own server/tool names, or remove the relevant action before publishing.
+The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.json`. The provenance file records the library version, source ref, procedure SHA-256 checksum, and standards metadata used when the procedure was forked. Treat the MCP specs as contracts: each required reference is exercised by a `call_action` step, read-only tools may run automatically, and write/destructive tools must remain behind an approval gate unless you deliberately rework the procedure and its evals.
 
 ## Escalations
 

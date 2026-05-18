@@ -69,6 +69,11 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
                 <div className="muted" style={{ fontSize: 12 }}>
                   {item.summary}
                 </div>
+                {item.readiness && (
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {readinessLabel(item)}
+                  </div>
+                )}
               </div>
               <div
                 style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}
@@ -157,4 +162,16 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
       </div>
     </>
   );
+}
+
+function readinessLabel(item: ProcedureLibraryListEntry): string {
+  if (!item.readiness) return '';
+  if (item.readiness.status === 'ready') {
+    return `MCP ready: ${item.readiness.ready_tool_count}/${item.readiness.required_tool_count} required tools`;
+  }
+  const missing = item.readiness.tools
+    .filter((tool) => tool.usage !== 'optional' && tool.status !== 'ready')
+    .slice(0, 3)
+    .map((tool) => `${tool.server}.${tool.tool}`);
+  return `MCP setup needed: ${missing.join(', ')}`;
 }

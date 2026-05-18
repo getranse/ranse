@@ -4,8 +4,9 @@ import { apiError } from '../lib/errors';
 import {
   getProcedureLibraryItem,
   getProcedureLibraryManifest,
+  getProcedureLibraryReadiness,
   installProcedureFromLibrary,
-  listProcedureLibrary,
+  listProcedureLibraryWithReadiness,
 } from '../procedures/library';
 import { resumeProcedureRunner, startProcedureRunner } from '../procedures/orchestration';
 import {
@@ -67,7 +68,8 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
   });
 
   apiApp.get('/procedures/library', async (c) => {
-    return c.json({ procedures: await listProcedureLibrary() });
+    const s = c.get('session');
+    return c.json({ procedures: await listProcedureLibraryWithReadiness(c.env, s.workspaceId) });
   });
 
   apiApp.get('/procedures/library/manifest', async (c) => {
@@ -77,7 +79,13 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/procedures/library/:slug', async (c) => {
     const item = await getProcedureLibraryItem(c.req.param('slug'));
     if (!item) return apiError(c, 'not_found', 'That library procedure does not exist.');
-    return c.json({ procedure: item });
+    const s = c.get('session');
+    return c.json({
+      procedure: {
+        ...item,
+        readiness: await getProcedureLibraryReadiness(c.env, s.workspaceId, item.slug),
+      },
+    });
   });
 
   apiApp.post(

@@ -100,6 +100,7 @@ export interface ProcedureLibraryMcpToolSpec {
   tool: string;
   title: string;
   description: string;
+  usage?: 'required' | 'optional';
   input_schema: Record<string, unknown>;
   annotations?: {
     readOnlyHint?: boolean;
@@ -134,6 +135,7 @@ export interface ProcedureLibraryEntry {
   eval_count: number;
   version: string;
   provenance: ProcedureLibraryProvenance;
+  readiness?: ProcedureLibraryReadiness;
 }
 
 export interface ProcedureLibraryItem extends ProcedureLibraryEntry {
@@ -145,6 +147,22 @@ export interface ProcedureLibraryManifest {
   manifest_version: string;
   standards: ProcedureLibraryStandards;
   procedures: ProcedureLibraryItem[];
+}
+
+export interface ProcedureLibraryReadinessTool {
+  server: string;
+  tool: string;
+  usage: 'required' | 'optional';
+  status: 'ready' | 'missing_server' | 'server_disabled' | 'missing_tool';
+  destructive: boolean;
+  read_only: boolean;
+}
+
+export interface ProcedureLibraryReadiness {
+  status: 'ready' | 'needs_setup';
+  ready_tool_count: number;
+  required_tool_count: number;
+  tools: ProcedureLibraryReadinessTool[];
 }
 
 export interface ProcedureListItem {

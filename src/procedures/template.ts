@@ -1,6 +1,7 @@
 import type { ProcedureCondition } from '../types/procedure';
 
 const TEMPLATE_EXPR = /\{\{\s*([a-zA-Z0-9_.:-]+)\s*\}\}/g;
+const TEMPLATE_VALUE_EXPR = /^\{\{\s*([a-zA-Z0-9_.:-]+)\s*\}\}$/;
 
 export function getPath(context: Record<string, unknown>, path: string): unknown {
   const parts = path.split('.').filter(Boolean);
@@ -51,7 +52,14 @@ export function renderTemplate(template: string, context: Record<string, unknown
 }
 
 export function renderValue<T>(value: T, context: Record<string, unknown>): T {
-  if (typeof value === 'string') return renderTemplate(value, context) as T;
+  if (typeof value === 'string') {
+    const wholeValue = value.match(TEMPLATE_VALUE_EXPR);
+    if (wholeValue) {
+      const resolved = getPath(context, wholeValue[1]);
+      return (resolved === null || resolved === undefined ? '' : resolved) as T;
+    }
+    return renderTemplate(value, context) as T;
+  }
   if (Array.isArray(value)) return value.map((item) => renderValue(item, context)) as T;
   if (value && typeof value === 'object') {
     return Object.fromEntries(
