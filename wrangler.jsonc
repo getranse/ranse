@@ -86,7 +86,7 @@
   "send_email": [{ "name": "EMAIL" }],
 
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["*/5 * * * *", "17 3 * * 1"]
   },
 
   "unsafe": {

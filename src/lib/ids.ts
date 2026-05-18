@@ -35,4 +35,7 @@ export const ids = {
   evalCase: () => id('eval_case'),
   evalRun: () => id('eval_run'),
   evalResult: () => id('eval_result'),
+  conversationScore: () => id('score'),
+  kbSuggestion: () => id('kb_sug'),
+  knowledgeDriftSignal: () => id('drift'),
 };

@@ -16,6 +16,7 @@ Function-based, not DOs. They live in `src/agents/specialists/` and return struc
 - `triage` — category, priority, sentiment, language, spam detection.
 - `summarize` — thread summary + next-step hint.
 - `knowledge` — manual/URL/PDF/resolved-ticket ingestion, Workers AI embeddings, Vectorize search, reranking, and keyword fallback.
+- `insights` — conversation rubric scoring, aggregate operational metrics, unresolved-intent KB suggestions, and knowledge drift detection.
 - `draft` — generate a reply with citations; flag review risks.
 - `escalation` — decide whether to route to a human/team.
 - `sla` — deterministic, no LLM; computes breach status.
@@ -52,7 +53,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -145,6 +146,24 @@ ranse procedure add <slug>
 ```
 
 The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, MCP readiness for the selected workspace, and the MCP schema version used for reference ToolAnnotations. Validation requires each required MCP reference to be exercised by a `call_action` step; write and destructive actions cannot opt out of approval.
+
+## Insights loop
+
+```
+Weekly cron / manual refresh
+  ├─ score recent tickets on groundedness, tone, resolution, and customer effort
+  ├─ aggregate resolution, follow-up, feedback, unresolved-intent, and procedure-latency metrics
+  ├─ cluster unresolved conversations into reviewable KB article suggestions
+  └─ compare used KB sources against successful replies for drift signals
+
+Insights page
+  ├─ POST /api/insights/scores/run
+  ├─ POST /api/insights/kb-suggestions/run
+  ├─ POST /api/insights/kb-suggestions/:id/accept
+  └─ POST /api/insights/drift/run
+```
+
+Suggestions are review records, not automatic content edits. Accepting one publishes a manual knowledge source through the same ingestion path as the Content Library, preserving the human-review boundary.
 
 ## Scaling model
 
