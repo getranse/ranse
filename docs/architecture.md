@@ -16,6 +16,7 @@ Function-based, not DOs. They live in `src/agents/specialists/` and return struc
 - `triage` — category, priority, sentiment, language, spam detection.
 - `summarize` — thread summary + next-step hint.
 - `knowledge` — manual/URL/PDF/resolved-ticket ingestion, Workers AI embeddings, Vectorize search, reranking, and keyword fallback.
+- `insights` — conversation rubric scoring, aggregate operational metrics, unresolved-intent KB suggestions, and knowledge drift detection.
 - `draft` — generate a reply with citations; flag review risks.
 - `escalation` — decide whether to route to a human/team.
 - `sla` — deterministic, no LLM; computes breach status.
@@ -52,7 +53,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -125,6 +126,44 @@ ranse eval / Settings -> Evals
 ```
 
 Procedure evals are local and deterministic. `ranse eval <procedure-file>` loads the spec, runs each inline `evals[]` case through `simulateProcedure`, and checks expected status, context paths, and step order before a PR is merged.
+
+## Procedure library flow
+
+```
+Settings -> Procedures
+  ├─ GET /api/procedures/library
+  │    └─ compare library MCP contracts against discovered workspace MCP tools
+  ├─ GET /api/procedures/library/manifest
+  ├─ POST /api/procedures/library/:slug/install
+  └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>#sha256:<checksum>)
+
+ranse procedure add <slug>
+  ├─ read built-in catalog from src/procedures/library-data.ts
+  ├─ validate inline evals
+  ├─ write procedures/<slug>.yaml
+  ├─ write procedures/<slug>.mcp.json
+  └─ write procedures/<slug>.provenance.json
+```
+
+The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, MCP readiness for the selected workspace, and the MCP schema version used for reference ToolAnnotations. Validation requires each required MCP reference to be exercised by a `call_action` step; write and destructive actions cannot opt out of approval.
+
+## Insights loop
+
+```
+Weekly cron / manual refresh
+  ├─ score recent tickets on groundedness, tone, resolution, and customer effort
+  ├─ aggregate resolution, follow-up, feedback, unresolved-intent, and procedure-latency metrics
+  ├─ cluster repeated unresolved conversations into confidence-scored KB article suggestions
+  └─ compare cited KB sources against successful replies for source-specific drift signals
+
+Insights page
+  ├─ POST /api/insights/scores/run
+  ├─ POST /api/insights/kb-suggestions/run
+  ├─ POST /api/insights/kb-suggestions/:id/accept
+  └─ POST /api/insights/drift/run
+```
+
+Suggestions are review records, not automatic content edits. They require repeated unresolved-ticket evidence, store confidence and source-ticket lineage, and accepted suggestions become terminal records linked to the manual knowledge source created through the same ingestion path as the Content Library.
 
 ## Scaling model
 

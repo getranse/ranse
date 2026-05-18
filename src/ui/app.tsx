@@ -5,17 +5,24 @@ import { LoginView } from './views/Login';
 import { InboxView } from './views/Inbox';
 import { TicketView } from './views/Ticket';
 import { SettingsView } from './views/Settings';
+import { InsightsView } from './views/Insights';
 import { InviteAcceptView } from './views/InviteAccept';
 import { WorkspaceGate } from './views/WorkspaceGate';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import type { AuthMe } from '../types/workspace';
 
-type Route = { name: 'inbox' } | { name: 'ticket'; id: string } | { name: 'settings' } | { name: 'invite'; token: string };
+type Route =
+  | { name: 'inbox' }
+  | { name: 'ticket'; id: string }
+  | { name: 'insights' }
+  | { name: 'settings' }
+  | { name: 'invite'; token: string };
 
 function parseRoute(): Route {
   const path = window.location.pathname;
   if (path.startsWith('/invite/')) return { name: 'invite', token: path.slice('/invite/'.length) };
   if (path.startsWith('/t/')) return { name: 'ticket', id: path.slice(3) };
+  if (path === '/insights') return { name: 'insights' };
   if (path === '/settings') return { name: 'settings' };
   return { name: 'inbox' };
 }
@@ -40,7 +47,9 @@ export function App() {
     setStage('app');
   }
 
-  useEffect(() => { loadSession().catch(() => setStage('login')); }, []);
+  useEffect(() => {
+    loadSession().catch(() => setStage('login'));
+  }, []);
 
   useEffect(() => {
     const onPop = () => setRoute(parseRoute());
@@ -53,30 +62,83 @@ export function App() {
     setRoute(parseRoute());
   }
 
-  if (stage === 'loading') return <div className="center"><div className="muted">Loading…</div></div>;
+  if (stage === 'loading')
+    return (
+      <div className="center">
+        <div className="muted">Loading…</div>
+      </div>
+    );
   if (stage === 'setup') return <SetupView onDone={() => window.location.assign('/')} />;
   if (stage === 'login') {
-    return <LoginView onSuccess={() => window.location.assign(route.name === 'invite' ? `/invite/${route.token}` : '/')} />;
+    return (
+      <LoginView
+        onSuccess={() =>
+          window.location.assign(route.name === 'invite' ? `/invite/${route.token}` : '/')
+        }
+      />
+    );
   }
-  if (route.name === 'invite') return <InviteAcceptView token={route.token} onDone={() => window.location.assign('/')} />;
-  if (me && !me.currentWorkspaceId) return <WorkspaceGate me={me} onChanged={() => loadSession()} />;
+  if (route.name === 'invite')
+    return <InviteAcceptView token={route.token} onDone={() => window.location.assign('/')} />;
+  if (me && !me.currentWorkspaceId)
+    return <WorkspaceGate me={me} onChanged={() => loadSession()} />;
 
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand"><span className="logo">R</span> Ranse</div>
-        {me && <WorkspaceSwitcher me={me} onChanged={() => { navigate('/'); loadSession(); }} />}
+        <div className="brand">
+          <span className="logo">R</span> Ranse
+        </div>
+        {me && (
+          <WorkspaceSwitcher
+            me={me}
+            onChanged={() => {
+              navigate('/');
+              loadSession();
+            }}
+          />
+        )}
         <nav>
-          <a href="/" className={route.name === 'inbox' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('/'); }}>
+          <a
+            href="/"
+            className={route.name === 'inbox' ? 'active' : ''}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/');
+            }}
+          >
             Inbox
           </a>
-          <a href="/settings" className={route.name === 'settings' ? 'active' : ''} onClick={(e) => { e.preventDefault(); navigate('/settings'); }}>
+          <a
+            href="/insights"
+            className={route.name === 'insights' ? 'active' : ''}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/insights');
+            }}
+          >
+            Insights
+          </a>
+          <a
+            href="/settings"
+            className={route.name === 'settings' ? 'active' : ''}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/settings');
+            }}
+          >
             Settings
           </a>
         </nav>
         <div style={{ marginTop: 'auto', padding: '8px 10px' }}>
           <div className="muted">{me?.user?.email}</div>
-          <button style={{ marginTop: 8, width: '100%' }} onClick={async () => { await API.logout(); window.location.assign('/'); }}>
+          <button
+            style={{ marginTop: 8, width: '100%' }}
+            onClick={async () => {
+              await API.logout();
+              window.location.assign('/');
+            }}
+          >
             Sign out
           </button>
         </div>
@@ -84,6 +146,7 @@ export function App() {
       <main className="main">
         {route.name === 'inbox' && <InboxView onOpen={(id) => navigate(`/t/${id}`)} />}
         {route.name === 'ticket' && <TicketView id={route.id} onBack={() => navigate('/')} />}
+        {route.name === 'insights' && <InsightsView />}
         {route.name === 'settings' && <SettingsView />}
       </main>
     </div>

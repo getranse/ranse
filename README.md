@@ -16,6 +16,8 @@ Ranse turns support email into a real-time, multi-agent support workspace built 
 - **Human approval gates** for every outbound reply, with edit-before-send.
 - **Multi-provider LLM** — Workers AI out of the box; drop-in Anthropic, OpenAI, Google, Grok, OpenRouter via AI Gateway.
 - **Historical evals** — resolved conversations become anonymized replay cases; `ranse eval` catches prompt/procedure regressions before they ship.
+- **Forkable procedure library** — install vetted support workflows with evals, provenance checksums, and MCP reference contracts, then customize them in your repo.
+- **Insights loop** — score conversations, surface evidence-backed unresolved intents, draft reviewable KB suggestions with lineage, and detect source-specific drift from successful replies.
 - **One-click deploy** to your own Cloudflare account — customer-owned from day one.
 - **Open source** (Apache-2.0).
 
@@ -84,7 +86,7 @@ Then open http://localhost:5173 (or http://localhost:8787 for the Worker directl
 
 Ranse is heading from "AI-assisted shared inbox" to a full autonomous customer-service agent — but not as an OSS clone of [Fin](https://fin.ai/) or [Decagon](https://decagon.ai/). The goal is the agent those products *structurally cannot become*: sovereign by construction, per-step model choice, procedures-as-code, MCP-native actions, eval-first against your own ticket history, and a forkable procedure library.
 
-The shape, in short: **retrieval → workspace management → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval), Phase 1 (retrieval foundations), Phase 1.5 (workspace management & tenant isolation), Phase 2 (agentic multi-hop retrieval), Phase 3 (autonomous resolution), Phase 4 (procedures as code), Phase 5 (MCP-native actions), and Phase 6 (historical evals) are shipped.
+The shape, in short: **retrieval → workspace management → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval), Phase 1 (retrieval foundations), Phase 1.5 (workspace management & tenant isolation), Phase 2 (agentic multi-hop retrieval), Phase 3 (autonomous resolution), Phase 4 (procedures as code), Phase 5 (MCP-native actions), Phase 6 (historical evals), Phase 7 (procedure library), and Phase 8 (insights & auto-improving KB) are shipped.
 
 Full pipeline, principles, and how to contribute to a phase: **[docs/roadmap.md](docs/roadmap.md)**. It's directional, not committed — if you want to work on something further down the list, open a discussion and we'll happily reorder.
 

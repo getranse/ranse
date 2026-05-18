@@ -272,6 +272,44 @@ export function evaluateProcedureExpectations(
       message: `Expected steps ${JSON.stringify(expect.steps)}, got ${JSON.stringify(stepIds)}.`,
     });
   }
+  if (
+    'step_statuses' in expect &&
+    expect.step_statuses &&
+    typeof expect.step_statuses === 'object'
+  ) {
+    const steps =
+      (getPath(actual, 'steps') as Array<{ step_id?: string; status?: string }> | undefined) ?? [];
+    for (const [stepId, expectedStatus] of Object.entries(
+      expect.step_statuses as Record<string, unknown>,
+    )) {
+      const actualStatus = steps.find((step) => step.step_id === stepId)?.status;
+      assertions.push({
+        name: `step_status.${stepId}`,
+        passed: actualStatus === expectedStatus,
+        message: `Expected ${String(expectedStatus)}, got ${String(actualStatus)}.`,
+      });
+    }
+  }
+  if ('step_inputs' in expect && expect.step_inputs && typeof expect.step_inputs === 'object') {
+    const steps =
+      (getPath(actual, 'steps') as Array<{ step_id?: string; input?: unknown }> | undefined) ?? [];
+    for (const [stepId, expectedPaths] of Object.entries(
+      expect.step_inputs as Record<string, Record<string, unknown>>,
+    )) {
+      const stepInput = steps.find((step) => step.step_id === stepId)?.input;
+      for (const [path, expectedValue] of Object.entries(expectedPaths)) {
+        const actualValue =
+          stepInput && typeof stepInput === 'object'
+            ? getPath(stepInput as Record<string, unknown>, path)
+            : undefined;
+        assertions.push({
+          name: `step_input.${stepId}.${path}`,
+          passed: JSON.stringify(actualValue) === JSON.stringify(expectedValue),
+          message: `Expected ${JSON.stringify(expectedValue)}, got ${JSON.stringify(actualValue)}.`,
+        });
+      }
+    }
+  }
   if (assertions.length === 0) {
     assertions.push({
       name: 'runs_without_failure',

@@ -60,6 +60,28 @@ Eval runs write `eval_run` and `eval_result` rows with assertion details. A run 
 
 The bundled GitHub Actions workflow always runs procedure evals for relevant PRs; set `RANSE_APP_URL` and `RANSE_COOKIE` repository secrets to make hosted historical replay part of the gate.
 
+## Procedure library
+
+Owners and admins can install vetted procedure templates from **Settings → Procedures**. The catalog shows whether the selected workspace has the required MCP servers and tools discovered before install. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>#sha256:<checksum>`.
+
+Local fork workflow:
+
+```bash
+bun scripts/ranse.ts procedure list
+bun scripts/ranse.ts procedure manifest
+bun scripts/ranse.ts procedure validate-library
+bun scripts/ranse.ts procedure add shipping-dispute --dir procedures
+bun scripts/ranse.ts eval procedures/shipping-dispute.yaml
+```
+
+The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.json`. The provenance file records the library version, source ref, procedure SHA-256 checksum, and standards metadata used when the procedure was forked. Treat the MCP specs as contracts: each required reference is exercised by a `call_action` step, read-only tools may run automatically, and write/destructive tools must remain behind an approval gate unless you deliberately rework the procedure and its evals.
+
+## Insights
+
+Owners and admins can open **Insights** to refresh conversation scores, unresolved-intent KB suggestions, and knowledge drift signals. The weekly cron `17 3 * * 1` runs the same maintenance loop automatically inside the worker.
+
+KB suggestions are generated only from repeated unresolved-ticket clusters and include evidence count, confidence, suggested terms, and source-ticket IDs. Accepted suggestions are idempotently published as manual knowledge sources, linked back through `accepted_source_id`, and then treated as terminal audit records. Dismissed suggestions and resolved drift signals remain in D1 for auditability instead of being deleted.
+
 ## Escalations
 
 The `EscalationAgent` runs on demand. It returns `{ should_escalate, severity, route_to }` and the operator (or an automation rule) picks the handoff target.

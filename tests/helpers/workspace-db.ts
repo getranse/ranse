@@ -157,7 +157,41 @@ export function createWorkspaceTestDb() {
       workspace_id TEXT NOT NULL,
       kind TEXT NOT NULL,
       title TEXT NOT NULL,
+      url TEXT,
+      r2_key TEXT,
+      ticket_id TEXT,
+      message_id TEXT,
+      content_hash TEXT,
       status TEXT NOT NULL,
+      chunk_count INTEGER NOT NULL DEFAULT 0,
+      last_crawled_at INTEGER,
+      last_indexed_at INTEGER,
+      error TEXT,
+      created_at INTEGER NOT NULL DEFAULT 1,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE knowledge_chunk (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      ordinal INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      snippet TEXT NOT NULL,
+      url TEXT,
+      vector_id TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      used_in_answers_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE knowledge_doc (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      url TEXT,
+      created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
     CREATE TABLE notification_channel (
@@ -343,6 +377,56 @@ export function createWorkspaceTestDb() {
       actual_json TEXT NOT NULL DEFAULT '{}',
       error TEXT,
       created_at INTEGER NOT NULL
+    );
+    CREATE TABLE conversation_score (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      groundedness_score REAL NOT NULL,
+      tone_score REAL NOT NULL,
+      resolution_score REAL NOT NULL,
+      effort_score REAL NOT NULL,
+      overall_score REAL NOT NULL,
+      signals_json TEXT NOT NULL DEFAULT '{}',
+      scored_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, ticket_id)
+    );
+    CREATE TABLE kb_suggestion (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      cluster_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      body_markdown TEXT NOT NULL,
+      source_ticket_ids_json TEXT NOT NULL DEFAULT '[]',
+      suggested_terms_json TEXT NOT NULL DEFAULT '[]',
+      evidence_count INTEGER NOT NULL DEFAULT 0,
+      confidence_score REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'open',
+      source TEXT NOT NULL DEFAULT 'unresolved_cluster',
+      accepted_source_id TEXT,
+      accepted_by_user_id TEXT,
+      accepted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, cluster_key)
+    );
+    CREATE TABLE knowledge_drift_signal (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      signal_hash TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      successful_reply_count INTEGER NOT NULL DEFAULT 0,
+      divergence_terms_json TEXT NOT NULL DEFAULT '[]',
+      example_ticket_ids_json TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'open',
+      detected_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, source_id, signal_hash)
     );
   `);
 

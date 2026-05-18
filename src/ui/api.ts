@@ -5,6 +5,8 @@ import type {
   KnowledgeSourceListItem,
 } from '../types/knowledge';
 import type {
+  ProcedureLibraryItem,
+  ProcedureLibraryEntry,
   ProcedureListItem,
   ProcedureRun,
   ProcedureRunDetail,
@@ -13,6 +15,14 @@ import type {
 import type { McpServerListItem, McpTool, McpToolCall, McpToolGuardrail } from '../types/mcp';
 import type { AuthMe } from '../types/workspace';
 import type { EvalCase, EvalRun, EvalRunDetail } from '../types/evals';
+import type {
+  ConversationScore,
+  InsightSummary,
+  KbSuggestion,
+  KbSuggestionStatus,
+  KnowledgeDriftSignal,
+  KnowledgeDriftStatus,
+} from '../types/insights';
 import { api, uploadFile, uploadKnowledgePdf } from './api-core';
 import { workspaceApi } from './api-workspaces';
 
@@ -23,10 +33,16 @@ export type KnowledgeSearchHit = KnowledgeHit;
 export type AnswerInspectionHit = KnowledgeInspectionHit;
 export type AnswerInspectionTrace = AgenticRetrievalTrace;
 export type ProcedureListEntry = ProcedureListItem;
+export type ProcedureLibraryListEntry = ProcedureLibraryEntry;
+export type ProcedureLibraryDetail = ProcedureLibraryItem;
 export type McpServerEntry = McpServerListItem;
 export type McpToolEntry = McpTool;
 export type EvalCaseEntry = EvalCase;
 export type EvalRunEntry = EvalRun;
+export type ConversationScoreEntry = ConversationScore;
+export type InsightSummaryEntry = InsightSummary;
+export type KbSuggestionEntry = KbSuggestion;
+export type KnowledgeDriftSignalEntry = KnowledgeDriftSignal;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -154,6 +170,17 @@ export const API = {
       trace?: AnswerInspectionTrace;
     }>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query, limit }) }),
   listProcedures: () => api<{ procedures: ProcedureListEntry[] }>('/api/procedures'),
+  listProcedureLibrary: () =>
+    api<{ procedures: ProcedureLibraryListEntry[] }>('/api/procedures/library'),
+  procedureLibraryItem: (slug: string) =>
+    api<{ procedure: ProcedureLibraryDetail }>(`/api/procedures/library/${slug}`),
+  installProcedureLibraryItem: (slug: string) =>
+    api<{ procedure: ProcedureListItem; version: unknown; created: boolean }>(
+      `/api/procedures/library/${slug}/install`,
+      {
+        method: 'POST',
+      },
+    ),
   procedure: (id: string) =>
     api<{
       procedure: ProcedureListItem;
@@ -267,6 +294,46 @@ export const API = {
     api<EvalRunDetail>('/api/evals/runs', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  insightSummary: (days = 30) =>
+    api<{ summary: InsightSummaryEntry }>(`/api/insights/summary?days=${days}`),
+  listConversationScores: (limit = 50) =>
+    api<{ scores: ConversationScoreEntry[] }>(`/api/insights/scores?limit=${limit}`),
+  runConversationScoring: (limit = 100) =>
+    api<{ scored: number; scores: ConversationScoreEntry[] }>('/api/insights/scores/run', {
+      method: 'POST',
+      body: JSON.stringify({ limit }),
+    }),
+  listKbSuggestions: (status: KbSuggestionStatus = 'open') =>
+    api<{ suggestions: KbSuggestionEntry[] }>(`/api/insights/kb-suggestions?status=${status}`),
+  generateKbSuggestions: (limit = 100) =>
+    api<{ generated: number; suggestions: KbSuggestionEntry[] }>(
+      '/api/insights/kb-suggestions/run',
+      {
+        method: 'POST',
+        body: JSON.stringify({ limit }),
+      },
+    ),
+  updateKbSuggestion: (id: string, status: Exclude<KbSuggestionStatus, 'accepted'>) =>
+    api<{ suggestion: KbSuggestionEntry }>(`/api/insights/kb-suggestions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  acceptKbSuggestion: (id: string) =>
+    api<{ suggestion: KbSuggestionEntry; sourceId: string }>(
+      `/api/insights/kb-suggestions/${id}/accept`,
+      { method: 'POST' },
+    ),
+  listKnowledgeDrift: (status: KnowledgeDriftStatus = 'open') =>
+    api<{ signals: KnowledgeDriftSignalEntry[] }>(`/api/insights/drift?status=${status}`),
+  runKnowledgeDrift: () =>
+    api<{ detected: number; signals: KnowledgeDriftSignalEntry[] }>('/api/insights/drift/run', {
+      method: 'POST',
+    }),
+  updateKnowledgeDrift: (id: string, status: KnowledgeDriftStatus) =>
+    api<{ signal: KnowledgeDriftSignalEntry }>(`/api/insights/drift/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
   importResolvedTicketsKnowledge: (limit = 50) =>
     api<{ ok: boolean; imported: number; skipped: number; failed: number }>(

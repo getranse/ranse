@@ -2,6 +2,7 @@ import type { KnowledgeSearchScope } from './knowledge';
 
 export type ProcedureTriggerType = 'manual' | 'ticket_created' | 'intent';
 export type ProcedureSourceKind = 'api' | 'git' | 'seed';
+export type ProcedureLibraryCategory = 'billing' | 'account' | 'shipping' | 'privacy' | 'triage';
 export type ProcedureRunStatus =
   | 'queued'
   | 'running'
@@ -10,7 +11,11 @@ export type ProcedureRunStatus =
   | 'failed'
   | 'cancelled';
 export type ProcedureStepRunStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'skipped';
-export type ProcedureEventType = 'customer_reply' | 'approval_decided' | 'manual_resume' | 'timeout';
+export type ProcedureEventType =
+  | 'customer_reply'
+  | 'approval_decided'
+  | 'manual_resume'
+  | 'timeout';
 
 export interface ProcedureTrigger {
   type: ProcedureTriggerType;
@@ -88,6 +93,76 @@ export interface ProcedureSpec {
   trigger: ProcedureTrigger;
   steps: ProcedureStep[];
   evals?: Array<{ name: string; input: Record<string, unknown>; expect?: Record<string, unknown> }>;
+}
+
+export interface ProcedureLibraryMcpToolSpec {
+  server: string;
+  tool: string;
+  title: string;
+  description: string;
+  usage?: 'required' | 'optional';
+  input_schema: Record<string, unknown>;
+  annotations?: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+  };
+}
+
+export interface ProcedureLibraryStandards {
+  procedure_schema: 'ranse.procedure.v1';
+  mcp_schema: '2025-11-25';
+}
+
+export interface ProcedureLibraryProvenance {
+  source: 'ranse-library';
+  source_ref: string;
+  library_version: string;
+  spec_checksum_algorithm: 'sha256';
+  spec_checksum: string;
+  standards: ProcedureLibraryStandards;
+}
+
+export interface ProcedureLibraryEntry {
+  slug: string;
+  name: string;
+  summary: string;
+  category: ProcedureLibraryCategory;
+  tags: string[];
+  risk_level: 'low' | 'medium' | 'high';
+  required_mcp_servers: string[];
+  eval_count: number;
+  version: string;
+  provenance: ProcedureLibraryProvenance;
+  readiness?: ProcedureLibraryReadiness;
+}
+
+export interface ProcedureLibraryItem extends ProcedureLibraryEntry {
+  spec: ProcedureSpec;
+  reference_mcp_tools: ProcedureLibraryMcpToolSpec[];
+}
+
+export interface ProcedureLibraryManifest {
+  manifest_version: string;
+  standards: ProcedureLibraryStandards;
+  procedures: ProcedureLibraryItem[];
+}
+
+export interface ProcedureLibraryReadinessTool {
+  server: string;
+  tool: string;
+  usage: 'required' | 'optional';
+  status: 'ready' | 'missing_server' | 'server_disabled' | 'missing_tool';
+  destructive: boolean;
+  read_only: boolean;
+}
+
+export interface ProcedureLibraryReadiness {
+  status: 'ready' | 'needs_setup';
+  ready_tool_count: number;
+  required_tool_count: number;
+  tools: ProcedureLibraryReadinessTool[];
 }
 
 export interface ProcedureListItem {

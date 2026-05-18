@@ -1,6 +1,13 @@
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import { apiError } from '../lib/errors';
+import {
+  getProcedureLibraryItem,
+  getProcedureLibraryManifest,
+  getProcedureLibraryReadiness,
+  installProcedureFromLibrary,
+  listProcedureLibraryWithReadiness,
+} from '../procedures/library';
 import { resumeProcedureRunner, startProcedureRunner } from '../procedures/orchestration';
 import {
   createProcedureRun,
@@ -59,6 +66,56 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
       throw err;
     }
   });
+
+  apiApp.get('/procedures/library', async (c) => {
+    const s = c.get('session');
+    return c.json({ procedures: await listProcedureLibraryWithReadiness(c.env, s.workspaceId) });
+  });
+
+  apiApp.get('/procedures/library/manifest', async (c) => {
+    return c.json(await getProcedureLibraryManifest());
+  });
+
+  apiApp.get('/procedures/library/:slug', async (c) => {
+    const item = await getProcedureLibraryItem(c.req.param('slug'));
+    if (!item) return apiError(c, 'not_found', 'That library procedure does not exist.');
+    const s = c.get('session');
+    return c.json({
+      procedure: {
+        ...item,
+        readiness: await getProcedureLibraryReadiness(c.env, s.workspaceId, item.slug),
+      },
+    });
+  });
+
+  apiApp.post(
+    '/procedures/library/:slug/install',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      try {
+        const result = await installProcedureFromLibrary(c.env, {
+          workspaceId: s.workspaceId,
+          actorUserId: s.userId,
+          slug: c.req.param('slug'),
+        });
+        return c.json(result);
+      } catch (err) {
+        if (err instanceof Error && err.message === 'procedure_library_item_not_found') {
+          return apiError(c, 'not_found', 'That library procedure does not exist.');
+        }
+        if (err instanceof Error && err.message === 'procedure_version_conflict') {
+          return apiError(
+            c,
+            'conflict',
+            'A different spec already exists for that procedure version.',
+            409,
+          );
+        }
+        throw err;
+      }
+    },
+  );
 
   apiApp.get('/procedures/:id', async (c) => {
     const s = c.get('session');

@@ -51,7 +51,11 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 6 — Historical evals** is shipped. Resolved tickets are captured as anonymized replay cases, operators can backfill and run evals from Settings, `ranse eval` runs procedure-file and hosted historical suites, and PRs touching prompts/procedures/model logic have an eval workflow.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, and a regression gate against the workspace's own ticket history. Everything below continues the path toward procedure sharing and insights.
+**Phase 7 — Procedure library** is shipped. Workspaces can install vetted workflows from Settings, fork them locally with `ranse procedure add`, and inspect reference MCP tool contracts plus inline evals before customization.
+
+**Phase 8 — Insights & auto-improving KB** is shipped. Workspaces get conversation rubric scoring, aggregate insight dashboards, unresolved-intent KB suggestions, accepted-suggestion publishing into the knowledge base, drift signals against successful replies, and weekly scheduled insight maintenance.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, a forkable procedure library, and a sovereign insights loop that turns real support history into reviewed KB improvements. Everything below continues the path toward multi-channel surfaces.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -182,20 +186,29 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Historical replay is the primary signal; synthetic-conversation generation remains a future complement, not a substitute.
 
 ## Phase 7 — Procedure library + community
+**Status: shipped.**
+
 *Principle 6*
 
-- Public repo `getranse/procedures-library` — refund flow, password reset, shipping dispute, subscription cancellation, fraud triage, GDPR data request, etc.
-- `ranse procedure add <name>` clones from library into workspace repo as a starting point
-- Each library procedure ships with eval cases and a reference MCP tool spec
-- Contribution guidelines for upstreaming generic procedures back from workspaces
+- Built-in catalog ships refund intake, password reset, shipping dispute, and GDPR data request workflows.
+- Settings exposes the catalog so owners/admins can install procedures directly into the selected workspace, with MCP readiness surfaced before install.
+- `ranse procedure list` and `ranse procedure add <slug>` fork procedures into a repo-local `procedures/` directory as YAML or JSON.
+- `ranse procedure manifest` exports the full machine-readable catalog for a standalone community mirror.
+- Each library procedure ships with inline eval cases, deterministic SHA-256 provenance, and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json` plus `<slug>.provenance.json`.
+- Library procedures now exercise required MCP contracts through `call_action`; read-only lookups can run automatically, while write/destructive actions pause for operator approval.
+- Library validation runs every procedure's inline evals, checksum generation, immutable clone behavior, route permissions, MCP reference matching, and unsafe-action checks in `tests/procedure-library.test.ts`.
+- `procedure-library/README.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
 
 ## Phase 8 — Insights & auto-improving KB
+**Status: shipped.**
+
 *Principle 5 (extends), Principle 1*
 
-- Per-conversation rubric scoring (groundedness, tone, resolution, customer effort)
-- Aggregate dashboards: resolution rate, escalation reasons, top unanswered intents, slowest procedures
-- **Suggestions agent** clusters unresolved conversations weekly, drafts new KB articles **as PRs to the workspace's content repo** — human review preserved, no surprise edits
-- Drift detection: flag KB entries whose answers diverge from recent successful replies
+- Per-conversation rubric scoring is stored in D1 for groundedness, tone, resolution, customer effort, and overall quality, with signals preserved as auditable JSON.
+- Aggregate dashboards are shipped in the operator console for resolution rate, follow-ups, feedback, low-score conversations, top unresolved intents, escalation reasons, and slowest procedures.
+- The suggestions loop clusters repeated unresolved conversations, stores evidence count/confidence/source-ticket lineage, drafts reviewable KB article candidates, and lets an admin accept a suggestion into the workspace knowledge base. Human review is preserved; no content is published silently.
+- Drift detection flags cited knowledge sources that no longer cover terms appearing in successful replies tied back to those source chunks.
+- Weekly scheduled insight maintenance scores recent conversations, refreshes unresolved-intent suggestions, and detects KB drift inside the customer's Cloudflare account.
 
 ## Phase 9 — Multi-channel + voice
 *Principle 7 — email is the wedge; other channels are derivatives*
