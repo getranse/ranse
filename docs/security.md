@@ -55,7 +55,7 @@ Default policy: AI may classify, summarize, search, and draft. It **cannot** sen
 
 ## Eval data privacy
 
-Historical eval cases are stored in the workspace's own D1 database and never leave the customer's Cloudflare account unless the operator exports or queries them. Before persistence, resolved-ticket capture redacts email addresses, phone numbers, and the requester's display name by default. The stored `anonymization_json` records rules and counts only; it does not store the original PII mapping.
+Historical eval cases are stored in the workspace's own D1 database and never leave the customer's Cloudflare account unless the operator exports or queries them. Before persistence, resolved-ticket capture redacts email addresses, phone numbers, and the requester's display name by default. Capture then scans the anonymized payload for residual non-placeholder email, phone, or requester-name data and skips the case if any remains. The stored `anonymization_json` records rules and counts only; it does not store the original PII mapping.
 
 Eval access is restricted to `owner` and `admin` workspace roles because even anonymized conversations can contain commercially sensitive support context. Hosted replay uses the same provider-key and model-routing path as normal drafting, so self-hosters keep the same BYOK and Cloudflare tenant boundaries.
 

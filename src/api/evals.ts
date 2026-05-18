@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { workspaceConfig } from '../agents/supervisor/settings';
 import { captureResolvedTicketEvalCases } from '../evals/capture';
 import { runEvalSuite } from '../evals/replay';
-import { getEvalRunDetail, listEvalCases, listEvalRuns } from '../evals/storage';
+import {
+  getEvalRunDetail,
+  listEvalCases,
+  listEvalRuns,
+  updateEvalCaseStatus,
+} from '../evals/storage';
 import { apiError } from '../lib/errors';
 import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
 
@@ -29,6 +34,19 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const runs = await listEvalRuns(c.env, s.workspaceId, Number(c.req.query('limit') ?? 20));
     return c.json({ runs });
+  });
+
+  apiApp.patch('/evals/cases/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const body = z.object({ status: z.enum(['active', 'archived']) }).parse(await c.req.json());
+    const evalCase = await updateEvalCaseStatus(
+      c.env,
+      s.workspaceId,
+      c.req.param('id'),
+      body.status,
+    );
+    if (!evalCase) return apiError(c, 'not_found', 'That eval case does not exist.');
+    return c.json({ case: evalCase });
   });
 
   apiApp.get('/evals/runs/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
@@ -61,6 +79,7 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
         limit: z.number().int().min(1).max(500).optional(),
         case_ids: z.array(z.string()).max(500).optional(),
         threshold: z.number().min(0.05).max(0.95).optional(),
+        score_drop_threshold: z.number().min(0.01).max(0.75).optional(),
         source: z.enum(['api', 'cli', 'ci', 'scheduled']).optional(),
       })
       .parse(await c.req.json().catch(() => ({})));
@@ -68,6 +87,7 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
       limit: body.limit,
       caseIds: body.case_ids,
       threshold: body.threshold,
+      scoreDropThreshold: body.score_drop_threshold,
       source: body.source ?? 'api',
       workspaceConfig: await workspaceConfig(c.env, s.workspaceId),
     });

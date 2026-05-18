@@ -98,6 +98,23 @@ export async function listEvalCases(
   return rows.results ?? [];
 }
 
+export async function updateEvalCaseStatus(
+  env: Env,
+  workspaceId: string,
+  caseId: string,
+  status: 'active' | 'archived',
+): Promise<EvalCase | null> {
+  await env.DB.prepare(
+    `UPDATE eval_case SET status = ?, updated_at = ?
+      WHERE id = ? AND workspace_id = ?`,
+  )
+    .bind(status, Date.now(), caseId, workspaceId)
+    .run();
+  return env.DB.prepare(`SELECT * FROM eval_case WHERE id = ? AND workspace_id = ?`)
+    .bind(caseId, workspaceId)
+    .first<EvalCase>();
+}
+
 export async function listEvalRuns(env: Env, workspaceId: string, limit = 20): Promise<EvalRun[]> {
   const rows = await env.DB.prepare(
     `SELECT * FROM eval_run
@@ -202,6 +219,25 @@ export async function insertEvalResult(
     )
     .run();
   return result;
+}
+
+export async function getLatestEvalResultForCase(
+  env: Env,
+  workspaceId: string,
+  caseId: string,
+): Promise<EvalResult | null> {
+  return env.DB.prepare(
+    `SELECT r.*
+       FROM eval_result r
+       JOIN eval_run er ON er.id = r.run_id
+      WHERE r.workspace_id = ? AND r.case_id = ?
+        AND r.status IN ('passed','failed')
+        AND er.status IN ('passed','failed')
+      ORDER BY r.created_at DESC
+      LIMIT 1`,
+  )
+    .bind(workspaceId, caseId)
+    .first<EvalResult>();
 }
 
 export async function completeEvalRun(

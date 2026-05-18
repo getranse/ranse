@@ -19,6 +19,11 @@ export interface AnonymizationMetadata {
   };
 }
 
+export interface ResidualPiiFinding {
+  kind: 'email' | 'phone' | 'requester_name';
+  value: string;
+}
+
 const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const PHONE_RE = /(?<!\d)(?:\+?\d[\d().\-\s]{7,}\d)(?!\d)/g;
 
@@ -63,6 +68,29 @@ export function anonymizeValue<T>(
       },
     },
   };
+}
+
+export function detectResidualPii(value: unknown): ResidualPiiFinding[] {
+  const findings = new Map<string, ResidualPiiFinding>();
+  for (const text of collectStrings(value)) {
+    for (const email of text.match(EMAIL_RE) ?? []) {
+      if (email.toLowerCase().endsWith('@example.test')) continue;
+      findings.set(`email:${email.toLowerCase()}`, { kind: 'email', value: email });
+    }
+    for (const phone of text.match(PHONE_RE) ?? []) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 8) continue;
+      findings.set(`phone:${digits}`, { kind: 'phone', value: phone });
+    }
+  }
+  return [...findings.values()];
+}
+
+function collectStrings(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(collectStrings);
+  if (!value || typeof value !== 'object') return [];
+  return Object.values(value).flatMap(collectStrings);
 }
 
 function anonymizeAny(

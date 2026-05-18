@@ -11,13 +11,20 @@ import type {
 } from '../types/evals';
 import type { AgenticKnowledgeResult, KnowledgeHit } from '../types/knowledge';
 import type { ProcedureSpec } from '../types/procedure';
-import { completeEvalRun, createEvalRun, insertEvalResult, listEvalCases } from './storage';
+import {
+  completeEvalRun,
+  createEvalRun,
+  getLatestEvalResultForCase,
+  insertEvalResult,
+  listEvalCases,
+} from './storage';
 
 export interface RunEvalSuiteOptions {
   source?: 'api' | 'cli' | 'ci' | 'scheduled';
   limit?: number;
   caseIds?: string[];
   threshold?: number;
+  scoreDropThreshold?: number;
   workspaceConfig?: Partial<AgentConfig>;
   retrievalRunner?: (input: ResolvedTicketEvalInput) => Promise<AgenticKnowledgeResult>;
   draftRunner?: (input: ResolvedTicketEvalInput, knowledge: KnowledgeHit[]) => Promise<DraftResult>;
@@ -29,10 +36,17 @@ export async function runEvalSuite(
   options: RunEvalSuiteOptions = {},
 ) {
   const threshold = clampThreshold(options.threshold ?? 0.35);
+  const scoreDropThreshold = clampScoreDrop(options.scoreDropThreshold ?? 0.15);
   const run = await createEvalRun(env, {
     workspaceId,
     source: options.source ?? 'api',
-    config: { threshold, limit: options.limit ?? null, caseIds: options.caseIds ?? null },
+    config: {
+      threshold,
+      scoreDropThreshold,
+      limit: options.limit ?? null,
+      caseIds: options.caseIds ?? null,
+      workspaceConfig: options.workspaceConfig ?? null,
+    },
   });
   const cases = await listEvalCases(env, workspaceId, {
     status: 'active',
@@ -70,24 +84,25 @@ export async function runEvalSuite(
         retrievalRunner: options.retrievalRunner,
         draftRunner: options.draftRunner,
       });
+      const previous = await getLatestEvalResultForCase(env, workspaceId, evalCase.id);
+      const baseline = compareAgainstBaseline(previous, result, scoreDropThreshold);
       if (result.status === 'passed') passedCount += 1;
-      else {
-        failedCount += 1;
-        regressionCount += 1;
-      }
+      else failedCount += 1;
+      if (baseline.regressed) regressionCount += 1;
       await insertEvalResult(env, {
         workspaceId,
         runId: run.id,
         caseId: evalCase.id,
         status: result.status,
         score: result.score,
-        assertions: result.assertions,
-        actual: result.actual,
+        assertions: [...result.assertions, baseline.assertion],
+        actual: { ...result.actual, baseline: baseline.actual },
         error: result.error,
       });
     } catch (err) {
       failedCount += 1;
-      regressionCount += 1;
+      const previous = await getLatestEvalResultForCase(env, workspaceId, evalCase.id);
+      if (previous?.status === 'passed') regressionCount += 1;
       await insertEvalResult(env, {
         workspaceId,
         runId: run.id,
@@ -311,4 +326,53 @@ function getPath(value: unknown, path: string): unknown {
 function clampThreshold(value: number) {
   if (!Number.isFinite(value)) return 0.35;
   return Math.min(Math.max(value, 0.05), 0.95);
+}
+
+function clampScoreDrop(value: number) {
+  if (!Number.isFinite(value)) return 0.15;
+  return Math.min(Math.max(value, 0.01), 0.75);
+}
+
+function compareAgainstBaseline(
+  previous: { status: string; score: number | null } | null,
+  current: { status: 'passed' | 'failed'; score: number },
+  scoreDropThreshold: number,
+): {
+  regressed: boolean;
+  assertion: EvalAssertion;
+  actual: Record<string, unknown>;
+} {
+  if (!previous) {
+    return {
+      regressed: false,
+      assertion: {
+        name: 'baseline_regression',
+        passed: true,
+        message: 'No prior baseline exists for this case.',
+      },
+      actual: { previous_status: null, previous_score: null, score_delta: null },
+    };
+  }
+  const scoreDelta =
+    previous.score === null ? null : Number((current.score - previous.score).toFixed(4));
+  const regressed =
+    (previous.status === 'passed' && current.status === 'failed') ||
+    (scoreDelta !== null && scoreDelta <= -scoreDropThreshold);
+  return {
+    regressed,
+    assertion: {
+      name: 'baseline_regression',
+      passed: !regressed,
+      score: scoreDelta ?? undefined,
+      message: regressed
+        ? `Regressed from previous ${previous.status} baseline; score delta ${scoreDelta ?? 'n/a'}.`
+        : `No regression from previous ${previous.status} baseline.`,
+    },
+    actual: {
+      previous_status: previous.status,
+      previous_score: previous.score,
+      score_delta: scoreDelta,
+      score_drop_threshold: scoreDropThreshold,
+    },
+  };
 }

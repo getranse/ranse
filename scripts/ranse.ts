@@ -74,6 +74,7 @@ async function main() {
       body: JSON.stringify({
         limit: numberFlag(args, '--limit'),
         threshold: numberFlag(args, '--threshold'),
+        score_drop_threshold: numberFlag(args, '--score-drop'),
         source: args.includes('--ci') ? 'ci' : 'cli',
       }),
     });
@@ -87,7 +88,7 @@ async function main() {
   ranse simulate <procedure-file> [--input input.json]
   ranse publish <procedure-file> --app-url <url> --cookie <session-cookie>
   ranse eval <procedure-file>
-  ranse eval --app-url <url> --cookie <session-cookie> [--limit n] [--threshold n] [--ci]
+  ranse eval --app-url <url> --cookie <session-cookie> [--limit n] [--threshold n] [--score-drop n] [--ci]
   ranse eval capture-resolved --app-url <url> --cookie <session-cookie> [--limit n]`);
 }
 

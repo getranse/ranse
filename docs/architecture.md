@@ -104,11 +104,12 @@ MCP server secrets are stored in `UserSecretsStore` under `mcp:<serverId>`. D1 s
 ## Eval flow
 
 ```
-Operator resolves ticket
-  ├─ setTicketStatus(resolved|closed)
+Ticket is resolved
+  ├─ setTicketStatus(resolved|closed), autonomous outcome, or procedure status step
   ├─ captureResolvedTicketEvalCase
   │    ├─ load ticket + inbound/outbound transcript
   │    ├─ anonymize email, phone, and requester-name fields
+  │    ├─ reject capture if residual PII remains
   │    └─ upsert eval_case(source = resolved_ticket)
   └─ audit eval.case_captured
 
@@ -118,6 +119,7 @@ ranse eval / Settings -> Evals
   │    ├─ agenticSearchKnowledge with current retrieval prompts/config
   │    ├─ runDraft with current draft prompt/model config
   │    ├─ score reply overlap, required terms, confidence signals
+  │    ├─ compare against latest prior baseline result
   │    └─ insert eval_result
   └─ mark eval_run passed/failed
 ```

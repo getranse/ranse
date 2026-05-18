@@ -172,9 +172,11 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 *Principle 5*
 
 - Resolved or closed conversations are captured into `eval_case` with transcript, latest customer message, expected reply preview, outcome kinds, and deterministic source fingerprints.
-- Capture runs automatically when an operator marks a ticket `resolved` or `closed`, and can be backfilled from **Settings → Evals** or `ranse eval capture-resolved`.
-- PII anonymization is applied before persistence, with configurable email, phone, and requester-name redaction rules.
-- Hosted eval runs replay active historical cases through current retrieval + draft logic, score overlap and required terms, and store per-case assertions in `eval_result`.
+- Capture runs automatically when an operator marks a ticket `resolved` or `closed`, when autonomous resolution succeeds, and when a procedure resolves a ticket. Backfill uses both ticket status and resolved outcome events.
+- PII anonymization is applied before persistence, with configurable email, phone, and requester-name redaction rules. Residual PII detection fails closed instead of storing a case when redaction leaves sensitive data behind.
+- Hosted eval runs replay active historical cases through current retrieval + draft logic, score overlap and required terms, compare against the previous baseline result, and store per-case assertions in `eval_result`.
+- Regression gates distinguish first-run failures from true regressions: a previous pass that now fails, or a score drop beyond the configured threshold, increments `regression_count`.
+- Operators can archive noisy historical cases from **Settings → Evals** without deleting the audit trail.
 - `ranse eval <procedure-file>` runs inline procedure evals from the YAML/JSON/TS spec. Edge, refusal, escalation, and wait/resume expectations live next to the procedure.
 - `.github/workflows/evals.yml` gates PRs touching procedure, prompt/model, supervisor, or eval code on local procedure evals; with `RANSE_APP_URL` and `RANSE_COOKIE` secrets, the same workflow also gates on hosted historical replay.
 - Historical replay is the primary signal; synthetic-conversation generation remains a future complement, not a substitute.

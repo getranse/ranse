@@ -7,7 +7,7 @@ import type {
   ResolvedTicketEvalExpected,
   ResolvedTicketEvalInput,
 } from '../types/evals';
-import { anonymizeValue } from './anonymize';
+import { anonymizeValue, detectResidualPii, normalizeAnonymizationConfig } from './anonymize';
 import { upsertEvalCase } from './storage';
 
 interface TicketRow {
@@ -131,6 +131,18 @@ export async function captureResolvedTicketEvalCase(
   };
   const anonymizedInput = anonymizeValue(input, anonymization);
   const anonymizedExpected = anonymizeValue(expected, anonymization);
+  const piiCheck = detectAnonymizationLeaks(
+    { input: anonymizedInput.value, expected: anonymizedExpected.value },
+    anonymization,
+  );
+  if (piiCheck.length > 0) {
+    console.warn('skipping eval capture because anonymization left residual pii', {
+      workspaceId,
+      ticketId,
+      findings: piiCheck.map((finding) => finding.kind),
+    });
+    return { captured: false, reason: 'anonymization_residual_pii' };
+  }
   const fingerprint = await sha256Hex(
     JSON.stringify({
       ticketId,
@@ -174,9 +186,16 @@ export async function captureResolvedTicketEvalCases(
 ): Promise<{ captured: number; skipped: number; failed: number; cases: string[] }> {
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
   const rows = await env.DB.prepare(
-    `SELECT id FROM ticket
-      WHERE workspace_id = ? AND status IN ('resolved','closed')
-      ORDER BY updated_at DESC
+    `SELECT DISTINCT t.id, t.updated_at
+       FROM ticket t
+       LEFT JOIN ticket_outcome_event o
+         ON o.workspace_id = t.workspace_id AND o.ticket_id = t.id
+      WHERE t.workspace_id = ?
+        AND (
+          t.status IN ('resolved','closed')
+          OR o.kind IN ('resolved_autonomously','resolved_via_procedure')
+        )
+      ORDER BY t.updated_at DESC
       LIMIT ?`,
   )
     .bind(workspaceId, limit)
@@ -246,4 +265,24 @@ export function extractRequiredTerms(body: string, limit = 8): string[] {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
     .map(([word]) => word);
+}
+
+function detectAnonymizationLeaks(
+  value: unknown,
+  config: EvalAnonymizationConfig,
+): ReturnType<typeof detectResidualPii> {
+  const normalized = normalizeAnonymizationConfig(config);
+  const findings = detectResidualPii(value).filter((finding) => {
+    if (finding.kind === 'email') return normalized.redactEmails;
+    if (finding.kind === 'phone') return normalized.redactPhones;
+    return true;
+  });
+  const text = JSON.stringify(value).toLowerCase();
+  const requesterName = normalized.requesterName?.trim().toLowerCase();
+  if (normalized.redactRequesterName && requesterName && requesterName.length >= 3) {
+    if (text.includes(requesterName)) {
+      findings.push({ kind: 'requester_name', value: 'requester_name' });
+    }
+  }
+  return findings;
 }

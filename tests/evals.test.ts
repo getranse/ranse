@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { apiApp } from '../src/api/routes';
-import { anonymizeValue } from '../src/evals/anonymize';
+import { anonymizeValue, detectResidualPii } from '../src/evals/anonymize';
 import { captureResolvedTicketEvalCase } from '../src/evals/capture';
 import { runEvalSuite, runProcedureSpecEvals } from '../src/evals/replay';
 import {
@@ -83,6 +83,16 @@ describe('eval anonymization', () => {
     expect(JSON.stringify(result.value)).toContain('customer_1@example.test');
     expect(JSON.stringify(result.value)).toContain('[phone_1]');
     expect(JSON.stringify(result.metadata)).not.toContain('jane.customer@example.com');
+  });
+
+  it('detects residual PII after anonymization and ignores placeholders', () => {
+    const findings = detectResidualPii({
+      safe: 'customer_1@example.test [phone_1]',
+      timestamp: 1760000000000,
+      leaked: 'finance@merchant.example and +1 212 555 0199',
+    });
+
+    expect(findings.map((finding) => finding.kind)).toEqual(['email', 'phone']);
   });
 });
 
@@ -169,6 +179,61 @@ describe('historical eval capture and replay', () => {
     expect(failing.run.status).toBe('failed');
     expect(failing.run.regression_count).toBe(1);
   });
+
+  it('marks score drops from the previous baseline as regressions', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    seedResolvedConversation(db);
+    await captureResolvedTicketEvalCase(env, 'ws_a', 'tkt_eval');
+    const retrievalRunner = async () => ({
+      hits: [],
+      trace: {
+        plan: {
+          originalQuery: 'refund',
+          scope: 'all' as const,
+          subqueries: ['refund'],
+          maxHops: 1,
+        },
+        hops: [],
+        finalAnswerable: false,
+        stopReason: 'no_hits' as const,
+        startedAt: 1,
+        durationMs: 1,
+      },
+    });
+
+    await runEvalSuite(env, 'ws_a', {
+      threshold: 0.2,
+      retrievalRunner,
+      draftRunner: async () => ({
+        subject: 'Re: Refund for order 123',
+        body_markdown:
+          'Hi, your refund for order 123 has been approved and should arrive within five business days.',
+        tone: 'friendly',
+        cites_knowledge_ids: [],
+        confidence: 0.9,
+        needs_human_review_reasons: [],
+      }),
+    });
+    const regressed = await runEvalSuite(env, 'ws_a', {
+      threshold: 0.2,
+      scoreDropThreshold: 0.15,
+      retrievalRunner,
+      draftRunner: async () => ({
+        subject: 'Re: Refund for order 123',
+        body_markdown: 'Your refund has been approved and should arrive.',
+        tone: 'friendly',
+        cites_knowledge_ids: [],
+        confidence: 0.9,
+        needs_human_review_reasons: [],
+      }),
+    });
+
+    expect(regressed.run.passed_count).toBe(1);
+    expect(regressed.run.failed_count).toBe(0);
+    expect(regressed.run.regression_count).toBe(1);
+    expect(regressed.run.status).toBe('failed');
+  });
 });
 
 describe('procedure spec evals', () => {
@@ -223,5 +288,20 @@ describe('eval API', () => {
     expect(res.status).toBe(200);
     expect(body.captured).toBe(1);
     expect(db.prepare(`SELECT COUNT(*) AS n FROM eval_case`).get()).toEqual({ n: 1 });
+
+    const archive = await apiApp.request(
+      `/evals/cases/${body.cases[0]}`,
+      {
+        method: 'PATCH',
+        headers: { cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      },
+      env,
+    );
+
+    expect(archive.status).toBe(200);
+    expect(db.prepare(`SELECT status FROM eval_case WHERE id = ?`).get(body.cases[0])).toEqual({
+      status: 'archived',
+    });
   });
 });

@@ -39,7 +39,9 @@ Operational checks:
 
 ## Historical evals
 
-Resolved tickets are the regression suite. When an operator marks a ticket `resolved` or `closed`, Ranse captures the inbound/outbound transcript into an anonymized `eval_case` if the conversation has both a customer message and a support reply. Operators can also backfill recent cases from **Settings → Evals**.
+Resolved tickets are the regression suite. When an operator marks a ticket `resolved` or `closed`, an autonomous reply records a resolved outcome, or a procedure resolves a ticket, Ranse captures the inbound/outbound transcript into an anonymized `eval_case` if the conversation has both a customer message and a support reply. Operators can also backfill recent cases from **Settings → Evals**.
+
+Capture fails closed if the anonymized payload still contains residual non-placeholder email, phone, or requester-name data. No eval case is written until the redaction rules are safe for that conversation.
 
 CLI workflow:
 
@@ -51,10 +53,12 @@ bun scripts/ranse.ts eval procedures/refund-intake.yaml
 bun scripts/ranse.ts eval capture-resolved --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --limit 100
 
 # Replay active historical cases through current retrieval + drafting
-bun scripts/ranse.ts eval --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --threshold 0.35 --ci
+bun scripts/ranse.ts eval --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --threshold 0.35 --score-drop 0.15 --ci
 ```
 
-Eval runs write `eval_run` and `eval_result` rows with assertion details. A run fails when any active case regresses. The bundled GitHub Actions workflow always runs procedure evals for relevant PRs; set `RANSE_APP_URL` and `RANSE_COOKIE` repository secrets to make hosted historical replay part of the gate.
+Eval runs write `eval_run` and `eval_result` rows with assertion details. A run fails when any active case fails or regresses. `regression_count` is reserved for cases with a prior baseline that got worse: previous pass → current fail, or a score drop larger than the configured threshold. Archive noisy cases from **Settings → Evals** instead of deleting them.
+
+The bundled GitHub Actions workflow always runs procedure evals for relevant PRs; set `RANSE_APP_URL` and `RANSE_COOKIE` repository secrets to make hosted historical replay part of the gate.
 
 ## Escalations
 
