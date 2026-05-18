@@ -208,7 +208,7 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Aggregate dashboards are shipped in the operator console for resolution rate, follow-ups, feedback, low-score conversations, top unresolved intents, escalation reasons, and slowest procedures.
 - The suggestions loop clusters repeated unresolved conversations, stores evidence count/confidence/source-ticket lineage, drafts reviewable KB article candidates, and lets an admin accept a suggestion into the workspace knowledge base. Human review is preserved; no content is published silently.
 - Drift detection flags cited knowledge sources that no longer cover terms appearing in successful replies tied back to those source chunks.
-- Weekly scheduled insight maintenance scores recent conversations, refreshes unresolved-intent suggestions, and detects KB drift inside the customer's Cloudflare account.
+- Weekly scheduled insight maintenance scores recent conversations, refreshes unresolved-intent suggestions, detects KB drift, prunes old recomputable score rows, and isolates per-workspace failures inside the customer's Cloudflare account.
 
 ## Phase 9 — Multi-channel + voice
 *Principle 7 — email is the wedge; other channels are derivatives*

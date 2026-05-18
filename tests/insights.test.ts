@@ -5,6 +5,8 @@ import {
   detectKnowledgeDrift,
   generateKbSuggestions,
   getInsightSummary,
+  pruneConversationScores,
+  runAllWorkspaceInsightsMaintenance,
   scoreConversation,
   updateKbSuggestionStatus,
 } from '../src/insights';
@@ -260,5 +262,69 @@ describe('insights', () => {
     const res = await apiApp.request('/insights/summary', { headers: { cookie } }, env);
 
     expect(res.status).toBe(403);
+  });
+
+  it('prunes stale conversation scores without touching recent rows', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    seedMailbox(db, 'ws_a', 'mb_a', 'support@example.com');
+    seedTicket(db, { id: 'tkt_old', status: 'resolved' });
+    seedTicket(db, { id: 'tkt_recent', status: 'resolved' });
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO conversation_score (
+        id, workspace_id, ticket_id, groundedness_score, tone_score, resolution_score,
+        effort_score, overall_score, signals_json, scored_at, updated_at
+      ) VALUES
+        ('score_old', 'ws_a', 'tkt_old', 1, 1, 1, 1, 1, '{}', ?, ?),
+        ('score_recent', 'ws_a', 'tkt_recent', 1, 1, 1, 1, 1, '{}', ?, ?)`,
+    ).run(now - 181 * 24 * 60 * 60 * 1000, now - 181 * 24 * 60 * 60 * 1000, now, now);
+
+    const result = await pruneConversationScores(env, 'ws_a', 180);
+
+    expect(result.pruned).toBe(1);
+    expect(db.prepare(`SELECT id FROM conversation_score`).all()).toEqual([{ id: 'score_recent' }]);
+  });
+
+  it('keeps workspace insights maintenance isolated across workspace failures', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    seedWorkspace(db, 'ws_bad', 'Bad');
+    seedMailbox(db, 'ws_a', 'mb_a', 'support@example.com');
+    const originalPrepare = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = ((sql: string) => {
+      const statement = originalPrepare(sql);
+      if (sql.includes('SELECT id FROM ticket') && sql.includes('ORDER BY updated_at DESC')) {
+        return {
+          ...statement,
+          bind: (...params: unknown[]) => {
+            if (params[0] === 'ws_bad') {
+              return {
+                all: async () => {
+                  throw new Error('workspace_score_failed');
+                },
+                first: async () => null,
+                run: async () => ({ success: false }),
+              };
+            }
+            return statement.bind(...params);
+          },
+        };
+      }
+      return statement;
+    }) as typeof env.DB.prepare;
+
+    const results = await runAllWorkspaceInsightsMaintenance(env);
+
+    expect(results).toContainEqual(
+      expect.objectContaining({ workspaceId: 'ws_a', ok: true, pruned: 0 }),
+    );
+    expect(results).toContainEqual(
+      expect.objectContaining({
+        workspaceId: 'ws_bad',
+        ok: false,
+        error: 'workspace_score_failed',
+      }),
+    );
   });
 });

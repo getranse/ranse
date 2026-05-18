@@ -83,3 +83,13 @@ export interface KnowledgeDriftSignal {
   detected_at: number;
   updated_at: number;
 }
+
+export interface WorkspaceInsightsMaintenanceResult {
+  workspaceId: string;
+  ok: boolean;
+  scored: number;
+  suggestions: number;
+  drift: number;
+  pruned: number;
+  error?: string;
+}

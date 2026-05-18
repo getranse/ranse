@@ -154,7 +154,8 @@ Weekly cron / manual refresh
   ├─ score recent tickets on groundedness, tone, resolution, and customer effort
   ├─ aggregate resolution, follow-up, feedback, unresolved-intent, and procedure-latency metrics
   ├─ cluster repeated unresolved conversations into confidence-scored KB article suggestions
-  └─ compare cited KB sources against successful replies for source-specific drift signals
+  ├─ compare cited KB sources against successful replies for source-specific drift signals
+  └─ prune old recomputable conversation score rows
 
 Insights page
   ├─ POST /api/insights/scores/run
@@ -164,6 +165,8 @@ Insights page
 ```
 
 Suggestions are review records, not automatic content edits. They require repeated unresolved-ticket evidence, store confidence and source-ticket lineage, and accepted suggestions become terminal records linked to the manual knowledge source created through the same ingestion path as the Content Library.
+
+Scheduled insights maintenance is workspace-isolated: one workspace failure is returned as an `ok: false` result for that workspace instead of failing the entire cron run.
 
 ## Scaling model
 

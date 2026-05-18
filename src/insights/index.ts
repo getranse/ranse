@@ -10,6 +10,7 @@ import type {
   KbSuggestionStatus,
   KnowledgeDriftSignal,
   KnowledgeDriftStatus,
+  WorkspaceInsightsMaintenanceResult,
 } from '../types/insights';
 
 const STOP_WORDS = new Set([
@@ -52,6 +53,7 @@ const STOP_WORDS = new Set([
 const MIN_SUGGESTION_TICKETS = 2;
 const MIN_DRIFT_REPLIES = 2;
 const MAX_SOURCE_CHUNKS_FOR_LINEAGE = 50;
+const CONVERSATION_SCORE_RETENTION_DAYS = 180;
 
 interface TicketRow {
   id: string;
@@ -586,28 +588,63 @@ export async function updateKnowledgeDriftStatus(
   return signal;
 }
 
+export async function pruneConversationScores(
+  env: Env,
+  workspaceId: string,
+  retentionDays = CONVERSATION_SCORE_RETENTION_DAYS,
+): Promise<{ pruned: number }> {
+  const cutoff = Date.now() - Math.max(1, retentionDays) * 24 * 60 * 60 * 1000;
+  const count = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM conversation_score WHERE workspace_id = ? AND scored_at < ?`,
+  )
+    .bind(workspaceId, cutoff)
+    .first<{ n: number }>();
+  await env.DB.prepare(`DELETE FROM conversation_score WHERE workspace_id = ? AND scored_at < ?`)
+    .bind(workspaceId, cutoff)
+    .run();
+  return { pruned: count?.n ?? 0 };
+}
+
 export async function runWorkspaceInsightsMaintenance(
   env: Env,
   workspaceId: string,
-): Promise<{ scored: number; suggestions: number; drift: number }> {
-  const [scores, suggestions, drift] = await Promise.all([
+): Promise<{ scored: number; suggestions: number; drift: number; pruned: number }> {
+  const [scores, suggestions, drift, pruning] = await Promise.all([
     scoreWorkspaceConversations(env, workspaceId, 200),
     generateKbSuggestions(env, workspaceId, 200),
     detectKnowledgeDrift(env, workspaceId),
+    pruneConversationScores(env, workspaceId),
   ]);
-  return { scored: scores.scored, suggestions: suggestions.generated, drift: drift.detected };
+  return {
+    scored: scores.scored,
+    suggestions: suggestions.generated,
+    drift: drift.detected,
+    pruned: pruning.pruned,
+  };
 }
 
 export async function runAllWorkspaceInsightsMaintenance(
   env: Env,
-): Promise<Array<{ workspaceId: string; scored: number; suggestions: number; drift: number }>> {
+): Promise<WorkspaceInsightsMaintenanceResult[]> {
   const rows = await env.DB.prepare(
     `SELECT id FROM workspace WHERE archived_at IS NULL AND deleted_at IS NULL ORDER BY created_at ASC`,
   ).all<{ id: string }>();
-  const results = [];
+  const results: WorkspaceInsightsMaintenanceResult[] = [];
   for (const row of rows.results ?? []) {
-    const result = await runWorkspaceInsightsMaintenance(env, row.id);
-    results.push({ workspaceId: row.id, ...result });
+    try {
+      const result = await runWorkspaceInsightsMaintenance(env, row.id);
+      results.push({ workspaceId: row.id, ok: true, ...result });
+    } catch (error) {
+      results.push({
+        workspaceId: row.id,
+        ok: false,
+        scored: 0,
+        suggestions: 0,
+        drift: 0,
+        pruned: 0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   return results;
 }
