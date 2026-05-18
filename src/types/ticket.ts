@@ -1,5 +1,6 @@
 import type { AgenticRetrievalTrace, KnowledgeHit } from './knowledge';
 import type { TicketFeedback, TicketOutcomeEvent } from './autonomy';
+import type { McpToolCall } from './mcp';
 import type { ProcedureRun } from './procedure';
 
 export interface TicketViewData {
@@ -22,6 +23,7 @@ export interface TicketViewData {
   }>;
   approvals: Array<{
     id: string;
+    kind: string;
     status: string;
     proposed_json: string;
     risk_reasons_json: string;
@@ -34,6 +36,7 @@ export interface TicketViewData {
   outcomes?: TicketOutcomeEvent[];
   feedback?: TicketFeedback[];
   procedureRuns?: ProcedureRun[];
+  mcpToolCalls?: McpToolCall[];
 }
 
 export interface ProposedReply {

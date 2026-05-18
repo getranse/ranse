@@ -47,7 +47,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 4 — Procedures as code** is shipped. Workspaces can publish versioned procedure specs, run them against tickets through a checkpointed `ProcedureRunnerAgent`, pause/resume across customer turns, simulate procedures locally, and keep previous versions addressable for in-flight runs.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, and the first procedure-driven agent loop. Everything below continues the path from procedures to MCP-native action execution, evals, and insights.
+**Phase 5 — MCP-native actions** is shipped. Workspaces can register remote Streamable HTTP MCP servers, discover tools, enforce per-tool guardrails, pause destructive calls for operator approval, and execute `call_action` from procedures with audit-backed tool-call records.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, and external action execution through the open MCP protocol. Everything below continues the path toward evals, procedure sharing, and insights.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -117,7 +119,7 @@ Single-pass RAG fails on the hard tickets — the ones where the customer's ques
 - **Answer Inspection shows the trace**: shipped. Drafts, approval suggestions, and Content Library test searches show hop query → results → judgment → next-query.
 - **Eval cases test the loop, not just the final answer** (Principle 5): partially shipped as behavior tests around the loop contract. Historical replay belongs in Phase 6.
 
-The `customer_data` scope currently fails closed with an explicit trace until Phase 5 MCP connectors provide real external account-state search.
+The `customer_data` search scope still fails closed with an explicit trace; procedures can now retrieve account state by calling registered MCP tools directly through `call_action`.
 
 ## Phase 3 — Autonomous resolution + per-step model routing
 **Status: shipped.**
@@ -143,20 +145,23 @@ The `customer_data` scope currently fails closed with an explicit trace until Ph
 - Procedures are defined as YAML, JSON, or TS files and published as immutable versions.
 - Schema includes trigger, steps, version, owner, and eval case metadata.
 - `ProcedureRunnerAgent` runs each procedure as a Durable Object, with D1 checkpoints, deterministic replay of branch/loop decisions, resumable waits, and scheduled timeout handling.
-- Step primitives are shipped for `ask_customer`, `search` (Phase 2 loop), `add_note`, `escalate_to`, `set_ticket_field`, `wait_for_event`, `if/else`, and `loop`.
+- Step primitives are shipped for `ask_customer`, `search` (Phase 2 loop), `add_note`, `escalate_to`, `set_ticket_field`, `call_action`, `wait_for_event`, `if/else`, and `loop`.
 - Manual, ticket-created, and triage-category triggers are shipped; trigger event keys dedupe replayed events.
-- `call_action` is intentionally fail-closed until Phase 5 wires real MCP servers and guardrails.
+- `call_action` executes MCP tools through the Phase 5 registry, guardrails, approval gate, and audit trail.
 - GitOps-style publishing is available through `ranse publish <procedure>` using the Git source ref; previous versions stay addressable for in-flight runs.
 - `ranse simulate <procedure>` performs local dry-runs before opening a PR.
 
 ## Phase 5 — MCP-native actions
+**Status: shipped.**
+
 *Principle 4*
 
-- Actions are exclusively MCP tool calls — no bespoke connector framework
-- Workspace registers MCP servers via URL + auth in settings; tool list auto-discovered
-- First-party MCP servers shipped in-repo: Stripe (refunds, sub lookup), Shopify (orders), GitHub, Linear, generic webhook
-- Per-tool guardrails: requires-approval, dollar limits, allowed customer segments, rate limits — enforced in the runner, not by the MCP server
-- Read vs. write distinction surfaced in procedure authoring + audit log
+- Actions are exclusively MCP tool calls — no bespoke connector framework.
+- Workspace registers remote Streamable HTTP MCP servers via URL + auth in settings; tool lists are auto-discovered with `tools/list`.
+- The procedure runner calls `tools/call`, stores every attempt in `mcp_tool_call`, passes an idempotency key in MCP `_meta`, and records audit events for requested, completed, failed, blocked, and rejected calls.
+- Per-tool guardrails are enforced in Ranse before the MCP server is called: requires-approval, rate limits per ticket/hour, dollar limits, allowed customer segments, and disabled tools.
+- Read vs. write distinction is surfaced from MCP tool annotations; read-only tools can run automatically, while unknown/destructive tools default to operator approval.
+- First-party templates are in-repo for Stripe, Shopify, GitHub, Linear, and generic webhook MCP servers so workspaces can register their own protocol-native endpoints without adding connector code to Ranse.
 
 ## Phase 6 — Eval against your own ticket history
 *Principle 5*

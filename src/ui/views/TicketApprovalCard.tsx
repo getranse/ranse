@@ -20,15 +20,30 @@ export function TicketApprovalCard({
   onApprove,
   onReject,
 }: TicketApprovalCardProps) {
-  const proposed = JSON.parse(approval.proposed_json) as ProposedReply;
+  const proposed = JSON.parse(approval.proposed_json) as ProposedReply & Record<string, any>;
   const reasons = JSON.parse(approval.risk_reasons_json) as string[];
+  const isExternalAction = approval.kind === 'call_external' || proposed.kind === 'mcp_tool_call';
   const citedIds = new Set(proposed.cites_knowledge_ids ?? []);
 
   return (
     <div className="approval">
-      <strong>Suggested reply — needs your approval</strong>
+      <strong>{isExternalAction ? 'External action needs your approval' : 'Suggested reply — needs your approval'}</strong>
       {reasons.length > 0 && <div className="risk">Risks: {reasons.join(', ')}</div>}
-      {editing ? (
+      {isExternalAction ? (
+        <div style={{ marginTop: 8 }}>
+          <div>
+            <strong>Tool:</strong> {proposed.server_name}.{proposed.tool_name}
+          </div>
+          {proposed.tool_title && (
+            <div>
+              <strong>Name:</strong> {proposed.tool_title}
+            </div>
+          )}
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)', fontSize: 12, marginTop: 8 }}>
+            {JSON.stringify(proposed.args ?? {}, null, 2)}
+          </pre>
+        </div>
+      ) : editing ? (
         <>
           <div className="field">
             <label>Subject</label>
@@ -64,9 +79,9 @@ export function TicketApprovalCard({
         </>
       )}
       <div className="approval-actions">
-        {!editing && <button onClick={() => onEdit(proposed)}>Edit</button>}
+        {!editing && !isExternalAction && <button onClick={() => onEdit(proposed)}>Edit</button>}
         <button className="primary" onClick={() => onApprove(editing ? edits : undefined)}>
-          Approve & send
+          {isExternalAction ? 'Approve action' : 'Approve & send'}
         </button>
         <button className="danger" onClick={onReject}>
           Reject

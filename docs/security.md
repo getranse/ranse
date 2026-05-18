@@ -42,7 +42,15 @@ Detected auto-replies:
 
 ## Approval gates
 
-Default policy: AI may classify, summarize, search, and draft. It **cannot** send an outbound customer email without an approved `approval_request` row. An operator's approval is recorded with `decided_by_user_id` + `decided_at`; full proposed payload + risk reasons are preserved.
+Default policy: AI may classify, summarize, search, and draft. It **cannot** send an outbound customer email without an approved `approval_request` row. MCP actions follow the same approval model: unknown, write, or destructive tools pause the procedure with `kind = 'call_external'` until an operator approves. An operator's approval is recorded with `decided_by_user_id` + `decided_at`; full proposed payload + risk reasons are preserved.
+
+## MCP action security
+
+- MCP servers must be remote HTTPS endpoints. URLs with credentials, localhost, private IP literals, link-local ranges, and metadata hosts are rejected before persistence.
+- Server auth is stored by reference in the per-workspace `UserSecretsStore`; plaintext bearer tokens and custom header secrets are not written to D1.
+- Tool discovery stores input schema and annotations, including `readOnlyHint` and `destructiveHint`. Ranse defaults unknown or destructive tools to human approval.
+- Guardrails are enforced in the procedure runner before the MCP request leaves Ranse: disabled tools, per-ticket/hour call limits, dollar limits, and allowed customer segments.
+- Every MCP attempt writes a `mcp_tool_call` row plus an audit event. The request includes a Ranse idempotency key in MCP `_meta` so well-behaved tools can suppress duplicate writes.
 
 ## Audit trail
 
@@ -58,6 +66,8 @@ Events are immutable (append-only). D1 TTL is currently unbounded; configure a r
 ## BYOK (per-workspace API keys)
 
 Provider API keys added via **Settings → LLM providers** are stored in a per-workspace `UserSecretsStore` Durable Object, AES-GCM-encrypted with a key derived from `COOKIE_SIGNING_KEY` + the workspace ID. The plaintext is never written to D1 or logs.
+
+MCP server secrets use the same store under `mcp:<serverId>` secret references. D1 stores only the reference, auth type, and optional custom header name.
 
 > **v1 caveat:** server derives the key material, so a Worker operator with access to `COOKIE_SIGNING_KEY` could decrypt stored keys. For stronger isolation, Phase 3 moves to **client-side encryption** (mirrors vibesdk's `UserSecretsStore` design) where the worker never sees plaintext keys except in-flight during a single request.
 

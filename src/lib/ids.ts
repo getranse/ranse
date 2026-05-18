@@ -29,4 +29,7 @@ export const ids = {
   procedureVersion: () => id('pver'),
   procedureRun: () => id('prun'),
   procedureStepRun: () => id('pstp'),
+  mcpServer: () => id('mcp_srv'),
+  mcpTool: () => id('mcp_tool'),
+  mcpToolCall: () => id('mcp_call'),
 };

@@ -73,6 +73,7 @@ export const ProcedureStepSchema: z.ZodType<ProcedureStep> = z.lazy(() =>
       tool: z.string().min(1).max(160),
       args: z.record(z.unknown()).optional(),
       requires_approval: z.boolean().optional(),
+      save_as: pathSchema.optional(),
     }),
     z.object({
       id: stepIdSchema,

@@ -36,11 +36,14 @@ export async function decideApproval(
   approvalId: string,
   decision: 'approved' | 'rejected',
   userId: string,
+  workspaceId?: string,
 ): Promise<{ workspaceId: string; ticketId: string; kind: string; proposed: any } | null> {
   const row = await env.DB.prepare(
-    `SELECT workspace_id, ticket_id, kind, proposed_json, status FROM approval_request WHERE id = ?`,
+    `SELECT workspace_id, ticket_id, kind, proposed_json, status
+       FROM approval_request
+      WHERE id = ? AND (? IS NULL OR workspace_id = ?)`,
   )
-    .bind(approvalId)
+    .bind(approvalId, workspaceId ?? null, workspaceId ?? null)
     .first<{ workspace_id: string; ticket_id: string; kind: string; proposed_json: string; status: string }>();
   if (!row) return null;
   if (row.status !== 'pending') return null;
@@ -54,5 +57,33 @@ export async function decideApproval(
     ticketId: row.ticket_id,
     kind: row.kind,
     proposed: JSON.parse(row.proposed_json),
+  };
+}
+
+export async function getApprovalRequest(
+  env: Env,
+  workspaceId: string,
+  approvalId: string,
+): Promise<{ workspaceId: string; ticketId: string; kind: string; proposed: any; status: string } | null> {
+  const row = await env.DB.prepare(
+    `SELECT workspace_id, ticket_id, kind, proposed_json, status
+       FROM approval_request
+      WHERE id = ? AND workspace_id = ?`,
+  )
+    .bind(approvalId, workspaceId)
+    .first<{
+      workspace_id: string;
+      ticket_id: string;
+      kind: string;
+      proposed_json: string;
+      status: string;
+    }>();
+  if (!row) return null;
+  return {
+    workspaceId: row.workspace_id,
+    ticketId: row.ticket_id,
+    kind: row.kind,
+    proposed: JSON.parse(row.proposed_json),
+    status: row.status,
   };
 }

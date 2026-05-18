@@ -4,6 +4,10 @@ import { ids } from '../lib/ids';
 import { recordOutcome } from '../lib/outcomes';
 import { putRaw, r2Keys } from '../lib/storage';
 import { searchProcedurePrimitive } from '../knowledge';
+import {
+  resumeApprovedMcpProcedureAction,
+  startMcpProcedureAction,
+} from '../mcp/actions';
 import type {
   ProcedureEventType,
   ProcedureRun,
@@ -266,6 +270,9 @@ async function executePrimitive(
 ): Promise<StepExecutionResult> {
   if (existing?.status === 'completed')
     return { status: 'completed', output: safeJson(existing.output_json) };
+  if (existing?.status === 'waiting' && step.type === 'call_action') {
+    return resumeWaitingMcpAction(env, workspaceId, state, step, stepIndex, existing);
+  }
   if (existing?.status === 'waiting') {
     return resumeWaitingPrimitive(state, step, stepIndex, existing);
   }
@@ -357,12 +364,85 @@ async function executePrimitive(
         output: { waits_for: step.event, timeout_ms: step.timeout_ms ?? null },
       };
     case 'call_action':
-      return {
-        status: 'failed',
-        output: { tool: step.tool, requires_approval: step.requires_approval ?? true },
-        error: 'mcp_action_unavailable_until_phase_5',
-      };
+      return executeMcpCallAction(env, workspaceId, state, step, stepIndex);
   }
+}
+
+async function executeMcpCallAction(
+  env: Env,
+  workspaceId: string,
+  state: ExecutionState,
+  step: Extract<ProcedureStep, { type: 'call_action' }>,
+  stepIndex: number,
+): Promise<StepExecutionResult> {
+  const args = asObject(renderValue(step.args ?? {}, state.context));
+  const result = await startMcpProcedureAction(env, workspaceId, {
+    run: state.run,
+    step,
+    stepIndex,
+    args,
+    customerSegment: findCustomerSegment(state.context),
+  });
+  if (result.status === 'waiting') {
+    setPath(state.context, '__procedure.waiting', {
+      step_id: step.id,
+      step_index: stepIndex,
+      event: 'approval_decided',
+      approval_id: result.output.approval_id,
+      tool_call_id: result.output.tool_call_id,
+    });
+    return result;
+  }
+  if (result.status === 'completed') {
+    saveMcpActionOutput(state.context, step, result.output);
+    return result;
+  }
+  return result;
+}
+
+async function resumeWaitingMcpAction(
+  env: Env,
+  workspaceId: string,
+  state: ExecutionState,
+  step: Extract<ProcedureStep, { type: 'call_action' }>,
+  stepIndex: number,
+  existing: ProcedureStepRun,
+): Promise<StepExecutionResult> {
+  const result = await resumeApprovedMcpProcedureAction(env, workspaceId, {
+    run: state.run,
+    event: state.event,
+    waitingOutput: asObject(safeJson(existing.output_json)),
+    currentStep: stepIndex,
+  });
+  if (result.status === 'waiting') return result;
+
+  deletePath(state.context, '__procedure.waiting');
+  setPath(state.context, '__procedure.last_event', {
+    type: state.event?.type ?? 'approval_decided',
+    payload: state.event?.payload ?? {},
+  });
+
+  if (result.status === 'completed') {
+    saveMcpActionOutput(state.context, step, result.output);
+    return result;
+  }
+  return result;
+}
+
+function saveMcpActionOutput(
+  context: Record<string, unknown>,
+  step: Extract<ProcedureStep, { type: 'call_action' }>,
+  output: Record<string, unknown>,
+) {
+  setPath(context, '__procedure.last_action', output);
+  if (step.save_as) setPath(context, step.save_as, output.result ?? output);
+}
+
+function findCustomerSegment(context: Record<string, unknown>): string | null {
+  const fromCustomer = getPath(context, 'customer.segment');
+  if (typeof fromCustomer === 'string' && fromCustomer.trim()) return fromCustomer.trim();
+  const fromTicket = getPath(context, 'ticket.customer_segment');
+  return typeof fromTicket === 'string' && fromTicket.trim() ? fromTicket.trim() : null;
 }
 
 function validateTicketFieldValue(

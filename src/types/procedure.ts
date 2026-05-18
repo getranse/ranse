@@ -54,6 +54,7 @@ export type ProcedureStep =
       tool: string;
       args?: Record<string, unknown>;
       requires_approval?: boolean;
+      save_as?: string;
     }
   | {
       id: string;
