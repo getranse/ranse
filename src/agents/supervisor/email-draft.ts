@@ -1,5 +1,6 @@
 import type { Env } from '../../env';
 import { buildReplyAddress } from '../../email/reply-security';
+import { captureResolvedTicketEvalCase } from '../../evals/capture';
 import { createApproval } from '../../lib/approvals';
 import { audit } from '../../lib/audit';
 import { recordOutcome } from '../../lib/outcomes';
@@ -231,6 +232,9 @@ async function tryAutoSend(
         citesKnowledgeIds: draft.cites_knowledge_ids,
       },
     });
+    await captureResolvedTicketEvalCase(ctx.env, ctx.workspaceId, ticketId).catch((err) =>
+      console.warn('failed to capture autonomous eval case', err),
+    );
     await audit(ctx.env, {
       workspaceId: ctx.workspaceId,
       ticketId,

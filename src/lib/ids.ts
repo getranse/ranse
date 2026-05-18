@@ -32,4 +32,7 @@ export const ids = {
   mcpServer: () => id('mcp_srv'),
   mcpTool: () => id('mcp_tool'),
   mcpToolCall: () => id('mcp_call'),
+  evalCase: () => id('eval_case'),
+  evalRun: () => id('eval_run'),
+  evalResult: () => id('eval_result'),
 };

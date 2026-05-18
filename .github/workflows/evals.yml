@@ -1,0 +1,38 @@
+name: Evals
+
+on:
+  pull_request:
+    paths:
+      - "procedures/**"
+      - "src/agents/specialists/**"
+      - "src/agents/supervisor/**"
+      - "src/evals/**"
+      - "src/llm/**"
+      - "src/procedures/**"
+      - "scripts/ranse.ts"
+      - ".github/workflows/evals.yml"
+
+jobs:
+  procedure-evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - name: Run procedure evals
+        run: |
+          shopt -s nullglob
+          for file in procedures/*.yaml procedures/*.yml procedures/*.json; do
+            bun scripts/ranse.ts eval "$file"
+          done
+      - name: Run hosted historical evals when configured
+        env:
+          RANSE_APP_URL: ${{ secrets.RANSE_APP_URL }}
+          RANSE_COOKIE: ${{ secrets.RANSE_COOKIE }}
+        run: |
+          if [ -n "$RANSE_APP_URL" ] && [ -n "$RANSE_COOKIE" ]; then
+            bun scripts/ranse.ts eval --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --ci
+          else
+            echo "::notice::Set RANSE_APP_URL and RANSE_COOKIE secrets to gate PRs on hosted historical evals."
+          fi

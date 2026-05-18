@@ -1,4 +1,5 @@
 import type { Env } from '../../env';
+import { captureResolvedTicketEvalCase } from '../../evals/capture';
 import { audit } from '../../lib/audit';
 import { ids } from '../../lib/ids';
 import { listTicketFeedback, listTicketOutcomes, recordTicketFeedback } from '../../lib/outcomes';
@@ -111,6 +112,11 @@ export async function setTicketStatus(
     actorId: args.actorUserId,
     action: `ticket.${args.status}`,
   });
+  if (args.status === 'resolved' || args.status === 'closed') {
+    await captureResolvedTicketEvalCase(env, workspaceId, args.ticketId, {
+      actorUserId: args.actorUserId,
+    }).catch((err) => console.warn('failed to capture resolved ticket eval case', err));
+  }
   await refreshCounts();
 }
 

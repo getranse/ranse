@@ -8,6 +8,7 @@ import { WorkspacePlatformSection } from './WorkspacePlatformSection';
 import { ModelSettingsSection } from './ModelSettingsSection';
 import { McpActionsSection } from './McpActionsSection';
 import { ProceduresSection } from './ProceduresSection';
+import { EvalsSection } from './EvalsSection';
 
 const PROVIDERS = ['openai', 'anthropic', 'google-ai-studio', 'grok', 'openrouter'];
 
@@ -245,6 +246,8 @@ export function SettingsView() {
       <ProceduresSection onSaved={flashSaved} />
 
       <McpActionsSection onSaved={flashSaved} />
+
+      <EvalsSection onSaved={flashSaved} />
 
       <NotificationsSection onSaved={flashSaved} />
       <WorkspacePlatformSection onSaved={flashSaved} />

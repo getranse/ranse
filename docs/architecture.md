@@ -52,7 +52,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -100,6 +100,31 @@ ProcedureRunnerAgent
 ```
 
 MCP server secrets are stored in `UserSecretsStore` under `mcp:<serverId>`. D1 stores endpoint metadata, discovered tool schemas, annotations, guardrail configuration, and immutable call records.
+
+## Eval flow
+
+```
+Ticket is resolved
+  ├─ setTicketStatus(resolved|closed), autonomous outcome, or procedure status step
+  ├─ captureResolvedTicketEvalCase
+  │    ├─ load ticket + inbound/outbound transcript
+  │    ├─ anonymize email, phone, and requester-name fields
+  │    ├─ reject capture if residual PII remains
+  │    └─ upsert eval_case(source = resolved_ticket)
+  └─ audit eval.case_captured
+
+ranse eval / Settings -> Evals
+  ├─ create eval_run
+  ├─ for each active eval_case
+  │    ├─ agenticSearchKnowledge with current retrieval prompts/config
+  │    ├─ runDraft with current draft prompt/model config
+  │    ├─ score reply overlap, required terms, confidence signals
+  │    ├─ compare against latest prior baseline result
+  │    └─ insert eval_result
+  └─ mark eval_run passed/failed
+```
+
+Procedure evals are local and deterministic. `ranse eval <procedure-file>` loads the spec, runs each inline `evals[]` case through `simulateProcedure`, and checks expected status, context paths, and step order before a PR is merged.
 
 ## Scaling model
 

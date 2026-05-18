@@ -37,6 +37,29 @@ Operational checks:
 - Use per-ticket and per-hour limits to protect internal systems from procedure loops.
 - Inspect `mcp_tool_call` for action history and `audit_event` actions prefixed with `mcp.tool_call_` for timeline-level observability.
 
+## Historical evals
+
+Resolved tickets are the regression suite. When an operator marks a ticket `resolved` or `closed`, an autonomous reply records a resolved outcome, or a procedure resolves a ticket, Ranse captures the inbound/outbound transcript into an anonymized `eval_case` if the conversation has both a customer message and a support reply. Operators can also backfill recent cases from **Settings → Evals**.
+
+Capture fails closed if the anonymized payload still contains residual non-placeholder email, phone, or requester-name data. No eval case is written until the redaction rules are safe for that conversation.
+
+CLI workflow:
+
+```bash
+# Run inline evals shipped alongside a procedure spec
+bun scripts/ranse.ts eval procedures/refund-intake.yaml
+
+# Backfill resolved conversations from a deployed workspace
+bun scripts/ranse.ts eval capture-resolved --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --limit 100
+
+# Replay active historical cases through current retrieval + drafting
+bun scripts/ranse.ts eval --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --threshold 0.35 --score-drop 0.15 --ci
+```
+
+Eval runs write `eval_run` and `eval_result` rows with assertion details. A run fails when any active case fails or regresses. `regression_count` is reserved for cases with a prior baseline that got worse: previous pass → current fail, or a score drop larger than the configured threshold. Archive noisy cases from **Settings → Evals** instead of deleting them.
+
+The bundled GitHub Actions workflow always runs procedure evals for relevant PRs; set `RANSE_APP_URL` and `RANSE_COOKIE` repository secrets to make hosted historical replay part of the gate.
+
 ## Escalations
 
 The `EscalationAgent` runs on demand. It returns `{ should_escalate, severity, route_to }` and the operator (or an automation rule) picks the handoff target.
