@@ -1,6 +1,10 @@
 import type { McpDiscoveredTool, McpServer } from '../types/mcp';
 
 export const MCP_PROTOCOL_VERSION = '2025-11-25';
+export const SUPPORTED_MCP_PROTOCOL_VERSIONS = [MCP_PROTOCOL_VERSION, '2025-06-18'] as const;
+
+const DEFAULT_MCP_HTTP_TIMEOUT_MS = 30_000;
+const MAX_MCP_RESPONSE_BYTES = 1_000_000;
 
 interface JsonRpcSuccess<T = unknown> {
   jsonrpc: '2.0';
@@ -19,6 +23,7 @@ type JsonRpcResponse<T = unknown> = JsonRpcSuccess<T> | JsonRpcFailure;
 export interface McpClientOptions {
   fetchImpl?: typeof fetch;
   authSecret?: string | null;
+  timeoutMs?: number;
 }
 
 export interface McpToolCallResult {
@@ -33,6 +38,7 @@ interface McpSession {
   headers: Headers;
   sessionId: string | null;
   fetchImpl: typeof fetch;
+  timeoutMs: number;
 }
 
 export async function listRemoteMcpTools(
@@ -79,6 +85,7 @@ async function initializeMcpSession(
     headers,
     sessionId: null,
     fetchImpl,
+    timeoutMs: options.timeoutMs ?? DEFAULT_MCP_HTTP_TIMEOUT_MS,
   };
   const response = await postJson(session, {
     jsonrpc: '2.0',
@@ -97,6 +104,9 @@ async function initializeMcpSession(
     serverInfo?: { name?: string; version?: string };
   }>(response);
   if (!body.protocolVersion) throw new Error('mcp_initialize_missing_protocol_version');
+  if (!SUPPORTED_MCP_PROTOCOL_VERSIONS.includes(body.protocolVersion as any)) {
+    throw new Error(`mcp_protocol_version_unsupported:${body.protocolVersion}`);
+  }
 
   await postJson(session, {
     jsonrpc: '2.0',
@@ -119,22 +129,32 @@ async function rpc<T>(session: McpSession, method: string, params: Record<string
 async function postJson(session: McpSession, body: Record<string, unknown>): Promise<Response> {
   const headers = new Headers(session.headers);
   if (session.sessionId) headers.set('Mcp-Session-Id', session.sessionId);
-  const response = await session.fetchImpl(session.endpointUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-  if (!response.ok && response.status !== 202) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`mcp_http_${response.status}${detail ? `:${detail.slice(0, 200)}` : ''}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), session.timeoutMs);
+  try {
+    const response = await session.fetchImpl(session.endpointUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!response.ok && response.status !== 202) {
+      const detail = await safeReadResponseText(response);
+      throw new Error(`mcp_http_${response.status}${detail ? `:${detail.slice(0, 200)}` : ''}`);
+    }
+    return response;
+  } catch (err) {
+    if (controller.signal.aborted) throw new Error('mcp_http_timeout');
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response;
 }
 
 async function parseMcpResponse<T>(response: Response): Promise<T> {
   if (response.status === 202 || response.status === 204) return {} as T;
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-  const text = await response.text();
+  const text = await safeReadResponseText(response);
   const parsed = contentType.includes('text/event-stream') ? parseSseJsonRpc(text) : JSON.parse(text);
   const item = Array.isArray(parsed) ? parsed.find((entry) => entry?.id !== undefined) : parsed;
   if (!item || typeof item !== 'object') throw new Error('mcp_invalid_json_rpc_response');
@@ -143,6 +163,16 @@ async function parseMcpResponse<T>(response: Response): Promise<T> {
     throw new Error(`mcp_rpc_error:${responseBody.error.code}:${responseBody.error.message}`);
   }
   return responseBody.result;
+}
+
+async function safeReadResponseText(response: Response): Promise<string> {
+  const contentLength = Number(response.headers.get('content-length') ?? '0');
+  if (contentLength > MAX_MCP_RESPONSE_BYTES) throw new Error('mcp_response_too_large');
+  const text = await response.text();
+  if (new TextEncoder().encode(text).byteLength > MAX_MCP_RESPONSE_BYTES) {
+    throw new Error('mcp_response_too_large');
+  }
+  return text;
 }
 
 function parseSseJsonRpc(text: string): unknown {

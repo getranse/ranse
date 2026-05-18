@@ -30,6 +30,8 @@ Register MCP servers in **Settings → MCP actions**. Endpoints must be HTTPS an
 
 Operational checks:
 
+- Rediscovery reconciles the catalog with the server's current `tools/list` response; removed tools disappear from authoring and future runs fail closed.
+- MCP HTTP requests have bounded time and response-size limits. Investigate repeated `mcp_http_timeout` or `mcp_response_too_large` failures as server health or contract issues.
 - Keep destructive tools on the default approval policy unless the MCP server provides its own idempotency and rollback guarantees.
 - Set dollar limits for refund/payment tools; if a configured limit cannot find an amount in the tool arguments, Ranse blocks the call.
 - Use per-ticket and per-hour limits to protect internal systems from procedure loops.

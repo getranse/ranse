@@ -295,8 +295,10 @@ export async function upsertDiscoveredMcpTools(
   tools: McpDiscoveredTool[],
 ): Promise<McpTool[]> {
   const now = Date.now();
+  const discoveredNames: string[] = [];
   for (const tool of tools) {
     if (!tool.name || typeof tool.name !== 'string') continue;
+    discoveredNames.push(tool.name);
     const annotations = asObject(tool.annotations);
     const readOnlyHint = typeof annotations.readOnlyHint === 'boolean' ? annotations.readOnlyHint : null;
     const destructiveHint =
@@ -330,8 +332,30 @@ export async function upsertDiscoveredMcpTools(
       )
       .run();
   }
+  await deleteStaleMcpTools(env, workspaceId, serverId, discoveredNames);
   await updateMcpServerDiscoveryState(env, workspaceId, serverId, { ok: true, discoveredAt: now });
   return listMcpTools(env, workspaceId, serverId);
+}
+
+async function deleteStaleMcpTools(
+  env: Env,
+  workspaceId: string,
+  serverId: string,
+  discoveredNames: string[],
+): Promise<void> {
+  if (discoveredNames.length === 0) {
+    await env.DB.prepare(`DELETE FROM mcp_tool WHERE workspace_id = ? AND server_id = ?`)
+      .bind(workspaceId, serverId)
+      .run();
+    return;
+  }
+  const placeholders = discoveredNames.map(() => '?').join(',');
+  await env.DB.prepare(
+    `DELETE FROM mcp_tool
+      WHERE workspace_id = ? AND server_id = ? AND name NOT IN (${placeholders})`,
+  )
+    .bind(workspaceId, serverId, ...discoveredNames)
+    .run();
 }
 
 export async function getMcpToolGuardrail(

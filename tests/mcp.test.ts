@@ -114,6 +114,74 @@ describe('MCP client', () => {
     );
     expect(initialized?.[1].headers.get('mcp-session-id')).toBe('sess_1');
   });
+
+  it('rejects unsupported protocol versions during initialization', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body ?? '{}'));
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: { protocolVersion: '2024-01-01', capabilities: {}, serverInfo: {} },
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      );
+    }) as any;
+
+    await expect(
+      listRemoteMcpTools(
+        {
+          id: 'srv_1',
+          workspace_id: 'ws_a',
+          name: 'billing',
+          endpoint_url: 'https://mcp.example.com/mcp',
+          auth_type: 'none',
+          auth_header_name: null,
+          secret_ref: null,
+          enabled: 1,
+          last_discovered_at: null,
+          last_error: null,
+          created_at: 1,
+          updated_at: 1,
+        },
+        { fetchImpl },
+      ),
+    ).rejects.toThrow('mcp_protocol_version_unsupported');
+  });
+
+  it('rejects oversized MCP responses before parsing JSON-RPC', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body ?? '{}'));
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: { protocolVersion: '2025-11-25', capabilities: {}, serverInfo: {} },
+        }),
+        { headers: { 'content-type': 'application/json', 'content-length': '1000001' } },
+      );
+    }) as any;
+
+    await expect(
+      listRemoteMcpTools(
+        {
+          id: 'srv_1',
+          workspace_id: 'ws_a',
+          name: 'billing',
+          endpoint_url: 'https://mcp.example.com/mcp',
+          auth_type: 'none',
+          auth_header_name: null,
+          secret_ref: null,
+          enabled: 1,
+          last_discovered_at: null,
+          last_error: null,
+          created_at: 1,
+          updated_at: 1,
+        },
+        { fetchImpl },
+      ),
+    ).rejects.toThrow('mcp_response_too_large');
+  });
 });
 
 describe('MCP procedure actions', () => {
@@ -304,6 +372,28 @@ describe('MCP procedure actions', () => {
       preview: 'Plan: enterprise',
     });
     vi.unstubAllGlobals();
+  });
+
+  it('removes stale tools when rediscovery no longer returns them', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    const server = await createMcpServer(env, {
+      workspaceId: 'ws_a',
+      name: 'billing',
+      endpointUrl: 'https://mcp.example.com/mcp',
+    });
+    await upsertDiscoveredMcpTools(env, 'ws_a', server.id, [
+      { name: 'customers.lookup', annotations: { readOnlyHint: true } },
+      { name: 'refunds.create', annotations: { destructiveHint: true } },
+    ]);
+
+    await upsertDiscoveredMcpTools(env, 'ws_a', server.id, [
+      { name: 'customers.lookup', annotations: { readOnlyHint: true } },
+    ]);
+
+    expect(db.prepare(`SELECT name FROM mcp_tool ORDER BY name`).all()).toEqual([
+      { name: 'customers.lookup' },
+    ]);
   });
 });
 
