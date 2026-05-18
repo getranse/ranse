@@ -6,6 +6,7 @@ import {
   generateKbSuggestions,
   getInsightSummary,
   scoreConversation,
+  updateKbSuggestionStatus,
 } from '../src/insights';
 import {
   addMember,
@@ -138,12 +139,65 @@ describe('insights', () => {
 
     const generated = await generateKbSuggestions(env, 'ws_a');
     const accepted = await acceptKbSuggestion(env, 'ws_a', generated.suggestions[0].id, 'usr_a');
+    const acceptedAgain = await acceptKbSuggestion(
+      env,
+      'ws_a',
+      generated.suggestions[0].id,
+      'usr_a',
+    );
 
     expect(generated.generated).toBe(1);
+    expect(generated.suggestions[0].evidence_count).toBe(2);
+    expect(generated.suggestions[0].confidence_score).toBeGreaterThan(0.7);
     expect(generated.suggestions[0].source_ticket_ids_json).toContain('tkt_unanswered_1');
     expect(accepted?.sourceId).toMatch(/^ksrc_/);
+    expect(acceptedAgain?.sourceId).toBe(accepted?.sourceId);
     expect(db.prepare(`SELECT status FROM kb_suggestion`).get()).toEqual({ status: 'accepted' });
+    expect(db.prepare(`SELECT accepted_source_id FROM kb_suggestion`).get()).toEqual({
+      accepted_source_id: accepted?.sourceId,
+    });
     expect(db.prepare(`SELECT COUNT(*) AS n FROM knowledge_source`).get()).toEqual({ n: 1 });
+  });
+
+  it('does not generate KB suggestions from thin single-ticket evidence', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    seedMailbox(db, 'ws_a', 'mb_a', 'support@example.com');
+    seedTicket(db, {
+      id: 'tkt_one_off',
+      status: 'open',
+      subject: 'One off custom invoice memo',
+      category: 'billing',
+    });
+
+    const generated = await generateKbSuggestions(env, 'ws_a');
+
+    expect(generated.generated).toBe(0);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM kb_suggestion`).get()).toEqual({ n: 0 });
+  });
+
+  it('keeps accepted KB suggestions terminal for status updates', async () => {
+    const { db, env } = createWorkspaceTestDb();
+    seedWorkspace(db, 'ws_a', 'Alpha');
+    seedMailbox(db, 'ws_a', 'mb_a', 'support@example.com');
+    seedTicket(db, {
+      id: 'tkt_terminal_1',
+      status: 'open',
+      subject: 'Need invoice credit for subscription',
+      category: 'billing',
+    });
+    seedTicket(db, {
+      id: 'tkt_terminal_2',
+      status: 'open',
+      subject: 'Subscription invoice credit request',
+      category: 'billing',
+    });
+    const generated = await generateKbSuggestions(env, 'ws_a');
+    await acceptKbSuggestion(env, 'ws_a', generated.suggestions[0].id, 'usr_a');
+
+    await expect(
+      updateKbSuggestionStatus(env, 'ws_a', generated.suggestions[0].id, 'dismissed', 'usr_a'),
+    ).rejects.toThrow('kb_suggestion_accepted');
   });
 
   it('detects knowledge drift from successful replies', async () => {
@@ -172,6 +226,20 @@ describe('insights', () => {
         direction: 'outbound',
         preview: 'We applied a subscription invoice credit and adjusted the renewal invoice.',
       });
+      db.prepare(
+        `INSERT INTO approval_request (
+          id, workspace_id, ticket_id, kind, status, proposed_json, risk_reasons_json, created_at
+        ) VALUES (?, 'ws_a', ?, 'draft_reply', 'approved', ?, '[]', ?)`,
+      ).run(`apr_${id}`, id, JSON.stringify({ cites_knowledge_ids: ['kchk_policy'] }), Date.now());
+    }
+    for (const id of ['tkt_unrelated_1', 'tkt_unrelated_2']) {
+      seedTicket(db, { id, status: 'resolved', subject: 'Shipping help' });
+      seedMessage(db, {
+        id: `msg_${id}`,
+        ticketId: id,
+        direction: 'outbound',
+        preview: 'Warehouse dispatch tracking labels carrier pickup manifest.',
+      });
     }
 
     const result = await detectKnowledgeDrift(env, 'ws_a');
@@ -179,6 +247,7 @@ describe('insights', () => {
     expect(result.detected).toBe(1);
     expect(result.signals[0].severity).toBe('medium');
     expect(result.signals[0].divergence_terms_json).toContain('subscription');
+    expect(result.signals[0].divergence_terms_json).not.toContain('warehouse');
   });
 
   it('protects insight APIs behind workspace admin roles', async () => {

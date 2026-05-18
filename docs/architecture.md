@@ -153,8 +153,8 @@ The built-in catalog is code, not database state, so deploys carry the exact pro
 Weekly cron / manual refresh
   ├─ score recent tickets on groundedness, tone, resolution, and customer effort
   ├─ aggregate resolution, follow-up, feedback, unresolved-intent, and procedure-latency metrics
-  ├─ cluster unresolved conversations into reviewable KB article suggestions
-  └─ compare used KB sources against successful replies for drift signals
+  ├─ cluster repeated unresolved conversations into confidence-scored KB article suggestions
+  └─ compare cited KB sources against successful replies for source-specific drift signals
 
 Insights page
   ├─ POST /api/insights/scores/run
@@ -163,7 +163,7 @@ Insights page
   └─ POST /api/insights/drift/run
 ```
 
-Suggestions are review records, not automatic content edits. Accepting one publishes a manual knowledge source through the same ingestion path as the Content Library, preserving the human-review boundary.
+Suggestions are review records, not automatic content edits. They require repeated unresolved-ticket evidence, store confidence and source-ticket lineage, and accepted suggestions become terminal records linked to the manual knowledge source created through the same ingestion path as the Content Library.
 
 ## Scaling model
 

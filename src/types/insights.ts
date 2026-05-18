@@ -57,8 +57,13 @@ export interface KbSuggestion {
   body_markdown: string;
   source_ticket_ids_json: string;
   suggested_terms_json: string;
+  evidence_count: number;
+  confidence_score: number;
   status: KbSuggestionStatus;
   source: string;
+  accepted_source_id: string | null;
+  accepted_by_user_id: string | null;
+  accepted_at: number | null;
   created_at: number;
   updated_at: number;
 }

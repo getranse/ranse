@@ -59,15 +59,22 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
   apiApp.patch('/insights/kb-suggestions/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const body = suggestionStatusSchema.parse(await c.req.json());
-    const suggestion = await updateKbSuggestionStatus(
-      c.env,
-      s.workspaceId,
-      c.req.param('id'),
-      body.status,
-      s.userId,
-    );
-    if (!suggestion) return apiError(c, 'not_found', 'Suggestion not found.');
-    return c.json({ suggestion });
+    try {
+      const suggestion = await updateKbSuggestionStatus(
+        c.env,
+        s.workspaceId,
+        c.req.param('id'),
+        body.status,
+        s.userId,
+      );
+      if (!suggestion) return apiError(c, 'not_found', 'Suggestion not found.');
+      return c.json({ suggestion });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'kb_suggestion_accepted') {
+        return apiError(c, 'conflict', 'Accepted suggestions cannot be changed.', 409);
+      }
+      throw err;
+    }
   });
 
   apiApp.post(

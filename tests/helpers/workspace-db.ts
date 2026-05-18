@@ -401,8 +401,13 @@ export function createWorkspaceTestDb() {
       body_markdown TEXT NOT NULL,
       source_ticket_ids_json TEXT NOT NULL DEFAULT '[]',
       suggested_terms_json TEXT NOT NULL DEFAULT '[]',
+      evidence_count INTEGER NOT NULL DEFAULT 0,
+      confidence_score REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'open',
       source TEXT NOT NULL DEFAULT 'unresolved_cluster',
+      accepted_source_id TEXT,
+      accepted_by_user_id TEXT,
+      accepted_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       UNIQUE(workspace_id, cluster_key)

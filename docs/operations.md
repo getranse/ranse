@@ -80,7 +80,7 @@ The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.jso
 
 Owners and admins can open **Insights** to refresh conversation scores, unresolved-intent KB suggestions, and knowledge drift signals. The weekly cron `17 3 * * 1` runs the same maintenance loop automatically inside the worker.
 
-Accepted KB suggestions are published as manual knowledge sources. Dismissed suggestions and resolved drift signals remain in D1 for auditability instead of being deleted.
+KB suggestions are generated only from repeated unresolved-ticket clusters and include evidence count, confidence, suggested terms, and source-ticket IDs. Accepted suggestions are idempotently published as manual knowledge sources, linked back through `accepted_source_id`, and then treated as terminal audit records. Dismissed suggestions and resolved drift signals remain in D1 for auditability instead of being deleted.
 
 ## Escalations
 

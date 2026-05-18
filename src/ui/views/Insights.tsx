@@ -121,7 +121,9 @@ export function InsightsView() {
                 <div>
                   <div style={{ fontWeight: 500 }}>{item.title}</div>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    {item.summary} · {jsonArray(item.source_ticket_ids_json).length} tickets
+                    {item.summary} ·{' '}
+                    {item.evidence_count || jsonArray(item.source_ticket_ids_json).length} tickets ·{' '}
+                    {score(item.confidence_score)} confidence
                   </div>
                 </div>
                 <div className="source-actions">

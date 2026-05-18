@@ -21,9 +21,14 @@ const STOP_WORDS = new Set([
   'before',
   'could',
   'customer',
+  'does',
+  'done',
+  'for',
   'from',
+  'get',
   'have',
   'help',
+  'how',
   'into',
   'just',
   'need',
@@ -37,9 +42,16 @@ const STOP_WORDS = new Set([
   'there',
   'this',
   'ticket',
+  'what',
+  'when',
+  'where',
   'with',
   'your',
 ]);
+
+const MIN_SUGGESTION_TICKETS = 2;
+const MIN_DRIFT_REPLIES = 2;
+const MAX_SOURCE_CHUNKS_FOR_LINEAGE = 50;
 
 interface TicketRow {
   id: string;
@@ -344,7 +356,7 @@ export async function generateKbSuggestions(
     }>();
   const idsByIntent = new Map<string, Array<{ id: string; subject: string }>>();
   for (const ticket of tickets.results ?? []) {
-    const intent = ticket.category?.trim() || inferIntent(ticket.subject);
+    const intent = inferTicketIntent(ticket.category, ticket.subject);
     if (!intent) continue;
     const rows = idsByIntent.get(intent) ?? [];
     rows.push({ id: ticket.id, subject: ticket.subject });
@@ -352,13 +364,23 @@ export async function generateKbSuggestions(
   }
 
   const suggestions: KbSuggestion[] = [];
-  for (const [intent, rows] of [...idsByIntent.entries()].slice(0, 10)) {
+  const eligibleClusters = [...idsByIntent.entries()]
+    .filter(([, rows]) => rows.length >= MIN_SUGGESTION_TICKETS)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+    .slice(0, 10);
+  for (const [intent, rows] of eligibleClusters) {
     const clusterKey = `unresolved:${await sha256Hex(intent.toLowerCase())}`;
     const sourceTicketIds = rows.slice(0, 20).map((row) => row.id);
     const terms = topTerms(rows.map((row) => row.subject).join(' '), 12);
+    const confidence = suggestionConfidence(rows.length, terms.length);
     const title = `Document ${humanizeIntent(intent)}`;
     const body = [
       `# ${title}`,
+      '',
+      '## Evidence',
+      `- Unresolved conversations: ${rows.length}`,
+      `- Suggested terms: ${terms.join(', ') || 'none'}`,
+      `- Confidence: ${Math.round(confidence * 100)}%`,
       '',
       '## Customer questions to cover',
       ...rows.slice(0, 6).map((row) => `- ${row.subject}`),
@@ -376,6 +398,7 @@ export async function generateKbSuggestions(
       body,
       sourceTicketIds,
       terms,
+      confidence,
     });
     const suggestion = await getKbSuggestionByCluster(env, workspaceId, clusterKey);
     if (suggestion?.status === 'open') suggestions.push(suggestion);
@@ -401,9 +424,14 @@ export async function updateKbSuggestionStatus(
   env: Env,
   workspaceId: string,
   suggestionId: string,
-  status: KbSuggestionStatus,
+  status: Exclude<KbSuggestionStatus, 'accepted'>,
   actorUserId?: string,
 ): Promise<KbSuggestion | null> {
+  const current = await getKbSuggestion(env, workspaceId, suggestionId);
+  if (!current) return null;
+  if (current.status === 'accepted') {
+    throw new Error('kb_suggestion_accepted');
+  }
   await env.DB.prepare(
     `UPDATE kb_suggestion SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
   )
@@ -430,19 +458,30 @@ export async function acceptKbSuggestion(
 ): Promise<{ suggestion: KbSuggestion; sourceId: string } | null> {
   const suggestion = await getKbSuggestion(env, workspaceId, suggestionId);
   if (!suggestion) return null;
+  if (suggestion.status === 'accepted' && suggestion.accepted_source_id) {
+    return { suggestion, sourceId: suggestion.accepted_source_id };
+  }
   if (suggestion.status !== 'open') throw new Error('kb_suggestion_not_open');
+  const sourceId = sourceIdForSuggestion(suggestion.id);
   const result = await ingestKnowledgeSource(env, workspaceId, {
     kind: 'manual',
     title: suggestion.title,
     body: suggestion.body_markdown,
+    sourceId,
   });
-  const updated = await updateKbSuggestionStatus(
-    env,
-    workspaceId,
-    suggestionId,
-    'accepted',
-    actorUserId,
-  );
+  const now = Date.now();
+  await env.DB.prepare(
+    `UPDATE kb_suggestion
+        SET status = 'accepted',
+            accepted_source_id = ?,
+            accepted_by_user_id = ?,
+            accepted_at = ?,
+            updated_at = ?
+      WHERE id = ? AND workspace_id = ?`,
+  )
+    .bind(result.sourceId, actorUserId ?? null, now, now, suggestionId, workspaceId)
+    .run();
+  const updated = await getKbSuggestion(env, workspaceId, suggestionId);
   await audit(env, {
     workspaceId,
     actorType: actorUserId ? 'user' : 'system',
@@ -457,25 +496,30 @@ export async function detectKnowledgeDrift(
   env: Env,
   workspaceId: string,
 ): Promise<{ detected: number; signals: KnowledgeDriftSignal[] }> {
-  const [sources, replies] = await Promise.all([
-    env.DB.prepare(
-      `SELECT s.id, s.title, COALESCE(SUM(c.used_in_answers_count), 0) AS used_count
-         FROM knowledge_source s
-         LEFT JOIN knowledge_chunk c ON c.source_id = s.id AND c.workspace_id = s.workspace_id
-        WHERE s.workspace_id = ? AND s.status = 'ready'
-        GROUP BY s.id
-        HAVING COALESCE(SUM(c.used_in_answers_count), 0) > 0
-        ORDER BY used_count DESC, s.updated_at DESC LIMIT 50`,
-    )
-      .bind(workspaceId)
-      .all<{ id: string; title: string; used_count: number }>(),
-    successfulReplyCorpus(env, workspaceId),
-  ]);
-  const replyTerms = termCounts(replies.map((reply) => reply.preview).join(' '));
+  const sources = await env.DB.prepare(
+    `SELECT s.id, s.title, COALESCE(SUM(c.used_in_answers_count), 0) AS used_count
+       FROM knowledge_source s
+       LEFT JOIN knowledge_chunk c ON c.source_id = s.id AND c.workspace_id = s.workspace_id
+      WHERE s.workspace_id = ? AND s.status = 'ready'
+      GROUP BY s.id
+      HAVING COALESCE(SUM(c.used_in_answers_count), 0) > 0
+      ORDER BY used_count DESC, s.updated_at DESC LIMIT 50`,
+  )
+    .bind(workspaceId)
+    .all<{ id: string; title: string; used_count: number }>();
   const signals: KnowledgeDriftSignal[] = [];
   for (const source of sources.results ?? []) {
-    const sourceBody = await sourceBodyFromChunks(env, workspaceId, source.id);
+    const sourceChunks = await sourceChunksForDrift(env, workspaceId, source.id);
+    const sourceBody = sourceChunks.map((chunk) => chunk.body).join('\n\n');
     if (!sourceBody.trim()) continue;
+    const citedTicketIds = await citedTicketIdsForSource(
+      env,
+      workspaceId,
+      sourceChunks.map((chunk) => chunk.id),
+    );
+    const replies = await successfulReplyCorpus(env, workspaceId, citedTicketIds);
+    if (replies.length < MIN_DRIFT_REPLIES) continue;
+    const replyTerms = termCounts(replies.map((reply) => reply.preview).join(' '));
     const sourceTerms = new Set(topTerms(sourceBody, 200));
     const divergent = [...replyTerms.entries()]
       .filter(([term, count]) => count >= 2 && !sourceTerms.has(term))
@@ -662,20 +706,24 @@ async function upsertKbSuggestion(
     body: string;
     sourceTicketIds: string[];
     terms: string[];
+    confidence: number;
   },
 ): Promise<void> {
   const now = Date.now();
   await env.DB.prepare(
     `INSERT INTO kb_suggestion (
        id, workspace_id, cluster_key, title, summary, body_markdown,
-       source_ticket_ids_json, suggested_terms_json, status, source, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', 'unresolved_cluster', ?, ?)
+       source_ticket_ids_json, suggested_terms_json, evidence_count, confidence_score,
+       status, source, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 'unresolved_cluster', ?, ?)
      ON CONFLICT(workspace_id, cluster_key) DO UPDATE SET
        title = CASE WHEN kb_suggestion.status = 'open' THEN excluded.title ELSE kb_suggestion.title END,
        summary = CASE WHEN kb_suggestion.status = 'open' THEN excluded.summary ELSE kb_suggestion.summary END,
        body_markdown = CASE WHEN kb_suggestion.status = 'open' THEN excluded.body_markdown ELSE kb_suggestion.body_markdown END,
        source_ticket_ids_json = CASE WHEN kb_suggestion.status = 'open' THEN excluded.source_ticket_ids_json ELSE kb_suggestion.source_ticket_ids_json END,
        suggested_terms_json = CASE WHEN kb_suggestion.status = 'open' THEN excluded.suggested_terms_json ELSE kb_suggestion.suggested_terms_json END,
+       evidence_count = CASE WHEN kb_suggestion.status = 'open' THEN excluded.evidence_count ELSE kb_suggestion.evidence_count END,
+       confidence_score = CASE WHEN kb_suggestion.status = 'open' THEN excluded.confidence_score ELSE kb_suggestion.confidence_score END,
        updated_at = CASE WHEN kb_suggestion.status = 'open' THEN excluded.updated_at ELSE kb_suggestion.updated_at END`,
   )
     .bind(
@@ -687,6 +735,8 @@ async function upsertKbSuggestion(
       input.body,
       JSON.stringify(input.sourceTicketIds),
       JSON.stringify(input.terms),
+      input.sourceTicketIds.length,
+      input.confidence,
       now,
       now,
     )
@@ -716,7 +766,12 @@ async function getKbSuggestion(
 async function successfulReplyCorpus(
   env: Env,
   workspaceId: string,
+  ticketIds?: string[],
 ): Promise<Array<{ ticket_id: string; preview: string }>> {
+  if (ticketIds && ticketIds.length === 0) return [];
+  const ticketFilter = ticketIds?.length
+    ? `AND t.id IN (${ticketIds.map(() => '?').join(',')})`
+    : '';
   const rows = await env.DB.prepare(
     `SELECT DISTINCT t.id AS ticket_id, m.preview
        FROM ticket t
@@ -726,6 +781,7 @@ async function successfulReplyCorpus(
       WHERE t.workspace_id = ?
         AND m.direction = 'outbound'
         AND m.preview IS NOT NULL
+        ${ticketFilter}
         AND (
           t.status IN ('resolved','closed')
           OR f.rating = 'positive'
@@ -733,22 +789,43 @@ async function successfulReplyCorpus(
         )
       ORDER BY m.sent_at DESC LIMIT 100`,
   )
-    .bind(workspaceId)
+    .bind(workspaceId, ...(ticketIds ?? []))
     .all<{ ticket_id: string; preview: string }>();
   return rows.results ?? [];
 }
 
-async function sourceBodyFromChunks(
+async function sourceChunksForDrift(
   env: Env,
   workspaceId: string,
   sourceId: string,
-): Promise<string> {
+): Promise<Array<{ id: string; body: string }>> {
   const rows = await env.DB.prepare(
-    `SELECT body FROM knowledge_chunk WHERE workspace_id = ? AND source_id = ? ORDER BY ordinal ASC`,
+    `SELECT id, body FROM knowledge_chunk WHERE workspace_id = ? AND source_id = ? ORDER BY ordinal ASC`,
   )
     .bind(workspaceId, sourceId)
-    .all<{ body: string }>();
-  return (rows.results ?? []).map((row) => row.body).join('\n\n');
+    .all<{ id: string; body: string }>();
+  return rows.results ?? [];
+}
+
+async function citedTicketIdsForSource(
+  env: Env,
+  workspaceId: string,
+  chunkIds: string[],
+): Promise<string[]> {
+  const lineageIds = chunkIds.slice(0, MAX_SOURCE_CHUNKS_FOR_LINEAGE);
+  if (lineageIds.length === 0) return [];
+  const conditions = lineageIds.map(() => `proposed_json LIKE ? ESCAPE '\\'`).join(' OR ');
+  const rows = await env.DB.prepare(
+    `SELECT DISTINCT ticket_id
+       FROM approval_request
+      WHERE workspace_id = ?
+        AND (${conditions})
+      ORDER BY created_at DESC
+      LIMIT 100`,
+  )
+    .bind(workspaceId, ...lineageIds.map((id) => `%${escapeLike(JSON.stringify(id))}%`))
+    .all<{ ticket_id: string }>();
+  return (rows.results ?? []).map((row) => row.ticket_id);
 }
 
 async function upsertDriftSignal(
@@ -908,7 +985,7 @@ function topUnresolvedIntents(
 ): InsightSummary['top_unresolved_intents'] {
   const groups = new Map<string, { count: number; example: string }>();
   for (const ticket of tickets) {
-    const intent = ticket.category?.trim() || inferIntent(ticket.subject);
+    const intent = inferTicketIntent(ticket.category, ticket.subject);
     const current = groups.get(intent) ?? { count: 0, example: ticket.id };
     current.count += 1;
     groups.set(intent, current);
@@ -980,9 +1057,13 @@ function escalationReason(payload: Record<string, unknown>): string {
   return reason.slice(0, 120) || 'Escalated';
 }
 
-function inferIntent(subject: string): string {
-  const terms = topTerms(subject, 3);
-  return terms.length ? terms.join(' ') : 'uncategorized';
+function inferTicketIntent(category: string | null, subject: string): string {
+  const subjectTerms = topTerms(subject, 2);
+  const normalizedCategory = category?.trim().toLowerCase();
+  if (normalizedCategory && subjectTerms.length > 0) {
+    return `${normalizedCategory} ${subjectTerms.join(' ')}`;
+  }
+  return subjectTerms.length ? subjectTerms.join(' ') : normalizedCategory || 'uncategorized';
 }
 
 function humanizeIntent(intent: string): string {
@@ -1018,6 +1099,21 @@ function topCounts(values: string[], limit: number): Array<[string, number]> {
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit);
+}
+
+function suggestionConfidence(ticketCount: number, termCount: number): number {
+  return clamp01(Math.min(0.95, 0.48 + ticketCount * 0.1 + Math.min(termCount, 8) * 0.025));
+}
+
+function sourceIdForSuggestion(suggestionId: string): string {
+  const suffix = suggestionId.startsWith('kb_sug_')
+    ? suggestionId.slice('kb_sug_'.length)
+    : suggestionId;
+  return `ksrc_sug_${suffix}`;
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
 function safeJson(value: string): Record<string, unknown> {
