@@ -10,6 +10,7 @@ import type {
   ProcedureRunDetail,
   ProcedureSpec,
 } from '../types/procedure';
+import type { McpServerListItem, McpTool, McpToolCall, McpToolGuardrail } from '../types/mcp';
 import type { AuthMe } from '../types/workspace';
 import { api, uploadFile, uploadKnowledgePdf } from './api-core';
 import { workspaceApi } from './api-workspaces';
@@ -21,6 +22,8 @@ export type KnowledgeSearchHit = KnowledgeHit;
 export type AnswerInspectionHit = KnowledgeInspectionHit;
 export type AnswerInspectionTrace = AgenticRetrievalTrace;
 export type ProcedureListEntry = ProcedureListItem;
+export type McpServerEntry = McpServerListItem;
+export type McpToolEntry = McpTool;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -173,6 +176,62 @@ export const API = {
     }),
   cancelProcedureRun: (runId: string) =>
     api<{ ok: boolean }>(`/api/procedure-runs/${runId}/cancel`, { method: 'POST' }),
+  mcpCatalog: () =>
+    api<{
+      templates: Array<{
+        id: string;
+        name: string;
+        label: string;
+        description: string;
+        expectedTools: string[];
+        authType: 'bearer' | 'header';
+        authHeaderName?: string;
+        endpointPlaceholder: string;
+      }>;
+    }>('/api/mcp/catalog'),
+  listMcpServers: () => api<{ servers: McpServerEntry[] }>('/api/mcp/servers'),
+  createMcpServer: (body: {
+    name: string;
+    endpoint_url: string;
+    auth_type: 'none' | 'bearer' | 'header';
+    auth_header_name?: string | null;
+    auth_secret?: string;
+    enabled?: boolean;
+  }) => api<{ server: McpServerEntry }>('/api/mcp/servers', { method: 'POST', body: JSON.stringify(body) }),
+  updateMcpServer: (
+    id: string,
+    body: {
+      name?: string;
+      endpoint_url?: string;
+      auth_type?: 'none' | 'bearer' | 'header';
+      auth_header_name?: string | null;
+      auth_secret?: string;
+      enabled?: boolean;
+    },
+  ) => api<{ server: McpServerEntry }>(`/api/mcp/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteMcpServer: (id: string) => api<{ ok: boolean }>(`/api/mcp/servers/${id}`, { method: 'DELETE' }),
+  discoverMcpTools: (serverId: string) =>
+    api<{ ok: boolean; tools: McpToolEntry[] }>(`/api/mcp/servers/${serverId}/discover`, { method: 'POST' }),
+  listMcpTools: (serverId?: string) =>
+    api<{ tools: McpToolEntry[] }>(`/api/mcp/tools${serverId ? `?server_id=${serverId}` : ''}`),
+  setMcpGuardrail: (
+    serverId: string,
+    body: {
+      tool_name: string;
+      enabled?: boolean;
+      requires_approval?: boolean | null;
+      max_calls_per_ticket?: number | null;
+      max_calls_per_hour?: number | null;
+      dollar_limit_cents?: number | null;
+      allowed_customer_segments?: string[];
+    },
+  ) =>
+    api<{ guardrail: McpToolGuardrail }>(`/api/mcp/servers/${serverId}/guardrails`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  listMcpToolCalls: (ticketId: string) =>
+    api<{ toolCalls: McpToolCall[] }>(`/api/mcp/tool-calls?ticket_id=${ticketId}`),
   importResolvedTicketsKnowledge: (limit = 50) =>
     api<{ ok: boolean; imported: number; skipped: number; failed: number }>(
       '/api/knowledge/import-resolved-tickets',

@@ -193,6 +193,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           outcomes={data.outcomes}
           feedback={data.feedback}
           procedureRuns={data.procedureRuns}
+          mcpToolCalls={data.mcpToolCalls}
           onReload={load}
         />
       </div>

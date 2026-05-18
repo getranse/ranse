@@ -237,6 +237,70 @@ export function createWorkspaceTestDb() {
       created_at INTEGER NOT NULL,
       UNIQUE(run_id, step_index)
     );
+    CREATE TABLE mcp_server (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      endpoint_url TEXT NOT NULL,
+      auth_type TEXT NOT NULL DEFAULT 'none',
+      auth_header_name TEXT,
+      secret_ref TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_discovered_at INTEGER,
+      last_error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, name)
+    );
+    CREATE TABLE mcp_tool (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      server_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      title TEXT,
+      description TEXT,
+      input_schema_json TEXT NOT NULL DEFAULT '{}',
+      annotations_json TEXT NOT NULL DEFAULT '{}',
+      read_only_hint INTEGER,
+      destructive_hint INTEGER,
+      discovered_at INTEGER NOT NULL,
+      UNIQUE(server_id, name)
+    );
+    CREATE TABLE mcp_tool_guardrail (
+      workspace_id TEXT NOT NULL,
+      server_id TEXT NOT NULL,
+      tool_name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      requires_approval INTEGER,
+      max_calls_per_ticket INTEGER,
+      max_calls_per_hour INTEGER,
+      dollar_limit_cents INTEGER,
+      allowed_customer_segments_json TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, server_id, tool_name)
+    );
+    CREATE TABLE mcp_tool_call (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      server_id TEXT NOT NULL,
+      tool_name TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      procedure_run_id TEXT,
+      procedure_step_id TEXT,
+      procedure_step_index INTEGER,
+      status TEXT NOT NULL,
+      args_json TEXT NOT NULL DEFAULT '{}',
+      result_json TEXT NOT NULL DEFAULT '{}',
+      error TEXT,
+      approval_request_id TEXT,
+      idempotency_key TEXT NOT NULL,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX idx_mcp_tool_call_procedure_step
+      ON mcp_tool_call(workspace_id, procedure_run_id, procedure_step_index)
+      WHERE procedure_run_id IS NOT NULL AND procedure_step_index IS NOT NULL;
   `);
 
   const envDb = {

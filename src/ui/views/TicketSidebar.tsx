@@ -8,6 +8,7 @@ interface TicketSidebarProps {
   outcomes?: TicketViewData['outcomes'];
   feedback?: TicketViewData['feedback'];
   procedureRuns?: TicketViewData['procedureRuns'];
+  mcpToolCalls?: TicketViewData['mcpToolCalls'];
   onReload: () => Promise<void>;
 }
 
@@ -17,6 +18,7 @@ export function TicketSidebar({
   outcomes = [],
   feedback = [],
   procedureRuns = [],
+  mcpToolCalls = [],
   onReload,
 }: TicketSidebarProps) {
   const [procedures, setProcedures] = useState<ProcedureListEntry[]>([]);
@@ -153,6 +155,24 @@ export function TicketSidebar({
           </div>
         ))}
       </div>
+      {mcpToolCalls.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 16 }}>MCP actions</h2>
+          <div style={{ fontSize: 12 }}>
+            {mcpToolCalls.slice(0, 6).map((call) => (
+              <div key={call.id} style={{ marginBottom: 8 }}>
+                <div>
+                  <span className={`pill ${call.status === 'completed' ? 'resolved' : ''}`}>
+                    {call.status}
+                  </span>{' '}
+                  {call.server_name}.{call.tool_name}
+                </div>
+                {call.error && <div className="error">{call.error}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <h2 style={{ marginTop: 16 }}>Audit</h2>
       <div style={{ fontSize: 12 }}>
         {audit.slice(0, 20).map((event) => (

@@ -1,12 +1,13 @@
 # Architecture
 
-Ranse is a single Cloudflare Worker app with three Durable Object classes, structured around a **workspace-centered multi-agent orchestration model**.
+Ranse is a single Cloudflare Worker app with four Durable Object classes, structured around a **workspace-centered multi-agent orchestration model**.
 
 ## Top-level agents
 
 - **`WorkspaceSupervisorAgent`** — one DO per workspace. Receives events, loads workspace policy, delegates to specialists, decides what side effects are allowed, broadcasts state.
 - **`MailboxAgent`** — one DO per support mailbox. Tracks ingest counters and duty-cycle flags.
 - **`UserSecretsStore`** — one DO per workspace. Holds AES-GCM-encrypted BYOK provider keys.
+- **`ProcedureRunnerAgent`** — one DO per procedure run. Executes version-pinned procedure steps, checkpoints progress in D1, pauses for customer or approval events, and resumes MCP actions after approval.
 
 ## Specialist sub-agents
 
@@ -51,7 +52,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -84,6 +85,21 @@ Base-URL resolution:
 The `/compat` endpoint lets us use a single `new OpenAI({ baseURL, apiKey })` client for every provider, since Gateway translates OpenAI chat-completions requests to each provider's native format.
 
 Fallback: each action in `DEFAULT_AGENT_CONFIG` can declare a `fallbackModel`. After `maxAttempts` failures on the primary, we switch to the fallback and retry with exponential backoff.
+
+## MCP action flow
+
+```
+ProcedureRunnerAgent
+  ├─ call_action step resolves mcp_server + mcp_tool
+  ├─ enforce guardrails in D1 (approval, rate, amount, segment, enabled)
+  ├─ if approval required: create approval_request(kind = call_external), wait
+  ├─ approval route marks decision and resumes the same ProcedureRunnerAgent
+  ├─ Streamable HTTP MCP initialize → notifications/initialized → tools/call
+  ├─ write mcp_tool_call status/result/error
+  └─ audit mcp.tool_call_{approval_requested|completed|failed|blocked|rejected}
+```
+
+MCP server secrets are stored in `UserSecretsStore` under `mcp:<serverId>`. D1 stores endpoint metadata, discovered tool schemas, annotations, guardrail configuration, and immutable call records.
 
 ## Scaling model
 

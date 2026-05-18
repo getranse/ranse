@@ -4,6 +4,7 @@ import { ids } from '../../lib/ids';
 import { listTicketFeedback, listTicketOutcomes, recordTicketFeedback } from '../../lib/outcomes';
 import { r2Keys, putRaw } from '../../lib/storage';
 import { recordKnowledgeUsage } from '../../knowledge';
+import { listTicketMcpToolCalls } from '../../mcp/storage';
 import { listTicketProcedureRuns } from '../../procedures/storage';
 import type { SendThreadedReply, TicketListItem } from '../../types/supervisor';
 
@@ -35,7 +36,7 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     .bind(ticketId, workspaceId)
     .first();
   if (!ticket) return null;
-  const [messages, auditRows, approvals, outcomes, feedback, procedureRuns] = await Promise.all([
+  const [messages, auditRows, approvals, outcomes, feedback, procedureRuns, mcpToolCalls] = await Promise.all([
     env.DB.prepare(
       `SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`,
     )
@@ -54,6 +55,7 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     listTicketOutcomes(env, workspaceId, ticketId),
     listTicketFeedback(env, workspaceId, ticketId),
     listTicketProcedureRuns(env, workspaceId, ticketId),
+    listTicketMcpToolCalls(env, workspaceId, ticketId),
   ]);
   return {
     ticket,
@@ -63,6 +65,7 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     outcomes,
     feedback,
     procedureRuns,
+    mcpToolCalls,
   };
 }
 

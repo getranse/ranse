@@ -182,10 +182,21 @@ function simulatePrimitive(step: ProcedureStep, context: Record<string, unknown>
         output: { waits_for: step.event, timeout_ms: step.timeout_ms ?? null },
       };
     case 'call_action':
+      if (step.save_as) {
+        setPath(context, step.save_as, {
+          simulated: true,
+          tool: step.tool,
+          args: renderValue(step.args ?? {}, context),
+        });
+      }
       return {
-        status: 'failed' as const,
-        output: { tool: step.tool },
-        error: 'mcp_action_unavailable_until_phase_5',
+        status: step.requires_approval === false ? ('completed' as const) : ('waiting' as const),
+        output: {
+          tool: step.tool,
+          args: renderValue(step.args ?? {}, context),
+          waits_for: step.requires_approval === false ? undefined : 'approval_decided',
+          simulated: true,
+        },
       };
     default:
       return { status: 'failed' as const, output: {}, error: 'unsupported_step' };
