@@ -53,6 +53,12 @@ Default policy: AI may classify, summarize, search, and draft. It **cannot** sen
 - Guardrails are enforced in the procedure runner before the MCP request leaves Ranse: disabled tools, per-ticket/hour call limits, dollar limits, and allowed customer segments.
 - Every MCP attempt writes a `mcp_tool_call` row plus an audit event. The request includes a Ranse idempotency key in MCP `_meta` so well-behaved tools can suppress duplicate writes.
 
+## Eval data privacy
+
+Historical eval cases are stored in the workspace's own D1 database and never leave the customer's Cloudflare account unless the operator exports or queries them. Before persistence, resolved-ticket capture redacts email addresses, phone numbers, and the requester's display name by default. The stored `anonymization_json` records rules and counts only; it does not store the original PII mapping.
+
+Eval access is restricted to `owner` and `admin` workspace roles because even anonymized conversations can contain commercially sensitive support context. Hosted replay uses the same provider-key and model-routing path as normal drafting, so self-hosters keep the same BYOK and Cloudflare tenant boundaries.
+
 ## Audit trail
 
 Every state change writes an `audit_event`:

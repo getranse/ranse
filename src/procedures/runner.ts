@@ -17,6 +17,7 @@ import type {
 import type { SendThreadedReply } from '../types/supervisor';
 import { makeSendThreadedReply } from '../agents/supervisor/replies';
 import { workspaceConfig } from '../agents/supervisor/settings';
+import { captureResolvedTicketEvalCase } from '../evals/capture';
 import { getRunBundle, getStepRunByIndex, recordStepRun, updateRun } from './storage';
 import {
   deletePath,
@@ -650,6 +651,11 @@ async function setTicketField(
     action: `procedure.ticket_${field}_set`,
     payload: { value },
   });
+  if (field === 'status' && ['resolved', 'closed'].includes(value)) {
+    await captureResolvedTicketEvalCase(env, workspaceId, ticketId).catch((err) =>
+      console.warn('failed to capture procedure eval case', err),
+    );
+  }
 }
 
 async function escalateTicket(

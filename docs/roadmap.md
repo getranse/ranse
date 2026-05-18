@@ -49,7 +49,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 5 — MCP-native actions** is shipped. Workspaces can register remote Streamable HTTP MCP servers, discover tools, enforce per-tool guardrails, pause destructive calls for operator approval, and execute `call_action` from procedures with audit-backed tool-call records.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, and external action execution through the open MCP protocol. Everything below continues the path toward evals, procedure sharing, and insights.
+**Phase 6 — Historical evals** is shipped. Resolved tickets are captured as anonymized replay cases, operators can backfill and run evals from Settings, `ranse eval` runs procedure-file and hosted historical suites, and PRs touching prompts/procedures/model logic have an eval workflow.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, and a regression gate against the workspace's own ticket history. Everything below continues the path toward procedure sharing and insights.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -117,7 +119,7 @@ Single-pass RAG fails on the hard tickets — the ones where the customer's ques
 - **Per-hop model routing** (Principle 2): shipped. Planning, judging, rewriting, reranking, and drafting each have independent action keys in workspace model settings.
 - **`search` as a procedure primitive** (Principle 3): shipped. Phase 4 procedures can call `search(query, scope, max_hops)` with the same traceable retrieval loop.
 - **Answer Inspection shows the trace**: shipped. Drafts, approval suggestions, and Content Library test searches show hop query → results → judgment → next-query.
-- **Eval cases test the loop, not just the final answer** (Principle 5): partially shipped as behavior tests around the loop contract. Historical replay belongs in Phase 6.
+- **Eval cases test the loop, not just the final answer** (Principle 5): behavior tests cover the loop contract, and Phase 6 historical replay now runs resolved-ticket cases end-to-end.
 
 The `customer_data` search scope still fails closed with an explicit trace; procedures can now retrieve account state by calling registered MCP tools directly through `call_action`.
 
@@ -165,13 +167,17 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - First-party templates are in-repo for Stripe, Shopify, GitHub, Linear, and generic webhook MCP servers so workspaces can register their own protocol-native endpoints without adding connector code to Ranse.
 
 ## Phase 6 — Eval against your own ticket history
+**Status: shipped.**
+
 *Principle 5*
 
-- Every resolved conversation captured as a replayable eval case (anonymized, configurable PII rules)
-- `ranse eval` runs all eval cases against current prompts + procedures, reports regressions
-- CI integration: PRs touching `procedures/`, `prompts/`, or model config gate on eval pass
-- Historical replay is the primary signal; synthetic-conversation generation is a complement, not a substitute
-- Per-procedure eval harness: edge cases, refusal cases, escalation cases all live alongside the procedure file
+- Resolved or closed conversations are captured into `eval_case` with transcript, latest customer message, expected reply preview, outcome kinds, and deterministic source fingerprints.
+- Capture runs automatically when an operator marks a ticket `resolved` or `closed`, and can be backfilled from **Settings → Evals** or `ranse eval capture-resolved`.
+- PII anonymization is applied before persistence, with configurable email, phone, and requester-name redaction rules.
+- Hosted eval runs replay active historical cases through current retrieval + draft logic, score overlap and required terms, and store per-case assertions in `eval_result`.
+- `ranse eval <procedure-file>` runs inline procedure evals from the YAML/JSON/TS spec. Edge, refusal, escalation, and wait/resume expectations live next to the procedure.
+- `.github/workflows/evals.yml` gates PRs touching procedure, prompt/model, supervisor, or eval code on local procedure evals; with `RANSE_APP_URL` and `RANSE_COOKIE` secrets, the same workflow also gates on hosted historical replay.
+- Historical replay is the primary signal; synthetic-conversation generation remains a future complement, not a substitute.
 
 ## Phase 7 — Procedure library + community
 *Principle 6*

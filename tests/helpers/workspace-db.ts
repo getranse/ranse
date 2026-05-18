@@ -301,6 +301,49 @@ export function createWorkspaceTestDb() {
     CREATE UNIQUE INDEX idx_mcp_tool_call_procedure_step
       ON mcp_tool_call(workspace_id, procedure_run_id, procedure_step_index)
       WHERE procedure_run_id IS NOT NULL AND procedure_step_index IS NOT NULL;
+    CREATE TABLE eval_case (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      ticket_id TEXT,
+      procedure_id TEXT,
+      procedure_version_id TEXT,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      input_json TEXT NOT NULL,
+      expected_json TEXT NOT NULL,
+      anonymization_json TEXT NOT NULL DEFAULT '{}',
+      source_fingerprint TEXT NOT NULL,
+      captured_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, source, source_fingerprint)
+    );
+    CREATE TABLE eval_run (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      source TEXT NOT NULL DEFAULT 'api',
+      status TEXT NOT NULL,
+      case_count INTEGER NOT NULL DEFAULT 0,
+      passed_count INTEGER NOT NULL DEFAULT 0,
+      failed_count INTEGER NOT NULL DEFAULT 0,
+      regression_count INTEGER NOT NULL DEFAULT 0,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      started_at INTEGER NOT NULL,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE eval_result (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      run_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      score REAL,
+      assertions_json TEXT NOT NULL DEFAULT '[]',
+      actual_json TEXT NOT NULL DEFAULT '{}',
+      error TEXT,
+      created_at INTEGER NOT NULL
+    );
   `);
 
   const envDb = {

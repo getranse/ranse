@@ -12,6 +12,7 @@ import type {
 } from '../types/procedure';
 import type { McpServerListItem, McpTool, McpToolCall, McpToolGuardrail } from '../types/mcp';
 import type { AuthMe } from '../types/workspace';
+import type { EvalCase, EvalRun, EvalRunDetail } from '../types/evals';
 import { api, uploadFile, uploadKnowledgePdf } from './api-core';
 import { workspaceApi } from './api-workspaces';
 
@@ -24,6 +25,8 @@ export type AnswerInspectionTrace = AgenticRetrievalTrace;
 export type ProcedureListEntry = ProcedureListItem;
 export type McpServerEntry = McpServerListItem;
 export type McpToolEntry = McpTool;
+export type EvalCaseEntry = EvalCase;
+export type EvalRunEntry = EvalRun;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -232,6 +235,21 @@ export const API = {
     }),
   listMcpToolCalls: (ticketId: string) =>
     api<{ toolCalls: McpToolCall[] }>(`/api/mcp/tool-calls?ticket_id=${ticketId}`),
+  listEvalCases: () => api<{ cases: EvalCaseEntry[] }>('/api/evals/cases'),
+  listEvalRuns: () => api<{ runs: EvalRunEntry[] }>('/api/evals/runs'),
+  captureResolvedEvalCases: (limit = 50) =>
+    api<{ ok: boolean; captured: number; skipped: number; failed: number; cases: string[] }>(
+      '/api/evals/cases/capture-resolved',
+      {
+        method: 'POST',
+        body: JSON.stringify({ limit }),
+      },
+    ),
+  runEvalSuite: (body: { limit?: number; threshold?: number } = {}) =>
+    api<EvalRunDetail>('/api/evals/runs', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   importResolvedTicketsKnowledge: (limit = 50) =>
     api<{ ok: boolean; imported: number; skipped: number; failed: number }>(
       '/api/knowledge/import-resolved-tickets',

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { registerApprovalRoutes } from './approvals';
 import { installApiAuth, type Ctx } from './context';
+import { registerEvalRoutes } from './evals';
 import { registerKnowledgeRoutes } from './knowledge';
 import { registerMcpRoutes } from './mcp';
 import { registerNotificationRoutes } from './notifications';
@@ -19,4 +20,5 @@ registerApprovalRoutes(apiApp);
 registerKnowledgeRoutes(apiApp);
 registerProcedureRoutes(apiApp);
 registerMcpRoutes(apiApp);
+registerEvalRoutes(apiApp);
 registerWorkspaceRoutes(apiApp);
