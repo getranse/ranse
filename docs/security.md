@@ -49,6 +49,7 @@ Default policy: AI may classify, summarize, search, and draft. It **cannot** sen
 - MCP servers must be remote HTTPS endpoints. URLs with credentials, localhost, private IP literals, link-local ranges, and metadata hosts are rejected before persistence.
 - Server auth is stored by reference in the per-workspace `UserSecretsStore`; plaintext bearer tokens and custom header secrets are not written to D1.
 - Tool discovery stores input schema and annotations, including `readOnlyHint` and `destructiveHint`. Ranse defaults unknown or destructive tools to human approval.
+- MCP responses are bounded by timeout and response-size limits before JSON-RPC parsing, so a slow or oversized server cannot pin a procedure indefinitely.
 - Guardrails are enforced in the procedure runner before the MCP request leaves Ranse: disabled tools, per-ticket/hour call limits, dollar limits, and allowed customer segments.
 - Every MCP attempt writes a `mcp_tool_call` row plus an audit event. The request includes a Ranse idempotency key in MCP `_meta` so well-behaved tools can suppress duplicate writes.
 

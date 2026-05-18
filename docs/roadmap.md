@@ -159,6 +159,7 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Actions are exclusively MCP tool calls — no bespoke connector framework.
 - Workspace registers remote Streamable HTTP MCP servers via URL + auth in settings; tool lists are auto-discovered with `tools/list`.
 - The procedure runner calls `tools/call`, stores every attempt in `mcp_tool_call`, passes an idempotency key in MCP `_meta`, and records audit events for requested, completed, failed, blocked, and rejected calls.
+- MCP calls are bounded by HTTP timeout and response-size limits, with protocol-version checks during `initialize`.
 - Per-tool guardrails are enforced in Ranse before the MCP server is called: requires-approval, rate limits per ticket/hour, dollar limits, allowed customer segments, and disabled tools.
 - Read vs. write distinction is surfaced from MCP tool annotations; read-only tools can run automatically, while unknown/destructive tools default to operator approval.
 - First-party templates are in-repo for Stripe, Shopify, GitHub, Linear, and generic webhook MCP servers so workspaces can register their own protocol-native endpoints without adding connector code to Ranse.
