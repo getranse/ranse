@@ -131,17 +131,19 @@ Procedure evals are local and deterministic. `ranse eval <procedure-file>` loads
 ```
 Settings -> Procedures
   ├─ GET /api/procedures/library
+  ├─ GET /api/procedures/library/manifest
   ├─ POST /api/procedures/library/:slug/install
-  └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>)
+  └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>#sha256:<checksum>)
 
 ranse procedure add <slug>
-  ├─ read built-in catalog from src/procedures/library.ts
+  ├─ read built-in catalog from src/procedures/library-data.ts
   ├─ validate inline evals
   ├─ write procedures/<slug>.yaml
-  └─ write procedures/<slug>.mcp.json
+  ├─ write procedures/<slug>.mcp.json
+  └─ write procedures/<slug>.provenance.json
 ```
 
-The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git.
+The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, and the MCP schema version used for reference ToolAnnotations.
 
 ## Scaling model
 

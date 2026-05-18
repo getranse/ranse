@@ -105,7 +105,22 @@ export interface ProcedureLibraryMcpToolSpec {
     readOnlyHint?: boolean;
     destructiveHint?: boolean;
     idempotentHint?: boolean;
+    openWorldHint?: boolean;
   };
+}
+
+export interface ProcedureLibraryStandards {
+  procedure_schema: 'ranse.procedure.v1';
+  mcp_schema: '2025-11-25';
+}
+
+export interface ProcedureLibraryProvenance {
+  source: 'ranse-library';
+  source_ref: string;
+  library_version: string;
+  spec_checksum_algorithm: 'sha256';
+  spec_checksum: string;
+  standards: ProcedureLibraryStandards;
 }
 
 export interface ProcedureLibraryEntry {
@@ -118,11 +133,18 @@ export interface ProcedureLibraryEntry {
   required_mcp_servers: string[];
   eval_count: number;
   version: string;
+  provenance: ProcedureLibraryProvenance;
 }
 
 export interface ProcedureLibraryItem extends ProcedureLibraryEntry {
   spec: ProcedureSpec;
   reference_mcp_tools: ProcedureLibraryMcpToolSpec[];
+}
+
+export interface ProcedureLibraryManifest {
+  manifest_version: string;
+  standards: ProcedureLibraryStandards;
+  procedures: ProcedureLibraryItem[];
 }
 
 export interface ProcedureListItem {

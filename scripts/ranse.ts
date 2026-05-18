@@ -4,7 +4,12 @@ import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
 import { runProcedureSpecEvals } from '../src/evals/replay';
 import { loadProcedureFile } from '../src/procedures/files';
-import { getProcedureLibraryItem, listProcedureLibrary } from '../src/procedures/library';
+import {
+  getProcedureLibraryItem,
+  getProcedureLibraryManifest,
+  listProcedureLibrary,
+  validateProcedureLibrary,
+} from '../src/procedures/library';
 import { simulateProcedure } from '../src/procedures/simulate';
 
 const [, , command, ...args] = process.argv;
@@ -90,16 +95,26 @@ async function main() {
   if (command === 'procedure') {
     const subcommand = args[0];
     if (subcommand === 'list') {
-      console.log(JSON.stringify({ procedures: listProcedureLibrary() }, null, 2));
+      console.log(JSON.stringify({ procedures: await listProcedureLibrary() }, null, 2));
+      return;
+    }
+
+    if (subcommand === 'manifest') {
+      console.log(JSON.stringify(await getProcedureLibraryManifest(), null, 2));
+      return;
+    }
+
+    if (subcommand === 'validate-library') {
+      console.log(
+        JSON.stringify({ ok: true, procedures: await validateProcedureLibrary() }, null, 2),
+      );
       return;
     }
 
     if (subcommand === 'add') {
-      const slug = requiredArg(
-        args[1],
-        'usage: ranse procedure add <library-slug> [--dir procedures] [--format yaml|json] [--force]',
-      );
-      const item = getProcedureLibraryItem(slug);
+      assertKnownFlags(args.slice(2), ['--dir', '--format'], ['--force']);
+      const slug = requiredArg(args[1], procedureUsage());
+      const item = await getProcedureLibraryItem(slug);
       if (!item) throw new Error(`procedure_library_item_not_found:${slug}`);
       const report = runProcedureSpecEvals(item.spec);
       if (report.status !== 'passed') throw new Error(`procedure_library_eval_failed:${slug}`);
@@ -110,6 +125,7 @@ async function main() {
       await mkdir(dir, { recursive: true });
       const procedurePath = join(dir, `${item.slug}.${format === 'json' ? 'json' : 'yaml'}`);
       const mcpPath = join(dir, `${item.slug}.mcp.json`);
+      const provenancePath = join(dir, `${item.slug}.provenance.json`);
       await writeIfAllowed(
         procedurePath,
         format === 'json' ? `${JSON.stringify(item.spec, null, 2)}\n` : stringifyYaml(item.spec),
@@ -117,7 +133,29 @@ async function main() {
       );
       await writeIfAllowed(
         mcpPath,
-        `${JSON.stringify({ tools: item.reference_mcp_tools }, null, 2)}\n`,
+        `${JSON.stringify(
+          {
+            protocol: {
+              name: 'model-context-protocol',
+              schema_version: item.provenance.standards.mcp_schema,
+            },
+            tools: item.reference_mcp_tools.map((tool) => ({
+              server: tool.server,
+              name: tool.tool,
+              title: tool.title,
+              description: tool.description,
+              inputSchema: tool.input_schema,
+              annotations: tool.annotations,
+            })),
+          },
+          null,
+          2,
+        )}\n`,
+        args.includes('--force'),
+      );
+      await writeIfAllowed(
+        provenancePath,
+        `${JSON.stringify(item.provenance, null, 2)}\n`,
         args.includes('--force'),
       );
       console.log(
@@ -126,6 +164,7 @@ async function main() {
             ok: true,
             procedure: procedurePath,
             reference_mcp_tools: mcpPath,
+            provenance: provenancePath,
             evals: report,
           },
           null,
@@ -135,9 +174,7 @@ async function main() {
       return;
     }
 
-    throw new Error(`usage:
-  ranse procedure list
-  ranse procedure add <library-slug> [--dir procedures] [--format yaml|json] [--force]`);
+    throw new Error(procedureUsage());
   }
 
   console.log(`usage:
@@ -147,6 +184,8 @@ async function main() {
   ranse eval --app-url <url> --cookie <session-cookie> [--limit n] [--threshold n] [--score-drop n] [--ci]
   ranse eval capture-resolved --app-url <url> --cookie <session-cookie> [--limit n]
   ranse procedure list
+  ranse procedure manifest
+  ranse procedure validate-library
   ranse procedure add <library-slug> [--dir procedures] [--format yaml|json] [--force]`);
 }
 
@@ -157,7 +196,10 @@ function requiredArg(value: string | undefined, message: string): string {
 
 function flagValue(args_: string[], flag: string): string | undefined {
   const index = args_.indexOf(flag);
-  return index >= 0 ? args_[index + 1] : undefined;
+  if (index < 0) return undefined;
+  const value = args_[index + 1];
+  if (!value || value.startsWith('--')) throw new Error(`missing_flag_value:${flag}`);
+  return value;
 }
 
 function numberFlag(args_: string[], flag: string): number | undefined {
@@ -180,6 +222,29 @@ async function jsonOrText(res: Response): Promise<unknown> {
 async function writeIfAllowed(path: string, body: string, force: boolean) {
   if (!force && (await exists(path))) throw new Error(`file_exists:${path}`);
   await writeFile(path, body, 'utf8');
+}
+
+function assertKnownFlags(args_: string[], flagsWithValues: string[], booleanFlags: string[]) {
+  for (let index = 0; index < args_.length; index += 1) {
+    const arg = args_[index];
+    if (!arg.startsWith('--')) continue;
+    if (booleanFlags.includes(arg)) continue;
+    if (flagsWithValues.includes(arg)) {
+      const value = args_[index + 1];
+      if (!value || value.startsWith('--')) throw new Error(`missing_flag_value:${arg}`);
+      index += 1;
+      continue;
+    }
+    throw new Error(`unknown_flag:${arg}`);
+  }
+}
+
+function procedureUsage(): string {
+  return `usage:
+  ranse procedure list
+  ranse procedure manifest
+  ranse procedure validate-library
+  ranse procedure add <library-slug> [--dir procedures] [--format yaml|json] [--force]`;
 }
 
 async function exists(path: string): Promise<boolean> {

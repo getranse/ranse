@@ -68,11 +68,13 @@ Local fork workflow:
 
 ```bash
 bun scripts/ranse.ts procedure list
+bun scripts/ranse.ts procedure manifest
+bun scripts/ranse.ts procedure validate-library
 bun scripts/ranse.ts procedure add shipping-dispute --dir procedures
 bun scripts/ranse.ts eval procedures/shipping-dispute.yaml
 ```
 
-The CLI writes the procedure spec plus `<slug>.mcp.json`, which documents the reference MCP tools expected by that workflow. Treat those MCP specs as contracts: either implement matching MCP tools, map the procedure to your own server/tool names, or remove the relevant action before publishing.
+The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.json`. The provenance file records the library version, source ref, procedure SHA-256 checksum, and standards metadata used when the procedure was forked. Treat the MCP specs as contracts: either implement matching MCP tools, map the procedure to your own server/tool names, or remove the relevant action before publishing.
 
 ## Escalations
 

@@ -60,10 +60,14 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
               <div>
                 <div style={{ fontWeight: 500 }}>{item.name}</div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  {item.category} · v{item.version} · {item.eval_count} evals
+                  {item.category} · {item.risk_level} risk · v{item.version} · {item.eval_count}{' '}
+                  evals · {item.provenance.spec_checksum.slice(0, 12)}
                   {item.required_mcp_servers.length > 0
                     ? ` · MCP: ${item.required_mcp_servers.join(', ')}`
                     : ''}
+                </div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {item.summary}
                 </div>
               </div>
               <div

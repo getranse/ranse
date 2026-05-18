@@ -191,8 +191,9 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Built-in catalog ships refund intake, password reset, shipping dispute, and GDPR data request workflows.
 - Settings exposes the catalog so owners/admins can install procedures directly into the selected workspace.
 - `ranse procedure list` and `ranse procedure add <slug>` fork procedures into a repo-local `procedures/` directory as YAML or JSON.
-- Each library procedure ships with inline eval cases and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json`.
-- Library validation runs every procedure's inline evals and checks MCP references in `tests/procedure-library.test.ts`.
+- `ranse procedure manifest` exports the full machine-readable catalog for a standalone community mirror.
+- Each library procedure ships with inline eval cases, deterministic SHA-256 provenance, and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json` plus `<slug>.provenance.json`.
+- Library validation runs every procedure's inline evals, checksum generation, immutable clone behavior, route permissions, and MCP references in `tests/procedure-library.test.ts`.
 - `procedure-library/README.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
 
 ## Phase 8 — Insights & auto-improving KB

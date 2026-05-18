@@ -20,6 +20,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
+      - name: Validate procedure library manifest
+        run: bun scripts/ranse.ts procedure validate-library
       - name: Run procedure evals
         run: |
           shopt -s nullglob

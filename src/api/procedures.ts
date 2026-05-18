@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiError } from '../lib/errors';
 import {
   getProcedureLibraryItem,
+  getProcedureLibraryManifest,
   installProcedureFromLibrary,
   listProcedureLibrary,
 } from '../procedures/library';
@@ -66,11 +67,15 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
   });
 
   apiApp.get('/procedures/library', async (c) => {
-    return c.json({ procedures: listProcedureLibrary() });
+    return c.json({ procedures: await listProcedureLibrary() });
+  });
+
+  apiApp.get('/procedures/library/manifest', async (c) => {
+    return c.json(await getProcedureLibraryManifest());
   });
 
   apiApp.get('/procedures/library/:slug', async (c) => {
-    const item = getProcedureLibraryItem(c.req.param('slug'));
+    const item = await getProcedureLibraryItem(c.req.param('slug'));
     if (!item) return apiError(c, 'not_found', 'That library procedure does not exist.');
     return c.json({ procedure: item });
   });
