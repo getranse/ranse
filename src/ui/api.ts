@@ -5,6 +5,8 @@ import type {
   KnowledgeSourceListItem,
 } from '../types/knowledge';
 import type {
+  ProcedureLibraryItem,
+  ProcedureLibraryEntry,
   ProcedureListItem,
   ProcedureRun,
   ProcedureRunDetail,
@@ -23,6 +25,8 @@ export type KnowledgeSearchHit = KnowledgeHit;
 export type AnswerInspectionHit = KnowledgeInspectionHit;
 export type AnswerInspectionTrace = AgenticRetrievalTrace;
 export type ProcedureListEntry = ProcedureListItem;
+export type ProcedureLibraryListEntry = ProcedureLibraryEntry;
+export type ProcedureLibraryDetail = ProcedureLibraryItem;
 export type McpServerEntry = McpServerListItem;
 export type McpToolEntry = McpTool;
 export type EvalCaseEntry = EvalCase;
@@ -154,6 +158,17 @@ export const API = {
       trace?: AnswerInspectionTrace;
     }>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query, limit }) }),
   listProcedures: () => api<{ procedures: ProcedureListEntry[] }>('/api/procedures'),
+  listProcedureLibrary: () =>
+    api<{ procedures: ProcedureLibraryListEntry[] }>('/api/procedures/library'),
+  procedureLibraryItem: (slug: string) =>
+    api<{ procedure: ProcedureLibraryDetail }>(`/api/procedures/library/${slug}`),
+  installProcedureLibraryItem: (slug: string) =>
+    api<{ procedure: ProcedureListItem; version: unknown; created: boolean }>(
+      `/api/procedures/library/${slug}/install`,
+      {
+        method: 'POST',
+      },
+    ),
   procedure: (id: string) =>
     api<{
       procedure: ProcedureListItem;

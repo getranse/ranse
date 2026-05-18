@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { API, type ProcedureListEntry } from '../api';
+import { API, type ProcedureLibraryListEntry, type ProcedureListEntry } from '../api';
 
 interface ProceduresSectionProps {
   onSaved: (message?: string) => void;
@@ -32,12 +32,18 @@ const DEFAULT_SPEC = `{
 
 export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
   const [procedures, setProcedures] = useState<ProcedureListEntry[]>([]);
+  const [library, setLibrary] = useState<ProcedureLibraryListEntry[]>([]);
   const [draft, setDraft] = useState(DEFAULT_SPEC);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState('');
 
   async function load() {
-    const res = await API.listProcedures();
-    setProcedures(res.procedures ?? []);
+    const [procedureRes, libraryRes] = await Promise.all([
+      API.listProcedures(),
+      API.listProcedureLibrary(),
+    ]);
+    setProcedures(procedureRes.procedures ?? []);
+    setLibrary(libraryRes.procedures ?? []);
   }
 
   useEffect(() => {
@@ -48,6 +54,63 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
     <>
       <h2>Procedures</h2>
       <div className="card">
+        <div className="source-list" style={{ marginBottom: 12 }}>
+          {library.map((item) => (
+            <div className="source-row" key={item.slug}>
+              <div>
+                <div style={{ fontWeight: 500 }}>{item.name}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {item.category} · v{item.version} · {item.eval_count} evals
+                  {item.required_mcp_servers.length > 0
+                    ? ` · MCP: ${item.required_mcp_servers.join(', ')}`
+                    : ''}
+                </div>
+              </div>
+              <div
+                style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}
+              >
+                <button
+                  disabled={busy === `load:${item.slug}`}
+                  onClick={async () => {
+                    setBusy(`load:${item.slug}`);
+                    setError('');
+                    try {
+                      const detail = await API.procedureLibraryItem(item.slug);
+                      setDraft(JSON.stringify(detail.procedure.spec, null, 2));
+                      onSaved('Procedure loaded');
+                    } catch (err: any) {
+                      setError(err.message || 'Load failed');
+                    } finally {
+                      setBusy('');
+                    }
+                  }}
+                >
+                  Load
+                </button>
+                <button
+                  className="primary"
+                  disabled={busy === `install:${item.slug}`}
+                  onClick={async () => {
+                    setBusy(`install:${item.slug}`);
+                    setError('');
+                    try {
+                      await API.installProcedureLibraryItem(item.slug);
+                      await load();
+                      onSaved('Procedure installed');
+                    } catch (err: any) {
+                      setError(err.message || 'Install failed');
+                    } finally {
+                      setBusy('');
+                    }
+                  }}
+                >
+                  Install
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="source-list" style={{ marginBottom: 12 }}>
           {procedures.map((procedure) => (
             <div className="source-row" key={procedure.id}>

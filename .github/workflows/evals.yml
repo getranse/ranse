@@ -26,6 +26,8 @@ jobs:
           for file in procedures/*.yaml procedures/*.yml procedures/*.json; do
             bun scripts/ranse.ts eval "$file"
           done
+      - name: Validate procedure library
+        run: bunx vitest run tests/procedure-library.test.ts
       - name: Run hosted historical evals when configured
         env:
           RANSE_APP_URL: ${{ secrets.RANSE_APP_URL }}

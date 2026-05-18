@@ -60,6 +60,20 @@ Eval runs write `eval_run` and `eval_result` rows with assertion details. A run 
 
 The bundled GitHub Actions workflow always runs procedure evals for relevant PRs; set `RANSE_APP_URL` and `RANSE_COOKIE` repository secrets to make hosted historical replay part of the gate.
 
+## Procedure library
+
+Owners and admins can install vetted procedure templates from **Settings → Procedures**. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>`.
+
+Local fork workflow:
+
+```bash
+bun scripts/ranse.ts procedure list
+bun scripts/ranse.ts procedure add shipping-dispute --dir procedures
+bun scripts/ranse.ts eval procedures/shipping-dispute.yaml
+```
+
+The CLI writes the procedure spec plus `<slug>.mcp.json`, which documents the reference MCP tools expected by that workflow. Treat those MCP specs as contracts: either implement matching MCP tools, map the procedure to your own server/tool names, or remove the relevant action before publishing.
+
 ## Escalations
 
 The `EscalationAgent` runs on demand. It returns `{ should_escalate, severity, route_to }` and the operator (or an automation rule) picks the handoff target.

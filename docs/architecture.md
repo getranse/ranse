@@ -126,6 +126,23 @@ ranse eval / Settings -> Evals
 
 Procedure evals are local and deterministic. `ranse eval <procedure-file>` loads the spec, runs each inline `evals[]` case through `simulateProcedure`, and checks expected status, context paths, and step order before a PR is merged.
 
+## Procedure library flow
+
+```
+Settings -> Procedures
+  ├─ GET /api/procedures/library
+  ├─ POST /api/procedures/library/:slug/install
+  └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>)
+
+ranse procedure add <slug>
+  ├─ read built-in catalog from src/procedures/library.ts
+  ├─ validate inline evals
+  ├─ write procedures/<slug>.yaml
+  └─ write procedures/<slug>.mcp.json
+```
+
+The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git.
+
 ## Scaling model
 
 - One `WorkspaceSupervisorAgent` DO per workspace. The email handler pins by `idFromName(workspaceId)` so all events for a workspace funnel through one instance — consistent state, no cross-DO coordination needed.

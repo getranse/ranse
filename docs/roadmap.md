@@ -51,7 +51,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 6 — Historical evals** is shipped. Resolved tickets are captured as anonymized replay cases, operators can backfill and run evals from Settings, `ranse eval` runs procedure-file and hosted historical suites, and PRs touching prompts/procedures/model logic have an eval workflow.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, and a regression gate against the workspace's own ticket history. Everything below continues the path toward procedure sharing and insights.
+**Phase 7 — Procedure library** is shipped. Workspaces can install vetted workflows from Settings, fork them locally with `ranse procedure add`, and inspect reference MCP tool contracts plus inline evals before customization.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, and a forkable procedure library. Everything below continues the path toward insights and multi-channel surfaces.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -182,12 +184,16 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Historical replay is the primary signal; synthetic-conversation generation remains a future complement, not a substitute.
 
 ## Phase 7 — Procedure library + community
+**Status: shipped.**
+
 *Principle 6*
 
-- Public repo `getranse/procedures-library` — refund flow, password reset, shipping dispute, subscription cancellation, fraud triage, GDPR data request, etc.
-- `ranse procedure add <name>` clones from library into workspace repo as a starting point
-- Each library procedure ships with eval cases and a reference MCP tool spec
-- Contribution guidelines for upstreaming generic procedures back from workspaces
+- Built-in catalog ships refund intake, password reset, shipping dispute, and GDPR data request workflows.
+- Settings exposes the catalog so owners/admins can install procedures directly into the selected workspace.
+- `ranse procedure list` and `ranse procedure add <slug>` fork procedures into a repo-local `procedures/` directory as YAML or JSON.
+- Each library procedure ships with inline eval cases and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json`.
+- Library validation runs every procedure's inline evals and checks MCP references in `tests/procedure-library.test.ts`.
+- `procedure-library/README.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
 
 ## Phase 8 — Insights & auto-improving KB
 *Principle 5 (extends), Principle 1*
