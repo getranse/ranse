@@ -38,4 +38,6 @@ export const ids = {
   conversationScore: () => id('score'),
   kbSuggestion: () => id('kb_sug'),
   knowledgeDriftSignal: () => id('drift'),
+  publicChannel: () => id('pubch'),
+  publicSession: () => id('pubsess'),
 };

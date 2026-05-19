@@ -23,6 +23,7 @@ import type {
   KnowledgeDriftSignal,
   KnowledgeDriftStatus,
 } from '../types/insights';
+import type { PublicChannel, PublicChannelKind } from '../types/channels';
 import { api, uploadFile, uploadKnowledgePdf } from './api-core';
 import { workspaceApi } from './api-workspaces';
 
@@ -43,6 +44,7 @@ export type ConversationScoreEntry = ConversationScore;
 export type InsightSummaryEntry = InsightSummary;
 export type KbSuggestionEntry = KbSuggestion;
 export type KnowledgeDriftSignalEntry = KnowledgeDriftSignal;
+export type PublicChannelEntry = PublicChannel;
 
 export const API = {
   setupStatus: () => api<{ completed: boolean }>('/setup/status'),
@@ -140,6 +142,34 @@ export const API = {
     api(`/api/notifications/channels/${id}`, { method: 'DELETE' }),
   testNotificationChannel: (id: string) =>
     api<{ ok: boolean }>(`/api/notifications/channels/${id}/test`, { method: 'POST' }),
+  listPublicChannels: () => api<{ channels: PublicChannelEntry[] }>('/api/channels/public'),
+  createPublicChannel: (body: {
+    kind: PublicChannelKind;
+    mailbox_id: string;
+    name: string;
+    enabled?: boolean;
+    require_email?: boolean;
+    allowed_origins?: string[];
+    welcome_message?: string | null;
+  }) =>
+    api<{ channel: PublicChannelEntry }>('/api/channels/public', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updatePublicChannel: (
+    id: string,
+    body: {
+      name?: string;
+      enabled?: boolean;
+      require_email?: boolean;
+      allowed_origins?: string[];
+      welcome_message?: string | null;
+    },
+  ) =>
+    api<{ channel: PublicChannelEntry }>(`/api/channels/public/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   approve: (id: string, edits?: any) =>
     api(`/api/approvals/${id}/approve`, { method: 'POST', body: JSON.stringify({ edits }) }),
   reject: (id: string, reason?: string) =>

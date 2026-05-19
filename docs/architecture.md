@@ -17,6 +17,7 @@ Function-based, not DOs. They live in `src/agents/specialists/` and return struc
 - `summarize` — thread summary + next-step hint.
 - `knowledge` — manual/URL/PDF/resolved-ticket ingestion, Workers AI embeddings, Vectorize search, reranking, and keyword fallback.
 - `insights` — conversation rubric scoring, aggregate operational metrics, unresolved-intent KB suggestions, and knowledge drift detection.
+- `channels` — public chat/form channel configuration, origin-scoped session tokens, hosted forms, widget script, and ticket creation.
 - `draft` — generate a reply with citations; flag review risks.
 - `escalation` — decide whether to route to a human/team.
 - `sla` — deterministic, no LLM; computes breach status.
@@ -53,7 +54,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals, public channels/sessions |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -167,6 +168,24 @@ Insights page
 Suggestions are review records, not automatic content edits. They require repeated unresolved-ticket evidence, store confidence and source-ticket lineage, and accepted suggestions become terminal records linked to the manual knowledge source created through the same ingestion path as the Content Library.
 
 Scheduled insights maintenance is workspace-isolated: one workspace failure is returned as an `ok: false` result for that workspace instead of failing the entire cron run.
+
+## Public web channels
+
+```
+Settings -> Public channels
+  ├─ create chat/form channel for a workspace mailbox
+  ├─ configure allowed origins, welcome text, and email requirement
+  └─ copy <script src="/widget/<public_key>.js"> or /forms/<public_key>
+
+Visitor browser
+  ├─ GET /public/channels/:key/config
+  ├─ POST /public/channels/:key/sessions
+  ├─ POST /public/sessions/:id/messages
+  └─ GET /public/sessions/:id
+       └─ reads only with the bearer session token
+```
+
+Public channels are derivatives of the ticket model, not a separate inbox. A chat or form submission creates a normal `ticket`, stores inbound text in `message_index` plus R2, emits the same notification events, records audit rows, starts ticket-created procedures, and lets operators answer from the existing ticket console. Origin allowlists and unguessable session tokens scope public browser access; internal notes are never returned through public session reads.
 
 ## Scaling model
 

@@ -4,6 +4,7 @@ import { NotificationsSection } from './NotificationsSection';
 import { KnowledgeSection } from './KnowledgeSection';
 import { WorkspaceMembersSection } from './WorkspaceMembersSection';
 import { WorkspaceMailboxesSection } from './WorkspaceMailboxesSection';
+import { PublicChannelsSection } from './PublicChannelsSection';
 import { WorkspacePlatformSection } from './WorkspacePlatformSection';
 import { ModelSettingsSection } from './ModelSettingsSection';
 import { McpActionsSection } from './McpActionsSection';
@@ -63,6 +64,7 @@ export function SettingsView() {
 
       <WorkspaceMembersSection onSaved={flashSaved} />
       <WorkspaceMailboxesSection onSaved={flashSaved} />
+      <PublicChannelsSection onSaved={flashSaved} />
 
       <h2>Workspace branding</h2>
       <div className="card">

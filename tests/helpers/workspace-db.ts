@@ -204,6 +204,36 @@ export function createWorkspaceTestDb() {
       label TEXT,
       created_at INTEGER NOT NULL
     );
+    CREATE TABLE public_channel (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      mailbox_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      name TEXT NOT NULL,
+      public_key TEXT NOT NULL UNIQUE,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      require_email INTEGER NOT NULL DEFAULT 1,
+      allowed_origins_json TEXT NOT NULL DEFAULT '[]',
+      welcome_message TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE public_conversation_session (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      session_token_hash TEXT NOT NULL UNIQUE,
+      requester_email TEXT NOT NULL,
+      requester_name TEXT,
+      visitor_id TEXT,
+      origin TEXT,
+      user_agent TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL,
+      closed_at INTEGER
+    );
     CREATE TABLE workspace_llm_config (
       workspace_id TEXT NOT NULL,
       action_key TEXT NOT NULL,
@@ -446,12 +476,38 @@ export function createWorkspaceTestDb() {
       Promise.all(statements.map((statement) => statement.run())),
   };
 
+  const blobStore = new Map<string, Uint8Array>();
+
   return {
     db,
     env: {
       DB: envDb,
       COOKIE_SIGNING_KEY: 'test-secret',
-      BLOB: { put: async () => undefined, get: async () => null },
+      BLOB: {
+        put: async (key: string, body: string | ArrayBuffer | Uint8Array) => {
+          const bytes =
+            typeof body === 'string'
+              ? new TextEncoder().encode(body)
+              : body instanceof Uint8Array
+                ? body
+                : new Uint8Array(body);
+          blobStore.set(key, bytes);
+        },
+        get: async (key: string) => {
+          const bytes = blobStore.get(key);
+          if (!bytes) return null;
+          return {
+            text: async () => new TextDecoder().decode(bytes),
+            arrayBuffer: async () =>
+              bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+          };
+        },
+        delete: async (key: string) => {
+          blobStore.delete(key);
+        },
+      },
+      WEBHOOKS: { send: async () => undefined },
+      RATE_LIMIT_INGEST: { limit: async () => ({ success: true }) },
     } as any,
   };
 }

@@ -55,7 +55,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 8 — Insights & auto-improving KB** is shipped. Workspaces get conversation rubric scoring, aggregate insight dashboards, unresolved-intent KB suggestions, accepted-suggestion publishing into the knowledge base, drift signals against successful replies, and weekly scheduled insight maintenance.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, a forkable procedure library, and a sovereign insights loop that turns real support history into reviewed KB improvements. Everything below continues the path toward multi-channel surfaces.
+**Phase 9 — Multi-channel web surfaces** is shipped for chat widgets and hosted support forms. Public channels create normal tickets in the same inbox, with origin allowlists, session tokens, public thread reads, notification events, audit rows, and procedure triggers.
+
+That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, a forkable procedure library, a sovereign insights loop that turns real support history into reviewed KB improvements, and public web surfaces that feed the same ticket model. Voice remains deliberately last.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -211,11 +213,14 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Weekly scheduled insight maintenance scores recent conversations, refreshes unresolved-intent suggestions, detects KB drift, prunes old recomputable score rows, and isolates per-workspace failures inside the customer's Cloudflare account.
 
 ## Phase 9 — Multi-channel + voice
+**Status: web surfaces shipped; voice remains deliberately last.**
+
 *Principle 7 — email is the wedge; other channels are derivatives*
 
-- Embeddable chat widget (Pages bundle, DO per session, same `WorkspaceSupervisorAgent`)
-- Web form → ticket bridge
-- Voice last — Cloudflare Realtime + Whisper + TTS. Hardest channel, lowest leverage for v1, ship only when email + chat are something we'd want to talk to
+- Embeddable chat widget: shipped as a hosted `/widget/<public_key>.js` script backed by D1 channel config, origin allowlists, token-scoped visitor sessions, and the existing ticket/message tables.
+- Web form → ticket bridge: shipped as hosted `/forms/<public_key>` pages and JSON session APIs that create normal support tickets.
+- Operators manage public channels in Settings, choose the mailbox, copy embed code, disable channels, and keep all replies inside the same inbox/audit/procedure surfaces.
+- Voice last — Cloudflare Realtime + Whisper + TTS. Hardest channel, lowest leverage for v1, ship only when email + chat are something we'd want to talk to.
 
 ## What we are explicitly not building
 

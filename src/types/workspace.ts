@@ -59,6 +59,7 @@ export interface WorkspaceUsage {
   messages: number;
   knowledgeSources: number;
   notificationChannels: number;
+  publicChannels: number;
   llmConfigs: number;
   auditEvents: number;
 }

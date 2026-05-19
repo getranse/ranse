@@ -84,6 +84,14 @@ KB suggestions are generated only from repeated unresolved-ticket clusters and i
 
 Weekly maintenance is isolated per workspace and returns an `ok: false` entry for any workspace that fails, while continuing the rest of the run. Conversation score rows older than 180 days are pruned because they are recomputable from tickets, messages, approvals, outcomes, and feedback.
 
+## Public channels
+
+Owners and admins can open **Settings → Public channels** to create embeddable chat widgets or hosted support forms for any workspace mailbox. Each channel gets a public key, an optional origin allowlist, a welcome message, and an email requirement.
+
+Use the generated widget script on your site for chat, or link/embed the hosted `/forms/<public_key>` page for a support form. Visitor sessions are protected by bearer tokens returned only at session creation. Public reads expose inbound/outbound thread messages, never internal notes.
+
+If a channel is abused, disable it from Settings. The channel stops accepting new public messages, while existing tickets remain in the operator inbox for normal handling.
+
 ## Escalations
 
 The `EscalationAgent` runs on demand. It returns `{ should_escalate, severity, route_to }` and the operator (or an automation rule) picks the handoff target.
