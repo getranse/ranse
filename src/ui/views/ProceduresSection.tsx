@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ProcedureFlowDiagram } from '../components/ProcedureFlowDiagram';
 import { API, type ProcedureLibraryListEntry, type ProcedureListEntry } from '../api';
+import type { ProcedureSpec } from '../../types/procedure';
 
 interface ProceduresSectionProps {
   onSaved: (message?: string) => void;
@@ -143,6 +145,7 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
             style={{ fontFamily: 'var(--mono)', fontSize: 12 }}
           />
         </div>
+        <ProcedureDraftPreview draft={draft} />
         {error && <div className="error">{error}</div>}
         <button
           className="primary"
@@ -162,6 +165,42 @@ export function ProceduresSection({ onSaved }: ProceduresSectionProps) {
       </div>
     </>
   );
+}
+
+function ProcedureDraftPreview({ draft }: { draft: string }) {
+  const parsed = useMemo(() => tryParseSpec(draft), [draft]);
+  if (!parsed) {
+    return (
+      <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+        Flow preview will appear when the spec is valid JSON.
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+        Flow preview
+      </div>
+      <ProcedureFlowDiagram spec={parsed} maxHeight={520} />
+    </div>
+  );
+}
+
+function tryParseSpec(draft: string): ProcedureSpec | null {
+  try {
+    const parsed = JSON.parse(draft);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      Array.isArray(parsed.steps) &&
+      parsed.trigger?.type
+    ) {
+      return parsed as ProcedureSpec;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function readinessLabel(item: ProcedureLibraryListEntry): string {

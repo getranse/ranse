@@ -1,5 +1,6 @@
 import type { TicketViewData } from '../../types/ticket';
 import { useEffect, useState } from 'react';
+import { CustomerMemoryDrawer } from '../components/CustomerMemoryDrawer';
 import { API, type ProcedureListEntry } from '../api';
 
 interface TicketSidebarProps {
@@ -172,6 +173,12 @@ export function TicketSidebar({
             ))}
           </div>
         </>
+      )}
+      {ticket.customer_id && (
+        <CustomerMemoryDrawer
+          customerId={ticket.customer_id}
+          customerName={ticket.requester_name ?? ticket.requester_email}
+        />
       )}
       <h2 style={{ marginTop: 16 }}>Audit</h2>
       <div style={{ fontSize: 12 }}>

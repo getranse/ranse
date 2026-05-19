@@ -57,7 +57,9 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 9 — Multi-channel** is shipped end-to-end across thirteen channel kinds + three voice providers behind one `ChannelAdapter` contract: chat widget, hosted form, Slack, SMS (Twilio), Discord, Telegram, WhatsApp Business, Microsoft Teams, Facebook Messenger, Instagram DM, Google Business Messages (RCS), Apple Messages for Business, a generic outbound webhook, and voice (ElevenLabs Conversational AI, Twilio + Cloudflare Workers AI, Gemini Live). Surrounding the adapters: signed-webhook verification, replay-safe ingress dedup, capability-aware procedure branching, per-channel SLA overrides, cross-channel identity stitching, customer channel preferences (with STOP-keyword honoring + quiet hours), workspace-keyed AES-GCM encryption of every adapter secret at rest, an omnichannel notification cascade engine (`notifyCustomer({customer, template, urgency, cascade})` fans across channels with read-receipt acknowledgement), and an exponential-backoff retry queue with dead-letter for failed outbound dispatches.
 
-That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, a forkable procedure library, a sovereign insights loop that turns real support history into reviewed KB improvements, and public web surfaces that feed the same ticket model. Voice remains deliberately last.
+**Phase 10 — Post-Fin parity** is shipped end-to-end with operator UI. Real-time draft assist (debounced ghost-text completion + Tab-to-accept + KB nearby + similar-past-tickets sidebar, wired into the reply composer), long-term customer memory (auto-extracted on ticket resolution, injected into procedure context, surfaced as an editable + redactable drawer in the ticket sidebar), operations dashboards (resolution / deflection / TTFR / TTR / CSAT / follow-up rate + volume-by-channel bars, rendered as the first card in the Insights view with a 7/30/90-day window selector), and a live procedure flow-diagram (SVG renderer with terminal/process/io/decision/loop_container shapes + yes/no edge labels + approval-gate badges, previewing the operator's procedure JSON as they edit it).
+
+That's now equivalent or ahead of Fin on every customer-visible axis — and ahead structurally because the same buyer self-hosts it on their own Cloudflare account with multi-provider LLM routing, MCP-native actions, evals against their actual ticket history, and a forkable procedure library no closed SaaS can replicate.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -250,6 +252,27 @@ Channels are now plug-and-play behind a single `ChannelAdapter` contract (`src/c
 - **Workspace-keyed encryption at rest.** Adapters declare `secretFields` (bot tokens, API keys, auth tokens). Channel admin partitions the validated config into `config_json` (public, visible in dashboards) and `secrets_ciphertext` (AES-GCM-256 with HKDF-derived per-workspace key). Existing channels keep working — the read path tolerates legacy plaintext until the next save.
 - **Notification cascade engine.** `notifyCustomer({customer, template, urgency, cascade})` materializes a `notification_plan` plus `notification_step` rows. The scheduled tick advances plans, an inbound customer reply on any channel ack's all pending plans for that customer, and templates render with `{{ payload.field }}` substitution. Cascade trigger reasons: `immediate`, `previous_failed`, `previous_unread`, `previous_no_ack`, `time_elapsed`.
 - **Retry queue + DLQ.** Failed outbound dispatches schedule `next_attempt_at` with 60s/5m/30m/2h/8h exponential backoff (±10% jitter); the periodic `dispatch-retry-sweep` re-fires them through the adapter, settling into status `failed` after `max_attempts`. Preference-blocked sends never retry.
+
+## Phase 10 — Post-Fin parity
+**Status: shipped.**
+
+*Principle 2 (per-step model), Principle 3 (procedures as code, now rendered)*
+
+The four highest-leverage gaps Fin had over Ranse before this phase. All four shipped.
+
+- **Real-time draft assist** (`/api/tickets/:id/draft-assist`). Operator types in the reply composer; the endpoint returns a one-sentence completion (ghost text) plus 4 KB hits and 3 similar past resolved tickets. Uses the fast `summarize` action — never blocks on the agentic retrieval loop — so p95 stays low enough for keystroke cadence. KB grounding is the same vector pipeline drafts use, so suggestions are workspace-private.
+- **Long-term customer memory.** `customer_memory` table holds distilled durable facts about a customer (account type, preferences, prior complaints, communication style) extracted by an LLM after each resolved ticket. Memory injects into every procedure run as `customer.memory[]`, the draft generator reads it, and operators can list/edit/redact via `/api/memory/customers/:id`. The extractor is conservative — facts below 0.4 confidence are dropped, sensitive PII is explicitly prohibited, and operator-authored entries can never be overwritten by inference.
+- **Operations dashboards.** `/api/insights/operations` returns resolution rate, autonomous-resolution rate, procedure-resolution rate, deflection rate, time-to-first-response p50/p90, time-to-resolution p50/p90, CSAT score, follow-up rate, and ticket volume broken out by `origin_channel_kind`. All computed from existing tables — no new ingest pipeline.
+- **Procedure flow diagram.** `layoutProcedure(spec)` is a pure data transform from `ProcedureSpec` to `{ nodes, edges, width, height }`. The `ProcedureFlowDiagram` React component (`src/ui/components/ProcedureFlowDiagram.tsx`) renders it as SVG with decision diamonds for `if`, IO parallelograms for `ask_customer` / `wait_for_event`, rectangles for `call_action` / `add_note` / `set_ticket_field`, double-stroke loop containers, approval-gate badges on write actions, and yes/no labels on `if` edges. Live-previewed in the Procedures settings tab as the operator edits the JSON spec. Procedures stay code-first (Principle 3); the diagram is the read-only view non-engineers can review.
+
+### UI components shipped
+
+| Component | Location | Wired into |
+|---|---|---|
+| `DraftAssistPanel` | `src/ui/components/DraftAssistPanel.tsx` | `Ticket.tsx` reply composer |
+| `OperationsDashboard` | `src/ui/components/OperationsDashboard.tsx` | `Insights.tsx` (top of view) |
+| `CustomerMemoryDrawer` | `src/ui/components/CustomerMemoryDrawer.tsx` | `TicketSidebar.tsx` when `ticket.customer_id` is set |
+| `ProcedureFlowDiagram` | `src/ui/components/ProcedureFlowDiagram.tsx` | `ProceduresSection.tsx` live spec preview |
 
 ## What we are explicitly not building
 

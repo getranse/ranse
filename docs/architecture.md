@@ -330,6 +330,33 @@ Cascade step `trigger_on` values: `immediate`, `previous_failed`, `previous_unre
 
 **Generic outbound webhook.** The `webhook` adapter is the meta-channel: HMAC-SHA256 signed in both directions, JSON body for inbound (`{ external_id, external_thread_id, text, from: {…} }`) and outbound (`{ kind, message, sent_at }`). Operators paste an `endpoint_url` + `shared_secret` and a custom-headers JSON blob — they can route Ranse into any internal system without writing a new adapter or shipping new code.
 
+## Post-Fin parity (Phase 10)
+
+**Real-time draft assist.** `runDraftAssist({ draft, cursor, customerLastMessage, ticketSubject, customerMemoryFacts })` returns a one-sentence completion + 4 KB hits + 3 similar past tickets. Uses the cheap `summarize` action so the keystroke loop stays fast; KB hits come from the existing vector pipeline narrowed to the customer's last message plus the trailing 400 chars of the operator draft. Endpoint: `POST /api/tickets/:id/draft-assist`.
+
+**Customer memory.** `customer_memory` rows are durable facts the agent should remember across tickets. `extractMemoryFromTicket` runs as a `waitUntil` background after the operator marks a ticket `resolved` / `closed`: pulls the full transcript, asks the LLM for ≤6 facts with kinds in `{fact, preference, context, complaint, communication_style}`, and dedupes against an evidence hash so re-running on the same conversation is idempotent. `runProcedureRun` calls `injectCustomerMemory` before executing steps so every procedure sees `customer.memory[]`. Operator endpoints: `GET /api/memory/customers/:id`, `POST /api/memory/customers/:id` (operator-authored facts win — `created_by='operator'` is never overwritten by the extractor), and `POST /api/memory/customers/:customerId/redact/:memoryId`.
+
+**Operations dashboards.** `computeOperationsMetrics(env, workspaceId, { windowDays })` returns:
+
+- `volume.total` + `volume.byChannel[]` (grouped by `origin_channel_kind`)
+- `resolution.rate` / `autonomousRate` / `procedureRate` (from `ticket_outcome_event.kind`)
+- `deflection.rate` — tickets resolved with zero `message_index.author_user_id` (human-authored outbound), computed per ticket
+- `responseTime.ttfrMedianMs` / `ttfrP90Ms` / `ttrMedianMs` / `ttrP90Ms` (percentiles over per-ticket deltas)
+- `satisfaction.csatScore` (`(pos − neg) / total` from `ticket_feedback`)
+- `followUpRate` — distinct tickets with `ticket_outcome_event.kind = 'customer_followed_up'` over total
+
+Endpoint: `GET /api/insights/operations?days=30`. All queries are inclusive-upper-bound (`created_at <= ?`) so feedback submitted at the exact request time still counts.
+
+**Procedure flow diagram.** `layoutProcedure(spec: ProcedureSpec): { nodes, edges, width, height }` is a pure data transformation — no React, no DOM. Shapes:
+
+- `terminal` (rounded) for Start/End
+- `decision` (diamond) for `if`, with `yes`/`no` edge labels
+- `io` (parallelogram) for `ask_customer` and `wait_for_event`
+- `loop_container` (double-stroke rectangle) for `loop`
+- `process` (rectangle) for everything else; `approvalGate` boolean flips an extra badge for `call_action` with `requires_approval: true`
+
+Branches indent right by `BRANCH_INDENT` pixels and rejoin at the next sequential step, so the layout is a vertical waterfall with sub-flows — readable for ~80% of procedures, no auto-routing needed.
+
 ## Scaling model
 
 - One `WorkspaceSupervisorAgent` DO per workspace. The email handler pins by `idFromName(workspaceId)` so all events for a workspace funnel through one instance — consistent state, no cross-DO coordination needed.

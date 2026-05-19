@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { OperationsDashboard } from '../components/OperationsDashboard';
 import {
   API,
   type ConversationScoreEntry,
@@ -61,6 +62,8 @@ export function InsightsView() {
       </div>
 
       {error && <div className="error">{error}</div>}
+
+      <OperationsDashboard />
 
       <div className="insight-grid">
         <Metric label="Resolution" value={percent(summary?.resolution_rate)} />

@@ -13,6 +13,7 @@ import {
   updateKbSuggestionStatus,
   updateKnowledgeDriftStatus,
 } from '../insights';
+import { computeOperationsMetrics } from '../insights/operations';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
 
 const limitSchema = z.object({ limit: z.number().int().min(1).max(500).optional() });
@@ -24,6 +25,14 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365);
     return c.json({ summary: await getInsightSummary(c.env, s.workspaceId, days) });
+  });
+
+  apiApp.get('/insights/operations', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const windowDays = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 180);
+    return c.json({
+      metrics: await computeOperationsMetrics(c.env, s.workspaceId, { windowDays }),
+    });
   });
 
   apiApp.get('/insights/scores', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {

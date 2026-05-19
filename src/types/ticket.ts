@@ -8,9 +8,11 @@ export interface TicketViewData {
     id: string;
     subject: string;
     requester_email: string;
+    requester_name?: string | null;
     priority: string;
     category?: string | null;
     status: string;
+    customer_id?: string | null;
     ai_drafts_enabled?: number | null;
   };
   messages: Array<{

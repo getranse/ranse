@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReplyEdits, TicketViewData } from '../../types/ticket';
 import { API, type AnswerInspectionHit, type AnswerInspectionTrace } from '../api';
+import { DraftAssistPanel } from '../components/DraftAssistPanel';
 import { AnswerInspection } from './AnswerInspection';
 import { TicketApprovalCard } from './TicketApprovalCard';
 import { TicketSidebar } from './TicketSidebar';
@@ -106,6 +107,13 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
             placeholder={`Reply to ${ticket.requester_email}…`}
           />
           <AnswerInspection hits={draftKnowledge} trace={draftTrace} />
+          <DraftAssistPanel
+            ticketId={id}
+            draft={reply}
+            onAcceptCompletion={(completion) =>
+              setReply((prev) => (prev.endsWith(' ') ? prev + completion : `${prev} ${completion}`))
+            }
+          />
           {error && (
             <div className="error" style={{ marginTop: 6 }}>
               {error}

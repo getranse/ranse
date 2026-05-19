@@ -50,4 +50,5 @@ export const ids = {
   notificationPlan: () => id('nplan'),
   notificationStep: () => id('nstep'),
   notificationDelivery: () => id('ndel'),
+  customerMemory: () => id('mem'),
 };

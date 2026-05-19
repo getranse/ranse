@@ -281,6 +281,23 @@ export function createWorkspaceTestDb() {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (workspace_id, customer_id, channel_kind)
     );
+    CREATE TABLE customer_memory (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'fact',
+      fact_text TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 0.7,
+      source_ticket_id TEXT,
+      source_message_id TEXT,
+      evidence_hash TEXT,
+      created_by TEXT NOT NULL DEFAULT 'extractor',
+      redacted_at INTEGER,
+      redacted_reason TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE (workspace_id, customer_id, evidence_hash)
+    );
     CREATE TABLE notification_template (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,

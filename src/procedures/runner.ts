@@ -18,6 +18,7 @@ import type { SendThreadedReply } from '../types/supervisor';
 import { makeSendThreadedReply } from '../agents/supervisor/replies';
 import { workspaceConfig } from '../agents/supervisor/settings';
 import { captureResolvedTicketEvalCase } from '../evals/capture';
+import { listMemory } from '../memory/store';
 import { getRunBundle, getStepRunByIndex, recordStepRun, updateRun } from './storage';
 import {
   deletePath,
@@ -67,6 +68,7 @@ export async function runProcedure(
   if (['completed', 'cancelled'].includes(bundle.run.status)) return bundle.run;
 
   const context = parseContext(bundle.run.context_json);
+  await injectCustomerMemory(env, workspaceId, bundle.run.ticket_id, context);
   const state: ExecutionState = {
     run: bundle.run,
     context,
@@ -721,4 +723,39 @@ function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+// Surface long-term customer memory into the procedure context as
+// `customer.memory` — an ordered list of facts the draft generator and any
+// procedure step (via `{{ customer.memory.0.text }}` or by reading the
+// array directly) can use. Reading is best-effort: a missing customer or
+// empty memory simply omits the field rather than failing the run.
+async function injectCustomerMemory(
+  env: Env,
+  workspaceId: string,
+  ticketId: string,
+  context: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const ticket = await env.DB.prepare(
+      `SELECT customer_id FROM ticket WHERE id = ? AND workspace_id = ?`,
+    )
+      .bind(ticketId, workspaceId)
+      .first<{ customer_id: string | null }>();
+    if (!ticket?.customer_id) return;
+    const memory = await listMemory(env, workspaceId, ticket.customer_id);
+    if (memory.length === 0) return;
+    const existing = asObject(context.customer);
+    context.customer = {
+      ...existing,
+      id: ticket.customer_id,
+      memory: memory.map((m) => ({
+        kind: m.kind,
+        text: m.fact_text,
+        confidence: m.confidence,
+      })),
+    };
+  } catch (err) {
+    console.warn('procedure customer memory injection failed', err);
+  }
 }

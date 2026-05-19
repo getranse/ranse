@@ -42,6 +42,35 @@ export type EvalCaseEntry = EvalCase;
 export type EvalRunEntry = EvalRun;
 export type ConversationScoreEntry = ConversationScore;
 export type InsightSummaryEntry = InsightSummary;
+
+export interface CustomerMemoryEntry {
+  id: string;
+  customer_id: string;
+  kind: string;
+  fact_text: string;
+  confidence: number;
+  source_ticket_id: string | null;
+  created_by: string;
+  redacted_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface OperationsMetricsResponse {
+  windowStart: number;
+  windowEnd: number;
+  volume: { total: number; byChannel: { kind: string; count: number }[] };
+  resolution: { rate: number; autonomousRate: number; procedureRate: number };
+  deflection: { rate: number; autonomousResolved: number; humanResolved: number };
+  responseTime: {
+    ttfrMedianMs: number | null;
+    ttfrP90Ms: number | null;
+    ttrMedianMs: number | null;
+    ttrP90Ms: number | null;
+  };
+  satisfaction: { csatScore: number | null; positiveCount: number; negativeCount: number };
+  followUpRate: number;
+}
 export type KbSuggestionEntry = KbSuggestion;
 export type KnowledgeDriftSignalEntry = KnowledgeDriftSignal;
 export type PublicChannelEntry = PublicChannel;
@@ -87,6 +116,17 @@ export const API = {
       knowledgeTrace?: AnswerInspectionTrace;
       error?: string;
     }>(`/api/tickets/${id}/draft`, { method: 'POST' }),
+  draftAssist: (id: string, draft: string, cursor?: number) =>
+    api<{
+      completion: string;
+      confidence: number;
+      knowledge: { id: string; title: string; url?: string; snippet?: string }[];
+      similar: { id: string; subject: string; resolved_at: number | null; preview: string | null }[];
+      model: string;
+    }>(`/api/tickets/${id}/draft-assist`, {
+      method: 'POST',
+      body: JSON.stringify({ draft, cursor }),
+    }),
   setTicketAiDrafts: (id: string, enabled: boolean | null) =>
     api(`/api/tickets/${id}/ai-drafts`, { method: 'POST', body: JSON.stringify({ enabled }) }),
   recordTicketFeedback: (id: string, rating: 'positive' | 'negative', messageId?: string) =>
@@ -337,6 +377,23 @@ export const API = {
     }),
   insightSummary: (days = 30) =>
     api<{ summary: InsightSummaryEntry }>(`/api/insights/summary?days=${days}`),
+  operationsMetrics: (days = 30) =>
+    api<{ metrics: OperationsMetricsResponse }>(`/api/insights/operations?days=${days}`),
+  listCustomerMemory: (customerId: string) =>
+    api<{ memory: CustomerMemoryEntry[] }>(`/api/memory/customers/${customerId}`),
+  addCustomerMemory: (
+    customerId: string,
+    body: { fact_text: string; kind?: string; confidence?: number },
+  ) =>
+    api<{ memory: CustomerMemoryEntry }>(`/api/memory/customers/${customerId}`, {
+      method: 'POST',
+      body: JSON.stringify({ customer_id: customerId, ...body }),
+    }),
+  redactCustomerMemory: (customerId: string, memoryId: string, reason: string) =>
+    api(`/api/memory/customers/${customerId}/redact/${memoryId}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
   listConversationScores: (limit = 50) =>
     api<{ scores: ConversationScoreEntry[] }>(`/api/insights/scores?limit=${limit}`),
   runConversationScoring: (limit = 100) =>
