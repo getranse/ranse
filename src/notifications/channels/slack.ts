@@ -1,5 +1,5 @@
-import type { ChannelHandler } from './types';
 import type { NotificationEvent } from '../events';
+import type { ChannelHandler } from './types';
 
 // Slack incoming webhooks accept Block Kit JSON. We send a short header
 // (event name + sender) and a section with the subject + preview. Slack

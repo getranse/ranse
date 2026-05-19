@@ -17,6 +17,14 @@ export const r2Keys = {
     `assets/workspace/${workspaceId}/${kind}/${filename}`,
   userAsset: (workspaceId: string, userId: string, kind: 'avatar', filename: string) =>
     `assets/user/${workspaceId}/${userId}/${kind}/${filename}`,
+  voiceRecording: (workspaceId: string, callId: string, ext: 'wav' | 'mp3' | 'ogg' | 'mulaw') =>
+    `voice/${workspaceId}/${callId}/recording.${ext}`,
+  voiceTurnAudio: (workspaceId: string, callId: string, turnId: string, ext: 'wav' | 'mp3' | 'mulaw') =>
+    `voice/${workspaceId}/${callId}/turns/${turnId}.${ext}`,
+  voiceTranscript: (workspaceId: string, callId: string) =>
+    `voice/${workspaceId}/${callId}/transcript.json`,
+  voiceProviderEvent: (workspaceId: string, eventId: string) =>
+    `voice/${workspaceId}/events/${eventId}.json`,
 };
 
 export async function putRaw(

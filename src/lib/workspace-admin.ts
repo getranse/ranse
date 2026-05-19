@@ -1,4 +1,5 @@
 import type { Env } from '../env';
+import { listPublicChannels } from '../channels';
 import { audit } from './audit';
 import { randomToken } from './crypto';
 import { ids } from './ids';
@@ -13,14 +14,19 @@ import {
   normalizeAutonomyThreshold,
 } from '../types/autonomy';
 
-export async function listWorkspaceMailboxes(env: Env, workspaceId: string): Promise<WorkspaceMailbox[]> {
+export async function listWorkspaceMailboxes(
+  env: Env,
+  workspaceId: string,
+): Promise<WorkspaceMailbox[]> {
   const rows = await env.DB.prepare(
     `SELECT id, address, display_name, auto_reply_policy, autonomy_policy,
             autonomy_threshold, autonomy_rollout_percent, created_at
        FROM mailbox
       WHERE workspace_id = ?
       ORDER BY created_at ASC`,
-  ).bind(workspaceId).all<WorkspaceMailbox>();
+  )
+    .bind(workspaceId)
+    .all<WorkspaceMailbox>();
   return rows.results ?? [];
 }
 
@@ -47,7 +53,9 @@ export async function createWorkspaceMailbox(
     address: input.address.toLowerCase(),
     display_name: input.displayName ?? null,
     autonomy_policy: normalizeAutonomyPolicy(input.autonomyPolicy ?? input.autoReplyPolicy),
-    autonomy_threshold: normalizeAutonomyThreshold(input.autonomyThreshold ?? DEFAULT_AUTONOMY_THRESHOLD),
+    autonomy_threshold: normalizeAutonomyThreshold(
+      input.autonomyThreshold ?? DEFAULT_AUTONOMY_THRESHOLD,
+    ),
     autonomy_rollout_percent: normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent),
     created_at: now,
   };
@@ -58,18 +66,20 @@ export async function createWorkspaceMailbox(
        id, workspace_id, address, display_name, reply_signing_secret, auto_reply_policy,
        autonomy_policy, autonomy_threshold, autonomy_rollout_percent, created_at
      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(
-    mailbox.id,
-    workspaceId,
-    mailbox.address,
-    mailbox.display_name,
-    randomToken(32),
-    autoReplyPolicy,
-    mailbox.autonomy_policy,
-    mailbox.autonomy_threshold,
-    mailbox.autonomy_rollout_percent,
-    now,
-  ).run();
+  )
+    .bind(
+      mailbox.id,
+      workspaceId,
+      mailbox.address,
+      mailbox.display_name,
+      randomToken(32),
+      autoReplyPolicy,
+      mailbox.autonomy_policy,
+      mailbox.autonomy_threshold,
+      mailbox.autonomy_rollout_percent,
+      now,
+    )
+    .run();
   await audit(env, {
     workspaceId,
     actorType: 'user',
@@ -121,7 +131,9 @@ export async function updateWorkspaceMailbox(
     binds.push(normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent));
   }
   if (updates.length > 0) {
-    await env.DB.prepare(`UPDATE mailbox SET ${updates.join(', ')} WHERE id = ? AND workspace_id = ?`)
+    await env.DB.prepare(
+      `UPDATE mailbox SET ${updates.join(', ')} WHERE id = ? AND workspace_id = ?`,
+    )
       .bind(...binds, mailboxId, workspaceId)
       .run();
   }
@@ -140,29 +152,59 @@ export async function workspaceUsage(env: Env, workspaceId: string): Promise<Wor
     const row = await env.DB.prepare(sql).bind(workspaceId).first<{ n: number }>();
     return row?.n ?? 0;
   };
-  const [members, mailboxes, tickets, openTickets, messages, knowledgeSources, notificationChannels, llmConfigs, auditEvents] =
-    await Promise.all([
-      count(`SELECT COUNT(*) AS n FROM workspace_user WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM mailbox WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM ticket WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM ticket WHERE workspace_id = ? AND status IN ('open','pending')`),
-      count(`SELECT COUNT(*) AS n FROM message_index WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM knowledge_source WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM notification_channel WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM workspace_llm_config WHERE workspace_id = ?`),
-      count(`SELECT COUNT(*) AS n FROM audit_event WHERE workspace_id = ?`),
-    ]);
-  return { members, mailboxes, tickets, openTickets, messages, knowledgeSources, notificationChannels, llmConfigs, auditEvents };
+  const [
+    members,
+    mailboxes,
+    tickets,
+    openTickets,
+    messages,
+    knowledgeSources,
+    notificationChannels,
+    publicChannels,
+    llmConfigs,
+    auditEvents,
+  ] = await Promise.all([
+    count(`SELECT COUNT(*) AS n FROM workspace_user WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM mailbox WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM ticket WHERE workspace_id = ?`),
+    count(
+      `SELECT COUNT(*) AS n FROM ticket WHERE workspace_id = ? AND status IN ('open','pending')`,
+    ),
+    count(`SELECT COUNT(*) AS n FROM message_index WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM knowledge_source WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM notification_channel WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM public_channel WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM workspace_llm_config WHERE workspace_id = ?`),
+    count(`SELECT COUNT(*) AS n FROM audit_event WHERE workspace_id = ?`),
+  ]);
+  return {
+    members,
+    mailboxes,
+    tickets,
+    openTickets,
+    messages,
+    knowledgeSources,
+    notificationChannels,
+    publicChannels,
+    llmConfigs,
+    auditEvents,
+  };
 }
 
-export async function workspaceAuditLog(env: Env, workspaceId: string, limit: number): Promise<WorkspaceAuditEvent[]> {
+export async function workspaceAuditLog(
+  env: Env,
+  workspaceId: string,
+  limit: number,
+): Promise<WorkspaceAuditEvent[]> {
   const rows = await env.DB.prepare(
     `SELECT id, ticket_id, actor_type, actor_id, action, payload_json, created_at
        FROM audit_event
       WHERE workspace_id = ?
       ORDER BY created_at DESC
       LIMIT ?`,
-  ).bind(workspaceId, limit).all<WorkspaceAuditEvent>();
+  )
+    .bind(workspaceId, limit)
+    .all<WorkspaceAuditEvent>();
   return rows.results ?? [];
 }
 
@@ -170,7 +212,9 @@ export async function workspaceExportManifest(env: Env, workspaceId: string) {
   const workspace = await env.DB.prepare(
     `SELECT id, name, slug, settings_json, created_at, updated_at, archived_at, deleted_at
        FROM workspace WHERE id = ?`,
-  ).bind(workspaceId).first();
+  )
+    .bind(workspaceId)
+    .first();
   return {
     exportedAt: Date.now(),
     policy: {
@@ -180,9 +224,14 @@ export async function workspaceExportManifest(env: Env, workspaceId: string) {
     },
     workspace,
     usage: await workspaceUsage(env, workspaceId),
-    members: await env.DB.prepare(`SELECT workspace_id, user_id, role, created_at FROM workspace_user WHERE workspace_id = ?`)
-      .bind(workspaceId).all().then((r) => r.results ?? []),
+    members: await env.DB.prepare(
+      `SELECT workspace_id, user_id, role, created_at FROM workspace_user WHERE workspace_id = ?`,
+    )
+      .bind(workspaceId)
+      .all()
+      .then((r) => r.results ?? []),
     mailboxes: await listWorkspaceMailboxes(env, workspaceId),
+    publicChannels: await listPublicChannels(env, workspaceId),
     outcomeRollups: await listWorkspaceOutcomeRollups(env, workspaceId, 365),
     audit: await workspaceAuditLog(env, workspaceId, 500),
   };

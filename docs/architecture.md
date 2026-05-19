@@ -17,6 +17,7 @@ Function-based, not DOs. They live in `src/agents/specialists/` and return struc
 - `summarize` — thread summary + next-step hint.
 - `knowledge` — manual/URL/PDF/resolved-ticket ingestion, Workers AI embeddings, Vectorize search, reranking, and keyword fallback.
 - `insights` — conversation rubric scoring, aggregate operational metrics, unresolved-intent KB suggestions, and knowledge drift detection.
+- `channels` — public chat/form channel configuration, origin-scoped session tokens, hosted forms, widget script, and ticket creation.
 - `draft` — generate a reply with citations; flag review risks.
 - `escalation` — decide whether to route to a human/team.
 - `sla` — deterministic, no LLM; computes breach status.
@@ -53,7 +54,7 @@ triageAndDraft (runs in DO alarm, async)
 | System | Purpose |
 |---|---|
 | DO SQLite | Workspace state, mailbox counters, BYOK-encrypted secrets |
-| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals |
+| D1 | Tickets, messages, audit, approvals, outcomes, feedback, daily rollups, users, sessions, knowledge, LLM config, procedures, MCP registry/tool calls, eval cases/runs/results, conversation scores, KB suggestions, drift signals, public channels/sessions |
 | R2 | Raw MIME, text/html bodies, attachments, exports |
 | KV | Rate limits, idempotency, lightweight flags |
 | Vectorize | Per-workspace knowledge chunk embeddings |
@@ -167,6 +168,167 @@ Insights page
 Suggestions are review records, not automatic content edits. They require repeated unresolved-ticket evidence, store confidence and source-ticket lineage, and accepted suggestions become terminal records linked to the manual knowledge source created through the same ingestion path as the Content Library.
 
 Scheduled insights maintenance is workspace-isolated: one workspace failure is returned as an `ok: false` result for that workspace instead of failing the entire cron run.
+
+## Public web channels
+
+```
+Settings -> Public channels
+  ├─ create chat/form channel for a workspace mailbox
+  ├─ configure allowed origins, welcome text, and email requirement
+  └─ copy <script src="/widget/<public_key>.js"> or /forms/<public_key>
+
+Visitor browser
+  ├─ GET /public/channels/:key/config
+  ├─ POST /public/channels/:key/sessions
+  ├─ POST /public/sessions/:id/messages
+  └─ GET /public/sessions/:id
+       └─ reads only with the bearer session token
+```
+
+Public channels are derivatives of the ticket model, not a separate inbox. A chat or form submission creates a normal `ticket`, stores inbound text in `message_index` plus R2, emits the same notification events, records audit rows, starts ticket-created procedures, and lets operators answer from the existing ticket console. Origin allowlists and unguessable session tokens scope public browser access; internal notes are never returned through public session reads.
+
+## Channel adapters (Phase 9.1)
+
+Every async surface — chat widget, hosted form, Slack, SMS, Discord, Telegram, WhatsApp — implements the same `ChannelAdapter` contract in `src/channels/adapters/`:
+
+```ts
+interface ChannelAdapter {
+  kind: ChannelKind;
+  capabilities: ChannelCapabilities;
+  validateConfig(input: unknown): Record<string, unknown>;
+  onActivate?(env, channel): Promise<void>;
+  verifyWebhook(env, channel, headers, rawBody): Promise<{ ok: boolean; reason?: string }>;
+  parseIngress(env, channel, headers, rawBody): Promise<IngressMessage | null>;
+  handleChallenge?(env, channel, request): Promise<Response | null>;
+  egress(env, channel, message): Promise<EgressResult>;
+}
+```
+
+Inbound flow for any third-party channel:
+
+```
+POST /public/channels/:key/webhook
+  └─ getPublicChannelByKey(key)
+       └─ adapter = getAdapter(channel.kind)
+            ├─ adapter.handleChallenge?(req)   # Slack url_verification, Meta hub.challenge, Discord PING
+            ├─ adapter.verifyWebhook(headers, rawBody)
+            ├─ adapter.parseIngress(rawBody) → IngressMessage | null
+            └─ ingestInboundMessage(channel, msg)
+                 ├─ dedup on (workspace, channel, external_id)
+                 ├─ resolveCustomerIdentity(...) → customer_id (stitch by email/phone)
+                 ├─ open new ticket OR continue existing thread (channel.id + customer_id)
+                 ├─ message_index INSERT + R2 body
+                 ├─ emit ticket.created / message.inbound
+                 └─ startTriggeredProcedureRuns(channel: { kind, capabilities })
+```
+
+Outbound flow when an operator (or autonomous reply pipeline) sends a reply:
+
+```
+sendThreadedReply
+  ├─ loadReplyContext(ticket) → { origin_channel_kind, origin_channel_id, ... }
+  ├─ if origin_channel_kind === 'email': use the legacy MIME + reply-address pipeline.
+  └─ else: dispatchOutbound({ ticketId, messageId, text, fromName })
+       ├─ load public_channel by ticket.origin_channel_id
+       ├─ getAdapter(kind).egress(channel, message)
+       ├─ record channel_outbound_dispatch { status, attempts, last_error, external_id }
+       └─ stamp message_index.rfc_message_id with the external thread id so the
+          next inbound reply continues the same ticket
+```
+
+Identity stitching:
+
+- One row in `customer` per person; one row in `channel_identity` per (channel, external_id).
+- Stitching is conservative: when an ingress payload carries an email or phone that already exists on another identity (or on a customer's primary contact), we reuse that customer; otherwise we open a fresh customer. Operators can manually merge in the UI later.
+- This is what gives the operator a single chronological history when the same person reaches out over email today and SMS tomorrow.
+
+Capabilities + procedures:
+
+- Each adapter exports a `ChannelCapabilities` map (`supportsOtpDelivery`, `supportsButtons`, `supportsRichText`, `maxMessageLength`, …).
+- Procedures receive `channel.capabilities` in their evaluation context and can branch on it with `if { var: 'channel.capabilities.supportsOtpDelivery', equals: true }`.
+- The reference library procedure `verify-identity-channel-aware` shows the pattern: SMS/Telegram/WhatsApp tickets go through OTP, chat/form fall back to a magic link over email.
+
+Adding a new channel:
+
+1. Implement `ChannelAdapter` in `src/channels/adapters/<kind>.ts` (capability map, signature verify, parse, egress).
+2. Register it in `src/channels/adapters/index.ts`.
+3. Add the kind to `ChannelKind` and `PUBLIC_CHANNEL_KINDS` in `src/types/channels.ts`.
+4. Add the kind to the settings UI's `CHANNEL_KINDS` and `CONFIG_FIELDS` map.
+
+No schema migration is needed — config is opaque JSON the adapter validates.
+
+## Voice (Phase 9 voice)
+
+Voice is a single `ChannelAdapter` (`kind = 'voice'`) that delegates to one of three pluggable provider modules selected by `config.provider`:
+
+| Provider           | Inbound media path                                  | Reply path                                            | Best for                                          |
+|--------------------|-----------------------------------------------------|-------------------------------------------------------|---------------------------------------------------|
+| `elevenlabs`       | Provider-owned phone number → ElevenLabs agent      | Post-call webhook delivers full transcript + audio    | Fastest setup, managed agent, premium voice       |
+| `twilio_realtime`  | Twilio Voice number → `<Stream>` to Worker WS       | Worker bridges Whisper (STT) + LLM + MeloTTS in-flight| Self-hosted, single-stack Cloudflare deploy       |
+| `gemini_live`      | Browser/Twilio WS → Worker WS → Gemini Live         | Native bidi audio from Gemini                         | Best latency + native multimodal                  |
+
+Data model:
+
+- `voice_call` — one row per phone call. Tracks status (ringing → connected → completed/failed/missed), caller/callee numbers, duration, R2 keys for full recording + transcript, summary, agent mode (`autonomous` | `human` | `mixed`).
+- `voice_call_turn` — every utterance (caller) and every reply (agent), with per-turn audio R2 key, model name, latency, optional confidence and interruption flag.
+- `voice_provider_event` — raw provider payloads (signed-webhook bodies, status callbacks) stored to R2 with a D1 index for replay/debugging.
+
+Every turn is also written to `message_index` with `direction='inbound'` (caller) or `'outbound'` (agent) and `rfc_message_id = voice:<channel_id>:thread:<external_call_id>:<seq>` so the existing reply pipeline, procedures, identity stitching, and operator UI see voice tickets transparently.
+
+Webhook + WebSocket routing:
+
+```
+/public/channels/:key/webhook
+  ├─ ?answer=1  POST  → provider.answerCall() returns TwiML <Connect><Stream/>
+  ├─ POST              → provider.parseEvent() (post-call transcript / status callback)
+  └─ Upgrade: websocket → provider.handleStream() bridges audio in real time
+
+/public/channels/:key/voice/ws  → friendly alias for the WebSocket upgrade,
+                                  used by the browser-side Gemini Live client.
+```
+
+Capability flags exposed to procedures: `supportsVoice`, `supportsStreaming`, `supportsOtpDelivery` (true — an agent can read OTP aloud), `maxMessageLength: 600`. Procedures branching on `channel.capabilities.supportsVoice === true` should keep replies short, avoid links and dictation-only material, and prefer SMS/email follow-up for anything the customer would have to write down.
+
+Adding a new voice provider:
+
+1. Implement `VoiceProviderModule` in `src/channels/voice/providers/<kind>.ts` (`validateConfig`, `verifyEvent`, `parseEvent`, optionally `answerCall` + `handleStream`).
+2. Register it in `src/channels/voice/index.ts`.
+3. Add the provider kind to `VoiceProviderKind` and `VOICE_PROVIDER_KINDS` in `src/types/channels.ts`.
+4. Add a UI option entry to `PublicChannelsSection.tsx` (`KIND_OPTIONS` + `CONFIG_FIELDS`).
+
+No schema migration required.
+
+## Customer preferences, encryption, cascade, retries (Phase 9 final)
+
+**Secret encryption at rest.** Each `ChannelAdapter` declares `secretFields: string[]` for the credential keys in its config. The admin layer (`channels/admin.ts`) splits the validated config on persist into `config_json` (plaintext, indexable, visible in operator UI) and `secrets_ciphertext` (AES-GCM-256, IV per write, workspace-derived key via HKDF-SHA256 with the workspace id as salt against `env.SECRET_ENCRYPTION_KEY`). On read, `parseChannelConfigAsync(env, channel)` decrypts and merges; the synchronous `parseChannelConfig` returns only the plaintext half (capability lookups, UI rendering). Existing channels with plaintext `config_json` keep working — the read path tolerates the legacy format and the next save re-seals.
+
+**Customer channel preferences.** `customer_channel_preference (workspace, customer, channel_kind, status, quiet_hours_*, timezone)` rows let customers opt in/out per surface. `canDeliverTo()` is called by both the outbound dispatcher and the cascade engine; `opted_out` is a hard block (no retry), `quiet_hours` schedules the next retry to the window edge. STOP/UNSUBSCRIBE/CANCEL keywords on inbound text auto-disable the channel via `applyStopKeyword` — wired into `channels/ingress.ts` so every adapter benefits.
+
+**Omnichannel notification cascade.**
+
+```
+notifyCustomer({ workspaceId, customerId, ticketId?, templateSlug?, payload, urgency, cascade? })
+  ├─ resolve template (default channels + per-channel bodies) or use explicit cascade
+  ├─ insertPlan(...) + insertStep(...) for each step
+  └─ advancePlan(plan) → fireStep(first) immediately
+
+scheduled tick (cascade-sweep, every 5 minutes)
+  ├─ findPlansDueBefore(now) → due steps across active plans
+  ├─ canDeliverTo() preference check; skip step + schedule next on block
+  ├─ dispatchOutbound(ticket, message) through the adapter for that step's channel
+  ├─ updateStepStatus('sent' | 'failed' | 'skipped') + recordDeliveryEvent
+  └─ scheduleNextStepAfter() based on trigger_on rules
+
+inbound on any channel (channels/ingress.ts)
+  └─ acknowledgePlansForCustomer(workspace, customer, channelKind)
+       └─ matching sent step → status='read', plan='completed'
+```
+
+Cascade step `trigger_on` values: `immediate`, `previous_failed`, `previous_unread`, `previous_no_ack`, `time_elapsed`. Default inter-step delay is urgency-aware (urgent: 1m, high: 5m, normal: 30m, low: 4h). Templates carry per-channel bodies under `bodies_json` and render `{{ payload.foo }}` at materialize-time.
+
+**Retry queue + DLQ.** `channel_outbound_dispatch` gained `next_attempt_at` + `max_attempts`. Failed sends schedule the next attempt with `retryBackoffMs(attempt)` — 60s, 5m, 30m, 2h, 8h with ±10% jitter — and the `dispatch-retry-sweep` job (5-minute cadence, sharing the SLA-sweep heartbeat) calls `retryPendingDispatch(id)` which re-fires the adapter and either upgrades the row to `delivered`, schedules the next backoff slot, or settles to `failed` after `max_attempts`. Preference-blocked sends never get a retry slot.
+
+**Generic outbound webhook.** The `webhook` adapter is the meta-channel: HMAC-SHA256 signed in both directions, JSON body for inbound (`{ external_id, external_thread_id, text, from: {…} }`) and outbound (`{ kind, message, sent_at }`). Operators paste an `endpoint_url` + `shared_secret` and a custom-headers JSON blob — they can route Ranse into any internal system without writing a new adapter or shipping new code.
 
 ## Scaling model
 

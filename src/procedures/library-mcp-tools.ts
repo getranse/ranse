@@ -92,6 +92,48 @@ export const shopifyTools: ProcedureLibraryMcpToolSpec[] = [
   },
 ];
 
+export const identityChannelTools: ProcedureLibraryMcpToolSpec[] = [
+  {
+    server: 'identity',
+    tool: 'otp.send',
+    title: 'Send identity-proof OTP',
+    description:
+      'Deliver a one-time verification code over a channel that supports OTP (SMS, Telegram, WhatsApp).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        channel: { type: 'string' },
+        destination: { type: 'string' },
+      },
+      required: ['channel', 'destination'],
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+  },
+  {
+    server: 'identity',
+    tool: 'magic_link.send',
+    title: 'Send identity magic link',
+    description:
+      'Email a single-use verification link when the originating channel cannot deliver an OTP.',
+    input_schema: {
+      type: 'object',
+      properties: { email: { type: 'string' } },
+      required: ['email'],
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+  },
+];
+
 export const privacyTools: ProcedureLibraryMcpToolSpec[] = [
   {
     server: 'privacy',

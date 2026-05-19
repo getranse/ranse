@@ -203,6 +203,37 @@
   padding-top: 4px;
 }
 
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.public-channel-create {
+  margin-bottom: 12px;
+}
+
+.public-channel-row {
+  align-items: start;
+}
+
+.public-channel-row code {
+  display: block;
+  margin: 6px 0;
+  max-width: min(680px, 100%);
+  overflow-wrap: anywhere;
+  white-space: normal;
+  color: var(--text);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
 .mcp-tool-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);

@@ -86,6 +86,9 @@ export function createWorkspaceTestDb() {
       first_message_id TEXT,
       thread_token TEXT NOT NULL,
       ai_drafts_enabled INTEGER,
+      origin_channel_kind TEXT NOT NULL DEFAULT 'email',
+      origin_channel_id TEXT,
+      customer_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -203,6 +206,213 @@ export function createWorkspaceTestDb() {
       enabled INTEGER NOT NULL,
       label TEXT,
       created_at INTEGER NOT NULL
+    );
+    CREATE TABLE public_channel (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      mailbox_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      name TEXT NOT NULL,
+      public_key TEXT NOT NULL UNIQUE,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      require_email INTEGER NOT NULL DEFAULT 1,
+      allowed_origins_json TEXT NOT NULL DEFAULT '[]',
+      welcome_message TEXT,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      secrets_ciphertext TEXT,
+      secret_ciphertext TEXT,
+      signing_secret TEXT,
+      sla_first_response_minutes INTEGER,
+      sla_resolution_minutes INTEGER,
+      default_priority TEXT,
+      default_assignee_user_id TEXT,
+      last_event_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE customer (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      display_name TEXT,
+      primary_email TEXT,
+      primary_phone TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE channel_identity (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      channel_kind TEXT NOT NULL,
+      external_id TEXT NOT NULL,
+      display_name TEXT,
+      email TEXT,
+      phone TEXT,
+      first_seen_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, channel_kind, external_id)
+    );
+    CREATE TABLE channel_outbound_dispatch (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      channel_kind TEXT NOT NULL,
+      channel_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      external_id TEXT,
+      next_attempt_at INTEGER,
+      max_attempts INTEGER NOT NULL DEFAULT 5,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE customer_channel_preference (
+      workspace_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      channel_kind TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'enabled',
+      quiet_hours_start_minutes INTEGER,
+      quiet_hours_end_minutes INTEGER,
+      timezone TEXT,
+      consent_source TEXT,
+      consent_at INTEGER,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, customer_id, channel_kind)
+    );
+    CREATE TABLE notification_template (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      default_channels_json TEXT NOT NULL DEFAULT '[]',
+      bodies_json TEXT NOT NULL DEFAULT '{}',
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      archived_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE (workspace_id, slug)
+    );
+    CREATE TABLE notification_plan (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      customer_id TEXT NOT NULL,
+      ticket_id TEXT,
+      template_id TEXT,
+      template_slug TEXT,
+      urgency TEXT NOT NULL DEFAULT 'normal',
+      status TEXT NOT NULL DEFAULT 'pending',
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      acknowledged_at INTEGER,
+      completed_at INTEGER,
+      cancelled_reason TEXT,
+      created_by_user_id TEXT,
+      source TEXT NOT NULL DEFAULT 'api',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE notification_step (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      plan_id TEXT NOT NULL,
+      sequence INTEGER NOT NULL,
+      channel_kind TEXT NOT NULL,
+      channel_id TEXT,
+      trigger_on TEXT NOT NULL DEFAULT 'immediate',
+      delay_ms INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      scheduled_at INTEGER,
+      attempted_at INTEGER,
+      delivered_at INTEGER,
+      read_at INTEGER,
+      acknowledged_at INTEGER,
+      external_id TEXT,
+      last_error TEXT,
+      body_text TEXT,
+      body_html TEXT,
+      body_json TEXT,
+      UNIQUE (plan_id, sequence)
+    );
+    CREATE TABLE notification_delivery_event (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      step_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      occurred_at INTEGER NOT NULL,
+      payload_json TEXT NOT NULL DEFAULT '{}'
+    );
+    CREATE TABLE voice_call (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      customer_id TEXT,
+      provider TEXT NOT NULL,
+      external_call_id TEXT NOT NULL,
+      caller_number TEXT,
+      callee_number TEXT,
+      direction TEXT NOT NULL DEFAULT 'inbound',
+      status TEXT NOT NULL DEFAULT 'ringing',
+      agent_mode TEXT NOT NULL DEFAULT 'autonomous',
+      started_at INTEGER NOT NULL,
+      connected_at INTEGER,
+      ended_at INTEGER,
+      duration_ms INTEGER,
+      recording_r2_key TEXT,
+      transcript_r2_key TEXT,
+      summary TEXT,
+      error TEXT,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, channel_id, external_call_id)
+    );
+    CREATE TABLE voice_call_turn (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      call_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      message_id TEXT,
+      sequence INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      text TEXT,
+      audio_r2_key TEXT,
+      duration_ms INTEGER,
+      model TEXT,
+      confidence REAL,
+      interrupted INTEGER NOT NULL DEFAULT 0,
+      started_at INTEGER NOT NULL,
+      completed_at INTEGER,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      UNIQUE(call_id, sequence)
+    );
+    CREATE TABLE voice_provider_event (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      call_id TEXT,
+      channel_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      payload_r2_key TEXT,
+      received_at INTEGER NOT NULL
+    );
+    CREATE TABLE public_conversation_session (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      session_token_hash TEXT NOT NULL UNIQUE,
+      requester_email TEXT NOT NULL,
+      requester_name TEXT,
+      visitor_id TEXT,
+      origin TEXT,
+      user_agent TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL,
+      closed_at INTEGER
     );
     CREATE TABLE workspace_llm_config (
       workspace_id TEXT NOT NULL,
@@ -446,12 +656,39 @@ export function createWorkspaceTestDb() {
       Promise.all(statements.map((statement) => statement.run())),
   };
 
+  const blobStore = new Map<string, Uint8Array>();
+
   return {
     db,
     env: {
       DB: envDb,
       COOKIE_SIGNING_KEY: 'test-secret',
-      BLOB: { put: async () => undefined, get: async () => null },
+      SECRET_ENCRYPTION_KEY: 'test-secret-encryption-key-32bytes!!',
+      BLOB: {
+        put: async (key: string, body: string | ArrayBuffer | Uint8Array) => {
+          const bytes =
+            typeof body === 'string'
+              ? new TextEncoder().encode(body)
+              : body instanceof Uint8Array
+                ? body
+                : new Uint8Array(body);
+          blobStore.set(key, bytes);
+        },
+        get: async (key: string) => {
+          const bytes = blobStore.get(key);
+          if (!bytes) return null;
+          return {
+            text: async () => new TextDecoder().decode(bytes),
+            arrayBuffer: async () =>
+              bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+          };
+        },
+        delete: async (key: string) => {
+          blobStore.delete(key);
+        },
+      },
+      WEBHOOKS: { send: async () => undefined },
+      RATE_LIMIT_INGEST: { limit: async () => ({ success: true }) },
     } as any,
   };
 }
