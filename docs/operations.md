@@ -82,6 +82,8 @@ Owners and admins can open **Insights** to refresh conversation scores, unresolv
 
 KB suggestions are generated only from repeated unresolved-ticket clusters and include evidence count, confidence, suggested terms, and source-ticket IDs. Accepted suggestions are idempotently published as manual knowledge sources, linked back through `accepted_source_id`, and then treated as terminal audit records. Dismissed suggestions and resolved drift signals remain in D1 for auditability instead of being deleted.
 
+Weekly maintenance is isolated per workspace and returns an `ok: false` entry for any workspace that fails, while continuing the rest of the run. Conversation score rows older than 180 days are pruned because they are recomputable from tickets, messages, approvals, outcomes, and feedback.
+
 ## Escalations
 
 The `EscalationAgent` runs on demand. It returns `{ should_escalate, severity, route_to }` and the operator (or an automation rule) picks the handoff target.
