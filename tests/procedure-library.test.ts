@@ -29,6 +29,7 @@ describe('procedure library', () => {
 
     expect(entries.map((entry) => entry.slug)).toEqual([
       'refund-intake',
+      'verify-identity-channel-aware',
       'password-reset',
       'shipping-dispute',
       'gdpr-data-request',

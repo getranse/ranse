@@ -1,4 +1,5 @@
 import type { Env } from '../../env';
+import { dispatchOutbound } from '../../channels';
 import {
   buildHtmlWithSignature,
   buildMultipartReply,
@@ -21,11 +22,19 @@ export function makeSendThreadedReply(
     if (!ctx) throw new Error('ticket_not_found');
 
     const agent = args.actorUserId ? await loadAgent(env, args.actorUserId) : null;
+    const messageId = ids.message();
+
+    if (ctx.origin_channel_kind && ctx.origin_channel_kind !== 'email') {
+      const text = await persistAndDispatchNonEmail(env, workspaceId, args, ctx, agent, messageId);
+      await refreshCounts();
+      void text;
+      return { messageId };
+    }
+
     const lastInbound = await loadLastInbound(env, workspaceId, args.ticketId);
     const references = await loadReferences(env, workspaceId, args.ticketId);
     const addresses = await buildReplyAddresses(ctx, args.ticketId, agent);
     const subject = (args.subject ?? `Re: ${ctx.ticket_subject}`).replace(/^(re:\s*)+/i, 'Re: ');
-    const messageId = ids.message();
     const rfcMessageId = `${messageId}@${addresses.sendingDomain}`;
     const feedbackLinks = await buildFeedbackLinks(env, {
       workspaceId,
@@ -64,9 +73,40 @@ export function makeSendThreadedReply(
   };
 }
 
+async function persistAndDispatchNonEmail(
+  env: Env,
+  workspaceId: string,
+  args: Parameters<SendThreadedReply>[0],
+  ctx: NonNullable<Awaited<ReturnType<typeof loadReplyContext>>>,
+  agent: Awaited<ReturnType<typeof loadAgent>>,
+  messageId: string,
+): Promise<void> {
+  const subject = args.subject ?? ctx.ticket_subject;
+  const fromName = agent?.name ?? ctx.workspace_name ?? 'Support';
+  await persistOutboundReply(env, workspaceId, args, {
+    messageId,
+    rfcMessageId: `${ctx.origin_channel_kind}:${messageId}`,
+    fromAddress: `${ctx.origin_channel_kind}:${ctx.mailbox_address}`,
+    toAddress: ctx.requester_email,
+    subject,
+    inReplyTo: null,
+  });
+  const dispatch = await dispatchOutbound(env, {
+    workspaceId,
+    ticketId: args.ticketId,
+    messageId,
+    text: args.body,
+    fromName,
+  });
+  if (dispatch.status === 'failed') {
+    throw new Error(`channel_dispatch_failed:${dispatch.channelKind}:${dispatch.error ?? 'unknown'}`);
+  }
+}
+
 async function loadReplyContext(env: Env, workspaceId: string, ticketId: string) {
   return env.DB.prepare(
     `SELECT t.subject AS ticket_subject, t.requester_email, t.mailbox_id,
+            t.origin_channel_kind, t.origin_channel_id,
             m.address AS mailbox_address, m.reply_signing_secret,
             w.name AS workspace_name, w.settings_json AS workspace_settings
        FROM ticket t
@@ -79,6 +119,8 @@ async function loadReplyContext(env: Env, workspaceId: string, ticketId: string)
       ticket_subject: string;
       requester_email: string;
       mailbox_id: string;
+      origin_channel_kind: string | null;
+      origin_channel_id: string | null;
       mailbox_address: string;
       reply_signing_secret: string;
       workspace_name: string;

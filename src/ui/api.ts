@@ -151,6 +151,11 @@ export const API = {
     require_email?: boolean;
     allowed_origins?: string[];
     welcome_message?: string | null;
+    config?: Record<string, unknown>;
+    sla_first_response_minutes?: number | null;
+    sla_resolution_minutes?: number | null;
+    default_priority?: 'low' | 'normal' | 'high' | 'urgent' | null;
+    default_assignee_user_id?: string | null;
   }) =>
     api<{ channel: PublicChannelEntry }>('/api/channels/public', {
       method: 'POST',
@@ -164,6 +169,11 @@ export const API = {
       require_email?: boolean;
       allowed_origins?: string[];
       welcome_message?: string | null;
+      config?: Record<string, unknown>;
+      sla_first_response_minutes?: number | null;
+      sla_resolution_minutes?: number | null;
+      default_priority?: 'low' | 'normal' | 'high' | 'urgent' | null;
+      default_assignee_user_id?: string | null;
     },
   ) =>
     api<{ channel: PublicChannelEntry }>(`/api/channels/public/${id}`, {

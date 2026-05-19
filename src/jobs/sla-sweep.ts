@@ -1,6 +1,6 @@
+import { DEFAULT_SLA, findBreachingTickets } from '../agents/specialists/sla';
 import type { Env } from '../env';
 import { audit } from '../lib/audit';
-import { DEFAULT_SLA, findBreachingTickets } from '../agents/specialists/sla';
 
 interface SLABreachAuditPayload {
   first_response_breached: boolean;
@@ -14,7 +14,9 @@ interface SLABreachAuditPayload {
  * has breached since the last sweep. Deduped by a marker audit row
  * `ticket.sla_breached` per (ticket_id, breach_type) so we don't spam.
  */
-export async function runSLASweep(env: Env): Promise<{ workspacesScanned: number; breaches: number }> {
+export async function runSLASweep(
+  env: Env,
+): Promise<{ workspacesScanned: number; breaches: number }> {
   const rows = await env.DB.prepare(`SELECT id FROM workspace`).all<{ id: string }>();
   const workspaces = rows.results ?? [];
   let totalBreaches = 0;
@@ -24,7 +26,9 @@ export async function runSLASweep(env: Env): Promise<{ workspacesScanned: number
     for (const b of breaches) {
       for (const kind of ['first_response', 'resolution'] as const) {
         const breached =
-          kind === 'first_response' ? b.breach.first_response_breached : b.breach.resolution_breached;
+          kind === 'first_response'
+            ? b.breach.first_response_breached
+            : b.breach.resolution_breached;
         if (!breached) continue;
 
         const already = await env.DB.prepare(

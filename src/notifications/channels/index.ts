@@ -1,6 +1,6 @@
-import type { ChannelHandler } from './types';
 import { emailChannel } from './email';
 import { slackChannel } from './slack';
+import type { ChannelHandler } from './types';
 
 // Single source of truth for channel kinds. Drop a new handler here and
 // API/UI/dispatch all see it without further changes.

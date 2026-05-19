@@ -27,6 +27,10 @@ export interface Env {
   // secrets (all optional at build time — populated by deploy script or local .dev.vars)
   COOKIE_SIGNING_KEY?: string;
   ADMIN_SETUP_TOKEN?: string;
+  // Master key for at-rest secret encryption. HKDF-derived per workspace
+  // before any AES-GCM operation, so the same KEK protects every workspace
+  // without sharing a derived key across them.
+  SECRET_ENCRYPTION_KEY?: string;
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_AI_GATEWAY_TOKEN?: string;
   OPENAI_API_KEY?: string;

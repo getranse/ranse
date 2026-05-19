@@ -55,7 +55,7 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 8 — Insights & auto-improving KB** is shipped. Workspaces get conversation rubric scoring, aggregate insight dashboards, unresolved-intent KB suggestions, accepted-suggestion publishing into the knowledge base, drift signals against successful replies, and weekly scheduled insight maintenance.
 
-**Phase 9 — Multi-channel web surfaces** is shipped for chat widgets and hosted support forms. Public channels create normal tickets in the same inbox, with origin allowlists, session tokens, public thread reads, notification events, audit rows, and procedure triggers.
+**Phase 9 — Multi-channel** is shipped end-to-end across thirteen channel kinds + three voice providers behind one `ChannelAdapter` contract: chat widget, hosted form, Slack, SMS (Twilio), Discord, Telegram, WhatsApp Business, Microsoft Teams, Facebook Messenger, Instagram DM, Google Business Messages (RCS), Apple Messages for Business, a generic outbound webhook, and voice (ElevenLabs Conversational AI, Twilio + Cloudflare Workers AI, Gemini Live). Surrounding the adapters: signed-webhook verification, replay-safe ingress dedup, capability-aware procedure branching, per-channel SLA overrides, cross-channel identity stitching, customer channel preferences (with STOP-keyword honoring + quiet hours), workspace-keyed AES-GCM encryption of every adapter secret at rest, an omnichannel notification cascade engine (`notifyCustomer({customer, template, urgency, cascade})` fans across channels with read-receipt acknowledgement), and an exponential-backoff retry queue with dead-letter for failed outbound dispatches.
 
 That's now a retrieval-grounded early Fin **Copilot** equivalent with workspace isolation, traceable multi-hop retrieval, a conservative autonomous-send path, a procedure-driven agent loop, external action execution through the open MCP protocol, a regression gate against the workspace's own ticket history, a forkable procedure library, a sovereign insights loop that turns real support history into reviewed KB improvements, and public web surfaces that feed the same ticket model. Voice remains deliberately last.
 
@@ -213,14 +213,43 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Weekly scheduled insight maintenance scores recent conversations, refreshes unresolved-intent suggestions, detects KB drift, prunes old recomputable score rows, and isolates per-workspace failures inside the customer's Cloudflare account.
 
 ## Phase 9 — Multi-channel + voice
-**Status: web surfaces shipped; voice remains deliberately last.**
+**Status: every channel shipped, voice included.**
 
 *Principle 7 — email is the wedge; other channels are derivatives*
 
-- Embeddable chat widget: shipped as a hosted `/widget/<public_key>.js` script backed by D1 channel config, origin allowlists, token-scoped visitor sessions, and the existing ticket/message tables.
-- Web form → ticket bridge: shipped as hosted `/forms/<public_key>` pages and JSON session APIs that create normal support tickets.
-- Operators manage public channels in Settings, choose the mailbox, copy embed code, disable channels, and keep all replies inside the same inbox/audit/procedure surfaces.
-- Voice last — Cloudflare Realtime + Whisper + TTS. Hardest channel, lowest leverage for v1, ship only when email + chat are something we'd want to talk to.
+Channels are now plug-and-play behind a single `ChannelAdapter` contract (`src/channels/adapters/`). Adding a new built-in channel is one adapter file (signature verify, ingress parse, egress send, capability map, optional `onActivate` to register the webhook with the provider) plus one line in `adapters/index.ts`. Adapter config lives in `public_channel.config_json` so new channels do not require schema migrations.
+
+**Shipped surfaces:**
+
+- **Embedded chat widget** at `/widget/<public_key>.js` and **hosted form** at `/forms/<public_key>` — first-party surfaces that talk to `/public/*` directly.
+- **Slack** Events API (signed-webhook ingress, `chat.postMessage` egress, thread_ts threading).
+- **SMS** via Twilio Messages API (HMAC-SHA1 signature verification, `Messages.json` egress; provider field future-proofs Vonage/Plivo).
+- **Discord** Interactions endpoint (Ed25519 signature verification, bot REST egress).
+- **Telegram** Bot API (secret-token webhook header, `setWebhook` on activation, `sendMessage` egress).
+- **WhatsApp Business Cloud API** (X-Hub-Signature-256 verification, multi-WABA filtering by phone_number_id, Graph `/messages` egress).
+- **Microsoft Teams** (Bot Framework activity webhooks + Azure client-credentials bearer token for outbound).
+- **Facebook Messenger** (Meta Graph webhook, per-Page access token, `/me/messages` egress with `messaging_type: RESPONSE`).
+- **Instagram DM** (Meta Graph webhook with `object='instagram'`, IG-business-account-scoped outbound).
+- **Google Business Messages (RCS)** (HMAC-signed partner webhook + OAuth bearer outbound).
+- **Apple Messages for Business** (`x-apple-webhook-secret` or HMAC-of-body inbound, JWT bearer outbound through the MSP gateway).
+- **Generic outbound webhook** — the meta-channel. Signed HMAC in both directions, lets operators plug any system into Ranse without writing an adapter.
+- **Voice** — single `voice` channel kind, three dynamic providers selected per workspace via `config.provider`:
+  - **ElevenLabs Conversational AI** — signed post-call webhook ingests full transcript, recording (mp3 → R2), summary, and per-turn rows; tool calls flow back into the MCP/procedure surface.
+  - **Twilio Voice + Cloudflare Workers AI** — TwiML `<Connect><Stream>` answers the call, the Worker bridges μ-law audio through Whisper (STT) + Llama (reply) + MeloTTS (speech), turn-by-turn persistence happens inside the WebSocket relay.
+  - **Gemini Live API** — browser/Twilio WebSocket relayed straight into Google's `BidiGenerateContent` channel; bidirectional audio + inline transcripts.
+  Calls land in a normal `ticket` with `origin_channel_kind='voice'`. Every call gets a `voice_call` row and every utterance a `voice_call_turn` plus a `message_index` entry, so the reply pipeline, procedures, identity stitching, and operator UI see voice transparently.
+
+**Cross-cutting infrastructure:**
+
+- Single `/public/channels/<key>/webhook` endpoint dispatches to the right adapter; the route does not care which provider.
+- `channel_outbound_dispatch` records every egress attempt with status, attempts, last_error, and provider message id for audit and retry.
+- `customer` + `channel_identity` stitch (workspace, channel, external_id) records to one customer id; operators see one history per person across surfaces. Stitching is conservative — same email/phone merges, ambiguity creates separate records.
+- Per-channel SLA + default priority + default assignee override the workspace baseline for tickets that originate on that channel.
+- Procedures get `channel.capabilities` in context (`supportsOtpDelivery`, `supportsButtons`, `supportsRichText`, `maxMessageLength`, `supportsVoice`, `supportsStreaming`) so the same workflow takes the strongest identity-proof path the originating channel supports. `verify-identity-channel-aware` ships in the library as the reference branch; the voice path adds capability-aware reply-length trimming (the LLM is told to stay under ~30 words because the reply will be spoken).
+- **Customer channel preferences.** `customer_channel_preference` rows gate every outbound — opt-out is hard-blocking, and quiet-hours windows roll cascade plans forward instead of breaching. STOP/UNSUBSCRIBE keywords on inbound text auto-disable the channel for that customer. Operators see + edit preferences in the customer drawer.
+- **Workspace-keyed encryption at rest.** Adapters declare `secretFields` (bot tokens, API keys, auth tokens). Channel admin partitions the validated config into `config_json` (public, visible in dashboards) and `secrets_ciphertext` (AES-GCM-256 with HKDF-derived per-workspace key). Existing channels keep working — the read path tolerates legacy plaintext until the next save.
+- **Notification cascade engine.** `notifyCustomer({customer, template, urgency, cascade})` materializes a `notification_plan` plus `notification_step` rows. The scheduled tick advances plans, an inbound customer reply on any channel ack's all pending plans for that customer, and templates render with `{{ payload.field }}` substitution. Cascade trigger reasons: `immediate`, `previous_failed`, `previous_unread`, `previous_no_ack`, `time_elapsed`.
+- **Retry queue + DLQ.** Failed outbound dispatches schedule `next_attempt_at` with 60s/5m/30m/2h/8h exponential backoff (±10% jitter); the periodic `dispatch-retry-sweep` re-fires them through the adapter, settling into status `failed` after `max_attempts`. Preference-blocked sends never retry.
 
 ## What we are explicitly not building
 

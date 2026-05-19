@@ -3,7 +3,13 @@ import type {
   ProcedureLibraryMcpToolSpec,
   ProcedureSpec,
 } from '../types/procedure';
-import { identityTools, privacyTools, shopifyTools, stripeRefundTools } from './library-mcp-tools';
+import {
+  identityChannelTools,
+  identityTools,
+  privacyTools,
+  shopifyTools,
+  stripeRefundTools,
+} from './library-mcp-tools';
 import { normalizeProcedureSpec } from './schema';
 
 export type ProcedureLibrarySeedItem = Omit<ProcedureLibraryItem, 'provenance'>;
@@ -316,6 +322,79 @@ const gdprRequest = normalizeProcedureSpec({
   ],
 });
 
+const verifyIdentityChannelAware = normalizeProcedureSpec({
+  slug: 'verify-identity-channel-aware',
+  name: 'Verify identity (channel-aware)',
+  version: '1.0.0',
+  description:
+    'Choose the strongest identity-proof method available on the originating channel: SMS OTP, Telegram OTP, magic link over email, or fall back to operator review.',
+  owner: 'ranse-library',
+  trigger: { type: 'intent', intent: 'verify_identity' },
+  steps: [
+    {
+      id: 'route_by_capability',
+      type: 'if',
+      condition: { var: 'channel.capabilities.supportsOtpDelivery', equals: true },
+      // biome-ignore lint/suspicious/noThenProperty: Procedure specs intentionally use if/then/else terminology.
+      then: [
+        {
+          id: 'request_otp_delivery',
+          type: 'call_action',
+          tool: 'identity.otp.send',
+          args: {
+            channel: '{{ channel.kind }}',
+            destination: '{{ ticket.requester_email }}',
+          },
+          requires_approval: true,
+          save_as: 'otp_request',
+        },
+      ],
+      else: [
+        {
+          id: 'send_magic_link',
+          type: 'call_action',
+          tool: 'identity.magic_link.send',
+          args: { email: '{{ ticket.requester_email }}' },
+          requires_approval: true,
+          save_as: 'magic_link_request',
+        },
+      ],
+    },
+  ],
+  evals: [
+    {
+      name: 'sms_channel_sends_otp',
+      input: {
+        ticket: { subject: 'Locked out' },
+        channel: {
+          kind: 'sms',
+          capabilities: { supportsOtpDelivery: true },
+        },
+      },
+      expect: {
+        status: 'waiting',
+        steps: ['route_by_capability', 'request_otp_delivery'],
+        step_statuses: { request_otp_delivery: 'waiting' },
+      },
+    },
+    {
+      name: 'chat_channel_falls_back_to_magic_link',
+      input: {
+        ticket: { subject: 'Locked out', requester_email: 'cx@example.com' },
+        channel: {
+          kind: 'chat',
+          capabilities: { supportsOtpDelivery: false },
+        },
+      },
+      expect: {
+        status: 'waiting',
+        steps: ['route_by_capability', 'send_magic_link'],
+        step_statuses: { send_magic_link: 'waiting' },
+      },
+    },
+  ],
+});
+
 export const PROCEDURE_LIBRARY: ProcedureLibrarySeedItem[] = [
   entry(
     refundIntake,
@@ -325,6 +404,15 @@ export const PROCEDURE_LIBRARY: ProcedureLibrarySeedItem[] = [
     ['refund', 'billing', 'policy'],
     ['stripe'],
     stripeRefundTools,
+  ),
+  entry(
+    verifyIdentityChannelAware,
+    'account',
+    'Pick the strongest identity-proof method for the originating channel.',
+    'medium',
+    ['identity', 'channel', 'otp'],
+    ['identity'],
+    identityChannelTools,
   ),
   entry(
     passwordReset,
