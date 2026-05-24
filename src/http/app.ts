@@ -7,6 +7,7 @@ import { assetsApp } from '../assets/routes';
 import { authApp } from '../auth/routes';
 import { publicChannelsApp, publicSurfaceApp } from '../channels/routes';
 import { feedbackApp } from '../feedback/routes';
+import { traceApp } from '../feedback/trace';
 import { setupApp } from '../setup/wizard';
 
 export const app = new Hono<{ Bindings: Env }>();
@@ -53,6 +54,9 @@ app.route('/setup', setupApp);
 app.route('/auth', authApp);
 app.route('/feedback', feedbackApp);
 app.route('/public', publicChannelsApp);
+app.route('/public', traceApp);
+app.all('/demo', (c) => c.text('Not found', 404));
+app.all('/demo/*', (c) => c.text('Not found', 404));
 app.route('/api', apiApp);
 app.route('/assets', assetsApp);
 app.route('/', publicSurfaceApp);

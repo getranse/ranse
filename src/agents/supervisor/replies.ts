@@ -8,7 +8,10 @@ import {
 import { buildReplyAddress } from '../../email/reply-security';
 import { audit } from '../../lib/audit';
 import { buildFeedbackLinks } from '../../lib/feedback-links';
+import { buildTraceLink } from '../../lib/decision-trace';
 import { ids } from '../../lib/ids';
+import { rejectVerification } from '../../insights/honest-resolution';
+import { recordLedgerEntry } from '../../billing/outcomes';
 import { r2Keys, putRaw } from '../../lib/storage';
 import type { SendThreadedReply } from '../../types/supervisor';
 
@@ -41,7 +44,15 @@ export function makeSendThreadedReply(
       ticketId: args.ticketId,
       messageId,
     });
-    const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks);
+    // The customer-facing decision trace link is only generated for AI-authored
+    // replies — human-authored replies don't have a meaningful trace, and
+    // surfacing one would be a privacy hazard (it would expose internal-rep
+    // workflow to the customer). The autonomy/procedure path leaves
+    // actorUserId null; that's the gate.
+    const traceUrl = args.actorUserId
+      ? null
+      : await buildTraceLink(env, { workspaceId, ticketId: args.ticketId, messageId });
+    const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks, traceUrl);
 
     const rawMimeText = buildMultipartReply(
       {
@@ -200,6 +211,7 @@ async function buildReplyBodies(
   ctx: NonNullable<Awaited<ReturnType<typeof loadReplyContext>>>,
   agent: Awaited<ReturnType<typeof loadAgent>>,
   feedbackLinks: Awaited<ReturnType<typeof buildFeedbackLinks>>,
+  traceUrl: string | null = null,
 ) {
   const settings = parseWorkspaceSettings(ctx.workspace_settings);
   const fromName = settings.from_name || ctx.workspace_name || 'Support';
@@ -212,8 +224,8 @@ async function buildReplyBodies(
     fromName,
   };
   return {
-    text: buildPlainTextWithSignature(body, signatureCtx, feedbackLinks),
-    html: await buildHtmlWithSignature(body, signatureCtx, feedbackLinks),
+    text: buildPlainTextWithSignature(body, signatureCtx, feedbackLinks, traceUrl),
+    html: await buildHtmlWithSignature(body, signatureCtx, feedbackLinks, traceUrl),
   };
 }
 
@@ -282,4 +294,19 @@ async function persistOutboundReply(
       edited: args.edited,
     },
   });
+  // Human-authored outbound rejects any pending Honest Resolution verification
+  // for this ticket. This is the canonical "human took over" signal Fin papers
+  // over by still counting the original AI response as resolved.
+  if (args.actorUserId) {
+    await rejectVerification(env, workspaceId, args.ticketId, 'human_takeover', {
+      replyMessageId: message.messageId,
+      actorUserId: args.actorUserId,
+    }).catch((err) => console.warn('failed to reject verification on human reply', err));
+    await recordLedgerEntry(env, {
+      workspaceId,
+      ticketId: args.ticketId,
+      kind: 'human_takeover_cost',
+      metadata: { replyMessageId: message.messageId, actorUserId: args.actorUserId },
+    }).catch((err) => console.warn('failed to record human-takeover ledger entry', err));
+  }
 }

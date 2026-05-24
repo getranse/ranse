@@ -12,6 +12,7 @@ export interface KnowledgeHit {
   score: number;
   usedInAnswersCount: number;
   updatedAt?: number;
+  stalenessScore?: number;
 }
 
 export interface AgenticRetrievalPlan {

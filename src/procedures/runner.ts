@@ -2,6 +2,7 @@ import type { Env } from '../env';
 import { audit } from '../lib/audit';
 import { ids } from '../lib/ids';
 import { recordOutcome } from '../lib/outcomes';
+import { enqueueVerification, rejectVerification } from '../insights/honest-resolution';
 import { putRaw, r2Keys } from '../lib/storage';
 import { searchProcedurePrimitive } from '../knowledge';
 import {
@@ -678,6 +679,10 @@ async function escalateTicket(
     source: 'agent',
     payload: { routeTo: args.routeTo, severity: args.severity, reason: args.reason },
   });
+  await rejectVerification(env, workspaceId, ticketId, 'escalated', {
+    routeTo: args.routeTo,
+    severity: args.severity,
+  }).catch((err) => console.warn('failed to reject verification on escalation', err));
   await audit(env, {
     workspaceId,
     ticketId,
@@ -700,6 +705,28 @@ async function recordProcedureCompletionOutcome(env: Env, workspaceId: string, r
     source: 'agent',
     payload: { runId: run.id, procedureId: run.procedure_id, versionId: run.version_id },
   });
+  // Find the latest agent-authored outbound message on this ticket; that's the
+  // reply we're attesting to for Honest Resolution. If the procedure never
+  // produced an outbound message (pure note/set_ticket_field flow), there's
+  // nothing to verify against the customer and we skip enqueueing.
+  const lastAiMessage = await env.DB.prepare(
+    `SELECT id, sent_at FROM message_index
+       WHERE workspace_id = ? AND ticket_id = ? AND direction = 'outbound'
+         AND author_user_id IS NULL
+       ORDER BY sent_at DESC LIMIT 1`,
+  )
+    .bind(workspaceId, run.ticket_id)
+    .first<{ id: string; sent_at: number }>();
+  if (lastAiMessage) {
+    await enqueueVerification(env, {
+      workspaceId,
+      ticketId: run.ticket_id,
+      aiMessageId: lastAiMessage.id,
+      source: 'procedure',
+      authoredAt: lastAiMessage.sent_at,
+      payload: { runId: run.id, procedureId: run.procedure_id, versionId: run.version_id },
+    }).catch((err) => console.warn('failed to enqueue procedure verification', err));
+  }
 }
 
 function parseContext(value: string): Record<string, unknown> {

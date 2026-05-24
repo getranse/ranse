@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { OperationsDashboard } from '../components/OperationsDashboard';
+import { ProactiveProposalsPanel } from '../components/ProactiveProposalsPanel';
 import {
   API,
   type ConversationScoreEntry,
@@ -64,6 +65,8 @@ export function InsightsView() {
       {error && <div className="error">{error}</div>}
 
       <OperationsDashboard />
+
+      <ProactiveProposalsPanel />
 
       <div className="insight-grid">
         <Metric label="Resolution" value={percent(summary?.resolution_rate)} />

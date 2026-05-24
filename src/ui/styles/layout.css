@@ -1,59 +1,73 @@
 .app {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 248px 1fr;
   height: 100vh;
+  background: var(--bg);
 }
 .sidebar {
-  background: #07070a;
+  background: var(--bg-soft);
   border-right: 1px solid var(--border);
-  padding: 16px;
+  padding: var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
+  min-width: 0;
 }
 .sidebar .brand {
   font-weight: 700;
-  font-size: 16px;
-  padding: 8px 10px;
-  margin-bottom: 8px;
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
+  color: var(--text);
 }
 .sidebar .brand .logo {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   background: var(--accent);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
-  color: #0a0a0b;
-  font-weight: 900;
+  color: var(--accent-text);
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
 }
 .workspace-switcher {
-  padding: 8px 10px 12px;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .workspace-switcher label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 .workspace-create {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-1);
 }
 .sidebar nav a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-sm);
   color: var(--text);
+  font-size: var(--fs-md);
+  transition: background var(--dur-fast) var(--ease);
 }
 .sidebar nav a:hover {
   background: var(--bg-hover);
@@ -62,34 +76,60 @@
 .sidebar nav a.active {
   background: var(--accent-soft);
   color: var(--accent);
+  font-weight: 600;
 }
 .sidebar .badge {
   background: var(--bg-hover);
   color: var(--text-muted);
-  font-size: 11px;
-  padding: 1px 7px;
-  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
 }
 .sidebar .badge.hot {
   background: var(--accent);
-  color: #0a0a0b;
+  color: var(--accent-text);
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .main {
   overflow: auto;
-  padding: 24px 32px;
+  padding: var(--space-6) var(--space-8);
 }
+.main > * + * {
+  margin-top: var(--space-4);
+}
+
 .card {
-  background: var(--bg-soft);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
+
 .center {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding: 24px;
+  padding: var(--space-6);
+  background: var(--bg-canvas);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 @media (max-width: 900px) {
@@ -100,6 +140,6 @@
     display: none;
   }
   .main {
-    padding: 18px;
+    padding: var(--space-4);
   }
 }

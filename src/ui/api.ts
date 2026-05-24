@@ -43,6 +43,21 @@ export type EvalRunEntry = EvalRun;
 export type ConversationScoreEntry = ConversationScore;
 export type InsightSummaryEntry = InsightSummary;
 
+export interface OnboardingStep {
+  id: 'ingest_knowledge' | 'connect_channel' | 'first_reply';
+  label: string;
+  description: string;
+  done: boolean;
+  action: { kind: 'navigate'; href: string; label: string };
+}
+
+export interface OnboardingStateResponse {
+  steps: OnboardingStep[];
+  completedCount: number;
+  dismissed: boolean;
+  shouldShow: boolean;
+}
+
 export interface CustomerMemoryEntry {
   id: string;
   customer_id: string;
@@ -71,6 +86,91 @@ export interface OperationsMetricsResponse {
   satisfaction: { csatScore: number | null; positiveCount: number; negativeCount: number };
   followUpRate: number;
 }
+
+export interface OutcomeStatementResponse {
+  windowDays: number;
+  windowStart: number;
+  windowEnd: number;
+  currency: string;
+  valueCents: number;
+  costCents: number;
+  netCents: number;
+  costPerVerifiedResolution: number | null;
+  verifiedResolutionCount: number;
+  finComparisonCents: number;
+  roiRatio: number | null;
+  breakdown: { kind: string; amountCents: number; count: number }[];
+}
+
+export interface PricingResponse {
+  currency: string;
+  inferenceCostCentsPer1kTokens: number;
+  priceBook: {
+    verified_resolution: number;
+    autonomous_resolution: number;
+    procedure_resolution: number;
+    escalation: number;
+    follow_up_cost: number;
+    human_takeover_cost: number;
+    inference_cost: number;
+  };
+  defaults: PricingResponse['priceBook'];
+  updatedAt: number;
+}
+
+export interface KnowledgeHealthResponse {
+  averageStaleness: number;
+  staleSourceCount: number;
+  totalSourceCount: number;
+  staleCitedRecently: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  topStaleSources: {
+    id: string;
+    title: string;
+    staleness_score: number;
+    last_crawled_at: number | null;
+  }[];
+}
+
+export interface ProactiveProposalResponse {
+  id: string;
+  workspace_id: string;
+  cluster_key: string;
+  kind: 'procedure' | 'knowledge' | 'combined';
+  draft_procedure_spec_json: string | null;
+  draft_knowledge_entry_json: string | null;
+  eval_pass_rate: number | null;
+  eval_case_count: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'auto_rejected';
+  rejected_reason: string | null;
+  proposed_at: number;
+  reviewed_at: number | null;
+  reviewed_by: string | null;
+  applied_procedure_id: string | null;
+  applied_knowledge_source_id: string | null;
+  summary: string | null;
+  evidence_ticket_ids_json: string | null;
+}
+
+export interface HonestResolutionResponse {
+  windowDays: number;
+  windowStart: number;
+  windowEnd: number;
+  aiAuthoredCount: number;
+  verifiedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  rejectionBreakdown: {
+    human_takeover: number;
+    escalated: number;
+    follow_up: number;
+    negative_feedback: number;
+    reopened: number;
+  };
+  honestResolutionRate: number;
+  finStyleRate: number;
+}
+
 export type KbSuggestionEntry = KbSuggestion;
 export type KnowledgeDriftSignalEntry = KnowledgeDriftSignal;
 export type PublicChannelEntry = PublicChannel;
@@ -377,8 +477,43 @@ export const API = {
     }),
   insightSummary: (days = 30) =>
     api<{ summary: InsightSummaryEntry }>(`/api/insights/summary?days=${days}`),
+  onboardingState: () => api<OnboardingStateResponse>('/api/onboarding'),
+  dismissOnboarding: () => api<{ ok: boolean }>('/api/onboarding/dismiss', { method: 'POST' }),
   operationsMetrics: (days = 30) =>
     api<{ metrics: OperationsMetricsResponse }>(`/api/insights/operations?days=${days}`),
+  honestResolution: (days = 30) =>
+    api<{ metrics: HonestResolutionResponse }>(`/api/insights/honest-resolution?days=${days}`),
+  outcomeStatement: (days = 30) =>
+    api<{ statement: OutcomeStatementResponse }>(`/api/billing/statement?days=${days}`),
+  knowledgeHealth: () => api<{ health: KnowledgeHealthResponse }>(`/api/insights/knowledge-health`),
+  proposals: (status?: string) =>
+    api<{ proposals: ProactiveProposalResponse[] }>(
+      status ? `/api/insights/proposals?status=${status}` : `/api/insights/proposals`,
+    ),
+  runProposals: () =>
+    api<{ examined: number; drafted: number; auto_rejected: number; proposalIds: string[] }>(
+      '/api/insights/proposals/run',
+      { method: 'POST' },
+    ),
+  acceptProposal: (id: string) =>
+    api<{ proposal: ProactiveProposalResponse }>(`/api/insights/proposals/${id}/accept`, {
+      method: 'POST',
+    }),
+  rejectProposal: (id: string, reason: string) =>
+    api<{ proposal: ProactiveProposalResponse }>(`/api/insights/proposals/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  pricing: () => api<{ pricing: PricingResponse }>('/api/billing/pricing'),
+  updatePricing: (body: Partial<{
+    priceBook: Partial<PricingResponse['priceBook']>;
+    inferenceCostCentsPer1kTokens: number;
+    currency: string;
+  }>) =>
+    api<{ pricing: PricingResponse }>('/api/billing/pricing', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
   listCustomerMemory: (customerId: string) =>
     api<{ memory: CustomerMemoryEntry[] }>(`/api/memory/customers/${customerId}`),
   addCustomerMemory: (

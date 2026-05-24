@@ -3,6 +3,7 @@ import type { Env } from '../env';
 import { runAllWorkspaceInsightsMaintenance } from '../insights';
 import { runCascadeSweep } from './cascade-sweep';
 import { runDispatchRetrySweep } from './dispatch-retry-sweep';
+import { runHonestResolutionSweep } from './honest-resolution-sweep';
 import { runSLASweep } from './sla-sweep';
 
 export async function handleScheduled(
@@ -29,6 +30,11 @@ export async function handleScheduled(
         runDispatchRetrySweep(env)
           .then((r) => console.log('dispatch-retry-sweep', r))
           .catch((e) => console.error('dispatch-retry-sweep failed', e)),
+      );
+      ctx.waitUntil(
+        runHonestResolutionSweep(env)
+          .then((r) => console.log('honest-resolution-sweep', r))
+          .catch((e) => console.error('honest-resolution-sweep failed', e)),
       );
       break;
     case '17 3 * * 1':

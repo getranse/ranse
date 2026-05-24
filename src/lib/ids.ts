@@ -51,4 +51,9 @@ export const ids = {
   notificationStep: () => id('nstep'),
   notificationDelivery: () => id('ndel'),
   customerMemory: () => id('mem'),
+  verifiedResolution: () => id('vres'),
+  outcomeLedgerEntry: () => id('ledg'),
+  marketplaceInstall: () => id('mkti'),
+  proactiveProposal: () => id('prop'),
+  knowledgeChunkOverride: () => id('kchov'),
 };

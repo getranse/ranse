@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { OnboardingBanner } from '../components/OnboardingBanner';
 import { API } from '../api';
 
 const FILTERS = [
@@ -23,6 +24,7 @@ export function InboxView({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <>
       <h1>Inbox</h1>
+      <OnboardingBanner onNavigate={(href) => window.location.assign(href)} />
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {FILTERS.map((f) => (
           <button key={f.k} className={filter === f.k ? 'primary' : ''} onClick={() => setFilter(f.k)}>

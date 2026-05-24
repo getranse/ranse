@@ -8,6 +8,12 @@ import {
   installProcedureFromLibrary,
   listProcedureLibraryWithReadiness,
 } from '../procedures/library';
+import {
+  checkForUpdates,
+  exportMarketplaceManifest,
+  installFromManifestEntry,
+  listMarketplaceInstalls,
+} from '../procedures/marketplace';
 import { resumeProcedureRunner, startProcedureRunner } from '../procedures/orchestration';
 import {
   createProcedureRun,
@@ -71,6 +77,63 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     return c.json({ procedures: await listProcedureLibraryWithReadiness(c.env, s.workspaceId) });
   });
+
+  apiApp.get('/procedures/marketplace/manifest', async (c) => {
+    return c.json(await exportMarketplaceManifest());
+  });
+
+  apiApp.get('/procedures/marketplace/installs', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    return c.json({ installs: await listMarketplaceInstalls(c.env, s.workspaceId) });
+  });
+
+  apiApp.post('/procedures/marketplace/install', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const body = z
+      .object({
+        entry: z.unknown(),
+        source_manifest_url: z.string().url().optional(),
+        source_author: z.string().max(200).optional(),
+        source_repo: z.string().max(200).optional(),
+      })
+      .parse(await c.req.json());
+    try {
+      const install = await installFromManifestEntry(c.env, {
+        workspaceId: s.workspaceId,
+        actorUserId: s.userId,
+        entry: body.entry as any,
+        sourceManifestUrl: body.source_manifest_url,
+        sourceAuthor: body.source_author,
+        sourceRepo: body.source_repo,
+      });
+      return c.json({ install });
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.message === 'marketplace_entry_missing_spec') {
+          return apiError(c, 'bad_request', 'Manifest entry must include spec_inline.', 400);
+        }
+        if (err.message === 'marketplace_entry_checksum_mismatch') {
+          return apiError(c, 'bad_request', 'Spec checksum does not match the entry.', 400);
+        }
+        if (err.message === 'marketplace_entry_evals_failed') {
+          return apiError(c, 'bad_request', 'Procedure evals failed; refusing to install.', 400);
+        }
+        if (err.message === 'procedure_version_conflict') {
+          return apiError(c, 'conflict', 'Conflicting procedure version already installed.', 409);
+        }
+      }
+      throw err;
+    }
+  });
+
+  apiApp.post(
+    '/procedures/marketplace/check-updates',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      return c.json({ results: await checkForUpdates(c.env, s.workspaceId) });
+    },
+  );
 
   apiApp.get('/procedures/library/manifest', async (c) => {
     return c.json(await getProcedureLibraryManifest());

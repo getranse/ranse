@@ -114,16 +114,18 @@ export function buildPlainTextWithSignature(
   body: string,
   ctx: SignatureCtx,
   feedback?: EmailFeedbackLinks | null,
+  traceUrl?: string | null,
 ): string {
-  const withFeedback = (text: string) => appendPlainTextFeedback(text, feedback);
+  const withFooters = (text: string) =>
+    appendPlainTextTrace(appendPlainTextFeedback(text, feedback), traceUrl);
   if (ctx.agentSignatureMarkdown) {
-    return withFeedback(`${body.trimEnd()}\n\n--\n${ctx.agentSignatureMarkdown}`);
+    return withFooters(`${body.trimEnd()}\n\n--\n${ctx.agentSignatureMarkdown}`);
   }
   const parts: string[] = [];
   if (ctx.agentName) parts.push(ctx.agentName);
   if (ctx.fromName || ctx.workspaceName) parts.push(ctx.fromName ?? ctx.workspaceName ?? '');
-  if (parts.length === 0) return withFeedback(body);
-  return withFeedback(`${body.trimEnd()}\n\n--\n${parts.join('\n')}`);
+  if (parts.length === 0) return withFooters(body);
+  return withFooters(`${body.trimEnd()}\n\n--\n${parts.join('\n')}`);
 }
 
 /**
@@ -138,6 +140,7 @@ export async function buildHtmlWithSignature(
   bodyMarkdown: string,
   ctx: SignatureCtx,
   feedback?: EmailFeedbackLinks | null,
+  traceUrl?: string | null,
 ): Promise<string> {
   const bodyHtml = markdownToHtml(bodyMarkdown);
 
@@ -163,12 +166,22 @@ export async function buildHtmlWithSignature(
     }</td></tr></table>`;
   }
 
-  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}${feedbackHtml(feedback)}</body></html>`;
+  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}${feedbackHtml(feedback)}${traceHtml(traceUrl)}</body></html>`;
 }
 
 function appendPlainTextFeedback(text: string, feedback?: EmailFeedbackLinks | null): string {
   if (!feedback) return text;
   return `${text.trimEnd()}\n\nWas this helpful?\nYes: ${feedback.positive}\nNo: ${feedback.negative}`;
+}
+
+function appendPlainTextTrace(text: string, traceUrl?: string | null): string {
+  if (!traceUrl) return text;
+  return `${text.trimEnd()}\n\nWhy this answer? ${traceUrl}`;
+}
+
+function traceHtml(traceUrl?: string | null): string {
+  if (!traceUrl) return '';
+  return `<div style="margin-top:8px;color:#64748b;font-size:12px;"><a href="${escapeHtml(traceUrl)}" style="color:#64748b;text-decoration:underline;">Why this answer?</a></div>`;
 }
 
 function feedbackHtml(feedback?: EmailFeedbackLinks | null): string {

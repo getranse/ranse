@@ -30,6 +30,7 @@ export function createKnowledgeTestDb() {
       url TEXT,
       r2_key TEXT,
       status TEXT NOT NULL,
+      staleness_score REAL NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL
     );
     CREATE TABLE knowledge_chunk (

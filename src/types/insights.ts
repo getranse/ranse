@@ -91,5 +91,7 @@ export interface WorkspaceInsightsMaintenanceResult {
   suggestions: number;
   drift: number;
   pruned: number;
+  stale?: number;
+  proposals?: number;
   error?: string;
 }

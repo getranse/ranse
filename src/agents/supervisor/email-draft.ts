@@ -4,6 +4,7 @@ import { captureResolvedTicketEvalCase } from '../../evals/capture';
 import { createApproval } from '../../lib/approvals';
 import { audit } from '../../lib/audit';
 import { recordOutcome } from '../../lib/outcomes';
+import { enqueueVerification } from '../../insights/honest-resolution';
 import { agenticSearchKnowledge, recordKnowledgeUsage } from '../../knowledge';
 import type { InboundEmailPayload, SendThreadedReply } from '../../types/supervisor';
 import { runDraft, type DraftResult } from '../specialists/draft';
@@ -232,6 +233,16 @@ async function tryAutoSend(
         citesKnowledgeIds: draft.cites_knowledge_ids,
       },
     });
+    // Open the Honest Resolution verification window. The autonomous reply
+    // counts as a verified resolution only if no human takes over, no
+    // escalation fires, and no negative follow-up arrives within 7 days.
+    await enqueueVerification(ctx.env, {
+      workspaceId: ctx.workspaceId,
+      ticketId,
+      aiMessageId: sent.messageId,
+      source: 'autonomous',
+      payload: { confidence: score.score, policy: autonomy.policy },
+    }).catch((err) => console.warn('failed to enqueue verification', err));
     await captureResolvedTicketEvalCase(ctx.env, ctx.workspaceId, ticketId).catch((err) =>
       console.warn('failed to capture autonomous eval case', err),
     );

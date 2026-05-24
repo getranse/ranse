@@ -3,6 +3,8 @@ import { audit } from '../lib/audit';
 import { sha256Hex } from '../lib/crypto';
 import { ids } from '../lib/ids';
 import { ingestKnowledgeSource } from '../knowledge';
+import { recomputeWorkspaceStaleness } from './staleness';
+import { discoverProposals } from './proactive';
 import type {
   ConversationScore,
   InsightSummary,
@@ -608,18 +610,31 @@ export async function pruneConversationScores(
 export async function runWorkspaceInsightsMaintenance(
   env: Env,
   workspaceId: string,
-): Promise<{ scored: number; suggestions: number; drift: number; pruned: number }> {
-  const [scores, suggestions, drift, pruning] = await Promise.all([
+): Promise<{
+  scored: number;
+  suggestions: number;
+  drift: number;
+  pruned: number;
+  stale: number;
+  proposals: number;
+}> {
+  const [scores, suggestions, drift, pruning, staleness] = await Promise.all([
     scoreWorkspaceConversations(env, workspaceId, 200),
     generateKbSuggestions(env, workspaceId, 200),
     detectKnowledgeDrift(env, workspaceId),
     pruneConversationScores(env, workspaceId),
+    recomputeWorkspaceStaleness(env, workspaceId),
   ]);
+  // The proactive loop depends on KB suggestion clusters existing — run it
+  // after generateKbSuggestions has had a chance to populate them.
+  const proposals = await discoverProposals(env, workspaceId, { limit: 20 });
   return {
     scored: scores.scored,
     suggestions: suggestions.generated,
     drift: drift.detected,
     pruned: pruning.pruned,
+    stale: staleness.stale,
+    proposals: proposals.drafted,
   };
 }
 
@@ -642,6 +657,8 @@ export async function runAllWorkspaceInsightsMaintenance(
         suggestions: 0,
         drift: 0,
         pruned: 0,
+        stale: 0,
+        proposals: 0,
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -26,6 +26,71 @@ function modelHasUsableAuth(modelName: string, env: Env, overrides?: RuntimeOver
   return envKey ? !!env[envKey] : true;
 }
 
+function parseJsonWithControlCharRepair(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const repaired = escapeControlCharsInJsonStrings(text);
+    if (repaired === text) throw err;
+    return JSON.parse(repaired);
+  }
+}
+
+function escapeControlCharsInJsonStrings(text: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (const char of text) {
+    if (!inString) {
+      if (char === '"') inString = true;
+      result += char;
+      continue;
+    }
+
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      result += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = false;
+      result += char;
+      continue;
+    }
+
+    if (char === '\n') {
+      result += '\\n';
+      continue;
+    }
+    if (char === '\r') {
+      result += '\\r';
+      continue;
+    }
+    if (char === '\t') {
+      result += '\\t';
+      continue;
+    }
+
+    const code = char.charCodeAt(0);
+    if (code < 0x20) {
+      result += `\\u${code.toString(16).padStart(4, '0')}`;
+      continue;
+    }
+
+    result += char;
+  }
+
+  return result;
+}
+
 export interface InferParams<T extends z.ZodTypeAny = z.ZodTypeAny> {
   env: Env;
   action: ActionKey;
@@ -98,7 +163,7 @@ async function callWorkersAI<T extends z.ZodTypeAny>(
   // raw parse if extraction misses.
   const fenced = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
   const candidate = fenced?.[1] ?? text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-  return params.schema.parse(JSON.parse(candidate));
+  return params.schema.parse(parseJsonWithControlCharRepair(candidate));
 }
 
 async function callOnce<T extends z.ZodTypeAny>(
@@ -156,7 +221,7 @@ async function callOnce<T extends z.ZodTypeAny>(
     reasoning_effort: spec.nonReasoning ? undefined : cfg.reasoningEffort,
   } as any);
   const text = completion.choices[0]?.message?.content ?? '';
-  if (params.schema) return params.schema.parse(JSON.parse(text));
+  if (params.schema) return params.schema.parse(parseJsonWithControlCharRepair(text));
   return text;
 }
 

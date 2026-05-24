@@ -14,6 +14,19 @@ import {
   updateKnowledgeDriftStatus,
 } from '../insights';
 import { computeOperationsMetrics } from '../insights/operations';
+import { computeHonestResolutionMetrics } from '../insights/honest-resolution';
+import {
+  computeKnowledgeHealth,
+  markSourceStale,
+  recomputeWorkspaceStaleness,
+} from '../insights/staleness';
+import {
+  acceptProposal,
+  discoverProposals,
+  listProposals,
+  rejectProposal,
+} from '../insights/proactive';
+import { PROACTIVE_PROPOSAL_STATUSES } from '../types/proactive';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
 
 const limitSchema = z.object({ limit: z.number().int().min(1).max(500).optional() });
@@ -34,6 +47,47 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
       metrics: await computeOperationsMetrics(c.env, s.workspaceId, { windowDays }),
     });
   });
+
+  apiApp.get('/insights/honest-resolution', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const windowDays = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 180);
+    return c.json({
+      metrics: await computeHonestResolutionMetrics(c.env, s.workspaceId, { windowDays }),
+    });
+  });
+
+  apiApp.get('/insights/knowledge-health', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    return c.json({ health: await computeKnowledgeHealth(c.env, s.workspaceId) });
+  });
+
+  apiApp.post('/insights/knowledge-health/recompute', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    return c.json(await recomputeWorkspaceStaleness(c.env, s.workspaceId));
+  });
+
+  apiApp.post(
+    '/insights/knowledge-health/mark-stale',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      const body = z
+        .object({
+          source_id: z.string().min(1),
+          score: z.number().min(0).max(1),
+          reason: z.string().max(500).optional(),
+        })
+        .parse(await c.req.json());
+      await markSourceStale(c.env, {
+        workspaceId: s.workspaceId,
+        sourceId: body.source_id,
+        score: body.score,
+        reason: body.reason,
+        actorUserId: s.userId,
+      });
+      return c.json({ ok: true });
+    },
+  );
 
   apiApp.get('/insights/scores', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
@@ -133,5 +187,56 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
     );
     if (!signal) return apiError(c, 'not_found', 'Drift signal not found.');
     return c.json({ signal });
+  });
+
+  apiApp.get('/insights/proposals', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const status = c.req.query('status');
+    const filter = (PROACTIVE_PROPOSAL_STATUSES as readonly string[]).includes(status as string)
+      ? (status as any)
+      : undefined;
+    return c.json({ proposals: await listProposals(c.env, s.workspaceId, filter) });
+  });
+
+  apiApp.post('/insights/proposals/run', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    return c.json(await discoverProposals(c.env, s.workspaceId, { limit: 20 }));
+  });
+
+  apiApp.post('/insights/proposals/:id/accept', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    try {
+      const proposal = await acceptProposal(c.env, s.workspaceId, c.req.param('id'), s.userId);
+      if (!proposal) return apiError(c, 'not_found', 'Proposal not found.');
+      return c.json({ proposal });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'proactive_proposal_not_pending') {
+        return apiError(c, 'conflict', 'Only pending proposals can be accepted.', 409);
+      }
+      throw err;
+    }
+  });
+
+  apiApp.post('/insights/proposals/:id/reject', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
+    const s = c.get('session');
+    const body = z
+      .object({ reason: z.string().min(1).max(500) })
+      .parse(await c.req.json());
+    try {
+      const proposal = await rejectProposal(
+        c.env,
+        s.workspaceId,
+        c.req.param('id'),
+        s.userId,
+        body.reason,
+      );
+      if (!proposal) return apiError(c, 'not_found', 'Proposal not found.');
+      return c.json({ proposal });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'proactive_proposal_not_pending') {
+        return apiError(c, 'conflict', 'Only pending proposals can be rejected.', 409);
+      }
+      throw err;
+    }
   });
 }

@@ -137,6 +137,77 @@ export function createWorkspaceTestDb() {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (workspace_id, day)
     );
+    CREATE TABLE verified_resolution (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      ai_message_id TEXT NOT NULL,
+      ai_authored_at INTEGER NOT NULL,
+      window_closes_at INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      rejection_reason TEXT,
+      verified_at INTEGER,
+      source TEXT NOT NULL DEFAULT 'autonomous',
+      payload_json TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE (workspace_id, ticket_id)
+    );
+    CREATE TABLE workspace_outcome_pricing (
+      workspace_id TEXT PRIMARY KEY,
+      config_json TEXT NOT NULL,
+      inference_cost_cents_per_1k_tokens INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE outcome_ledger_entry (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      ticket_id TEXT NOT NULL,
+      outcome_event_id TEXT,
+      kind TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      metadata_json TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE procedure_marketplace_install (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      source_manifest_url TEXT,
+      source_author TEXT,
+      source_repo TEXT,
+      parent_fingerprint TEXT NOT NULL,
+      forked_version TEXT NOT NULL,
+      installed_at INTEGER NOT NULL,
+      installed_by TEXT,
+      procedure_id TEXT,
+      update_available_version TEXT,
+      update_available_fingerprint TEXT,
+      update_checked_at INTEGER
+    );
+    CREATE TABLE proactive_proposal (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      cluster_key TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      draft_procedure_spec_json TEXT,
+      draft_knowledge_entry_json TEXT,
+      eval_pass_rate REAL,
+      eval_case_count INTEGER NOT NULL DEFAULT 0,
+      eval_run_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      rejected_reason TEXT,
+      proposed_at INTEGER NOT NULL,
+      reviewed_at INTEGER,
+      reviewed_by TEXT,
+      applied_procedure_id TEXT,
+      applied_knowledge_source_id TEXT,
+      summary TEXT,
+      evidence_ticket_ids_json TEXT,
+      UNIQUE (workspace_id, cluster_key)
+    );
     CREATE TABLE message_index (
       id TEXT PRIMARY KEY,
       ticket_id TEXT NOT NULL,
@@ -170,6 +241,10 @@ export function createWorkspaceTestDb() {
       last_crawled_at INTEGER,
       last_indexed_at INTEGER,
       error TEXT,
+      staleness_score REAL NOT NULL DEFAULT 0,
+      staleness_components_json TEXT,
+      staleness_updated_at INTEGER,
+      staleness_marked_by TEXT,
       created_at INTEGER NOT NULL DEFAULT 1,
       updated_at INTEGER NOT NULL
     );
@@ -663,8 +738,14 @@ export function createWorkspaceTestDb() {
         all: async () => ({ results: db.prepare(sql).all(...(params as any[])) }),
         first: async () => db.prepare(sql).get(...(params as any[])),
         run: async () => {
-          db.prepare(sql).run(...(params as any[]));
-          return { success: true };
+          const result = db.prepare(sql).run(...(params as any[]));
+          return {
+            success: true,
+            meta: {
+              changes: Number(result.changes ?? 0),
+              last_row_id: Number(result.lastInsertRowid ?? 0),
+            },
+          };
         },
       });
       return { bind: (...params: unknown[]) => run(params), ...run([]) };

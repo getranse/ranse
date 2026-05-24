@@ -2,7 +2,18 @@ import type { KnowledgeSearchScope } from './knowledge';
 
 export type ProcedureTriggerType = 'manual' | 'ticket_created' | 'intent';
 export type ProcedureSourceKind = 'api' | 'git' | 'seed';
-export type ProcedureLibraryCategory = 'billing' | 'account' | 'shipping' | 'privacy' | 'triage';
+export type ProcedureLibraryCategory =
+  | 'billing'
+  | 'account'
+  | 'shipping'
+  | 'privacy'
+  | 'triage'
+  | 'incident'
+  | 'engineering'
+  | 'product'
+  | 'analytics'
+  | 'docs'
+  | 'admin';
 export type ProcedureRunStatus =
   | 'queued'
   | 'running'

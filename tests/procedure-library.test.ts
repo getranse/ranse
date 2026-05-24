@@ -27,13 +27,31 @@ describe('procedure library', () => {
   it('ships validated procedures with evals, checksums, and MCP tool specs', async () => {
     const entries = await listProcedureLibrary();
 
-    expect(entries.map((entry) => entry.slug)).toEqual([
-      'refund-intake',
-      'verify-identity-channel-aware',
-      'password-reset',
-      'shipping-dispute',
-      'gdpr-data-request',
-    ]);
+    const slugs = entries.map((entry) => entry.slug);
+    // Phase 7 originals are still present.
+    expect(slugs).toEqual(
+      expect.arrayContaining([
+        'refund-intake',
+        'verify-identity-channel-aware',
+        'password-reset',
+        'shipping-dispute',
+        'gdpr-data-request',
+      ]),
+    );
+    // Phase 11 Action Library shipped at least the procedures backing each
+    // first-party MCP template.
+    expect(slugs).toEqual(
+      expect.arrayContaining([
+        'order-address-edit',
+        'subscription-pause',
+        'outage-report',
+        'jira-bug-escalation',
+        'auth0-password-reset',
+        'internal-action-webhook',
+      ]),
+    );
+    // Slugs are unique.
+    expect(new Set(slugs).size).toBe(slugs.length);
     expect(await validateProcedureLibrary()).toHaveLength(entries.length);
     for (const entry of entries) {
       expect((entry as any).spec).toBeUndefined();
@@ -46,7 +64,10 @@ describe('procedure library', () => {
       const actionTools = collectActionTools(item!.spec.steps);
       for (const tool of item!.reference_mcp_tools) {
         expect(tool.annotations?.openWorldHint).not.toBeUndefined();
-        expect(actionTools).toContain(`${tool.server}.${tool.tool}`);
+        const optional = (tool as any).usage === 'optional';
+        if (!optional) {
+          expect(actionTools).toContain(`${tool.server}.${tool.tool}`);
+        }
         const matchingActions = collectActions(item!.spec.steps).filter(
           (step) => step.tool === `${tool.server}.${tool.tool}`,
         );

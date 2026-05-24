@@ -4,6 +4,7 @@ import type { Env } from '../env';
 import { apiError } from '../lib/errors';
 import { getText } from '../lib/storage';
 import { listMemory } from '../memory/store';
+import { buildTraceLink } from '../lib/decision-trace';
 import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
 
 export function registerTicketRoutes(apiApp: Hono<Ctx>) {
@@ -115,6 +116,40 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     await (stub as any).setTicketAiDrafts({ ticketId: c.req.param('id'), actorUserId: s.userId, enabled: body.enabled });
     return c.json({ ok: true });
   });
+
+  apiApp.get(
+    '/tickets/:id/messages/:messageId/trace-url',
+    requireWorkspaceRole(CAN_WORK_TICKETS),
+    async (c) => {
+      const s = c.get('session');
+      const ticketId = c.req.param('id');
+      const messageId = c.req.param('messageId');
+      const message = await c.env.DB.prepare(
+        `SELECT id, author_user_id FROM message_index
+           WHERE id = ? AND ticket_id = ? AND workspace_id = ? AND direction = 'outbound'`,
+      )
+        .bind(messageId, ticketId, s.workspaceId)
+        .first<{ id: string; author_user_id: string | null }>();
+      if (!message) return apiError(c, 'not_found', 'Message not found on this ticket.');
+      if (message.author_user_id) {
+        return apiError(
+          c,
+          'bad_request',
+          'Trace links are only available for AI-authored replies.',
+          400,
+        );
+      }
+      const url = await buildTraceLink(c.env, {
+        workspaceId: s.workspaceId,
+        ticketId,
+        messageId,
+      });
+      if (!url) {
+        return apiError(c, 'bad_request', 'APP_URL or COOKIE_SIGNING_KEY is not configured.', 400);
+      }
+      return c.json({ url });
+    },
+  );
 
   apiApp.post('/tickets/:id/feedback', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');

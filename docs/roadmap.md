@@ -59,7 +59,11 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 **Phase 10 — Post-Fin parity** is shipped end-to-end with operator UI. Real-time draft assist (debounced ghost-text completion + Tab-to-accept + KB nearby + similar-past-tickets sidebar, wired into the reply composer), long-term customer memory (auto-extracted on ticket resolution, injected into procedure context, surfaced as an editable + redactable drawer in the ticket sidebar), operations dashboards (resolution / deflection / TTFR / TTR / CSAT / follow-up rate + volume-by-channel bars, rendered as the first card in the Insights view with a 7/30/90-day window selector), and a live procedure flow-diagram (SVG renderer with terminal/process/io/decision/loop_container shapes + yes/no edge labels + approval-gate badges, previewing the operator's procedure JSON as they edit it).
 
+**Phase 10.1 — Theme and onboarding** is shipped. Full light/dark theme system with `system/light/dark` toggle (persisted in localStorage, applied before React mounts so there's no light-to-dark flash on first paint), a token-driven CSS pass that funnels every color/space/shadow/focus-ring through one file so contributors can re-theme without touching components, and a derived-state onboarding checklist that auto-completes as the operator adds knowledge / connects a channel / sends their first reply, dismissible workspace-wide via `workspace.settings_json`.
+
 That's now equivalent or ahead of Fin on every customer-visible axis — and ahead structurally because the same buyer self-hosts it on their own Cloudflare account with multi-provider LLM routing, MCP-native actions, evals against their actual ticket history, and a forkable procedure library no closed SaaS can replicate.
+
+**Phase 11 — 100 steps ahead of Fin** is in progress. Seven moves that turn structural advantages into features Fin cannot match: Honest Resolution metric (verified-by-customer, no forced closes), outcome-based pricing instrument (cost-per-verified-resolution ledger), MCP Action Library (20+ first-party templates covering refund / address edit / subscription pause / etc.), public procedure marketplace with attribution + fingerprints, customer-facing decision trace ("Why this answer?" public link), knowledge staleness as a first-class retrieval signal, and the proactive resolution loop (cluster → draft procedure + KB → eval-gated → one-click publish). The full plan is in the Phase 11 section below.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -274,9 +278,480 @@ The four highest-leverage gaps Fin had over Ranse before this phase. All four sh
 | `CustomerMemoryDrawer` | `src/ui/components/CustomerMemoryDrawer.tsx` | `TicketSidebar.tsx` when `ticket.customer_id` is set |
 | `ProcedureFlowDiagram` | `src/ui/components/ProcedureFlowDiagram.tsx` | `ProceduresSection.tsx` live spec preview |
 
+## Phase 10.1 — Theme and onboarding
+**Status: shipped.**
+
+*Operator experience polish on top of the real app, without fake data paths.*
+
+- **Theme system.** `system`, `light`, and `dark` modes are persisted in `localStorage` and applied before React mounts so the app does not flash the wrong theme on first paint.
+- **Token-driven styling.** Color, space, shadow, and focus-ring choices now flow through the shared CSS token layer, so contributors can re-theme the app without rewriting component styles.
+- **Onboarding checklist.** The operator onboarding banner derives state from real workspace data: knowledge sources, connected mailboxes/channels, and outbound replies.
+- **Workspace-wide dismissal.** Operators can dismiss onboarding once per workspace through `workspace.settings_json`; completed workspaces hide the banner automatically.
+
+## Phase 11 — 100 steps ahead of Fin
+
+> **Status: in progress.** Phase 11 is the first phase where Ranse stops chasing Fin's surface area and starts shipping the features Fin *structurally cannot*. The capability map after Phase 10 already covered every customer-visible axis Fin has. Phase 11 is the wedge.
+
+### The seven moves
+
+Each move is grounded in a documented Fin / category pain point and maps to existing Ranse infrastructure. None is greenfield — every one extends a shipped subsystem.
+
+| # | Move | Pain solved | Foundation |
+|---|------|------------|------------|
+| 1 | Honest Resolution metric | Forced-close counting, 38% vs 50% reality gap | `src/lib/outcomes.ts`, `src/insights/operations.ts` |
+| 2 | Outcome-based pricing instrument | $0.99/resolution unpredictability, perverse incentives | `ticket_outcome_event`, `workspace_outcome_daily` |
+| 3 | MCP Action Library (20+) | Fin explains but cannot fix (refunds, addresses, subs) | `src/mcp/first-party/catalog.ts` |
+| 4 | Public procedure marketplace | Vendor lock-in, slow content velocity | `src/procedures/library*` |
+| 5 | Customer-facing decision trace | 74% rollback rate driven by trust failure | `src/lib/audit.ts`, Answer Inspection |
+| 6 | Knowledge staleness signal | Stale KB silently kills resolution rate | `src/insights/` drift, `knowledge_source` |
+| 7 | Proactive resolution loop | Reactive ceiling; no competitor closes this loop | `src/insights/`, procedures, evals |
+
+### Move 1 — Honest Resolution metric
+
+#### Problem
+Industry-standard "resolution rate" is gamed. Fin counts a resolution if it answers and the customer doesn't reply within 24h, *even when a human took over*. Builts AI tested 500 tickets across four small businesses and measured a real 38% resolution rate against a marketed 50%. The market knows the number is fake but every competitor reports it the same way.
+
+#### Definition (new)
+A ticket counts as a `verified_resolution` only if **all** of the following hold:
+
+1. **AI authored**: at least one outbound message on the ticket was AI-generated (autonomous or procedure) with no human edit > 20 characters.
+2. **No human takeover**: `audit_event` shows no `reply.sent` row where `actor_type='user'` after the AI message.
+3. **No escalation**: no `escalated` outcome event.
+4. **No customer follow-up within 7 days** of the AI message: no inbound message + no `customer_followed_up` outcome.
+5. **Customer-confirmed OR aged out**: either a positive `ticket_feedback` row, or the 7-day window closed with no negative signal.
+
+#### Data model
+```
+verified_resolution
+  id TEXT PRIMARY KEY
+  workspace_id TEXT NOT NULL
+  ticket_id TEXT NOT NULL UNIQUE
+  ai_message_id TEXT NOT NULL
+  ai_authored_at INTEGER NOT NULL
+  window_closes_at INTEGER NOT NULL   -- ai_authored_at + 7d
+  status TEXT NOT NULL                -- 'pending' | 'verified' | 'rejected'
+  rejection_reason TEXT               -- 'human_takeover' | 'escalated' | 'follow_up' | 'negative_feedback'
+  verified_at INTEGER
+  created_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL
+```
+
+#### Service
+`src/insights/honest-resolution.ts`
+- `enqueueVerification(env, ticket, aiMessage)` — called when an autonomous or procedure reply lands. Inserts a `pending` row with `window_closes_at = now + 7d`.
+- `rejectVerification(env, ticketId, reason)` — called on human reply / escalation / negative feedback / follow-up signal. Idempotent.
+- `sweepDueVerifications(env, workspaceId)` — promotes pending rows whose window closed and have no rejection.
+- `computeHonestResolutionRate(env, workspaceId, windowDays)` — returns `{ aiAuthored, verified, rejected, pending, rate, finStyleRate }`.
+
+#### API
+`GET /api/insights/honest-resolution?days=30` → ratio + breakdown. Already wired through `requireWorkspaceRole(OWNER_OR_ADMIN)`.
+
+#### UI
+`OperationsDashboard` gets a second resolution card showing both rates side by side, with a small explainer popover. Marketing surface: same component renders on a public benchmarks page for opted-in workspaces.
+
+#### Cron
+Sweep on the existing 5-minute scheduled tick (`src/jobs/scheduled.ts`). Already runs SLA + cascade + dispatch sweeps; verification sweep is one more call.
+
+#### Tests
+- AI auto-send + no reply for 8 days → verified
+- AI auto-send + human reply within window → rejected `human_takeover`
+- AI procedure reply + negative customer feedback → rejected `negative_feedback`
+- AI auto-send + follow-up event within window → rejected `follow_up`
+- Pending row promoted by sweep when window closes
+
+---
+
+### Move 2 — Outcome-based pricing instrument
+
+#### Problem
+Fin's $0.99/resolution is the #1 G2 complaint. Pricing is unpredictable, scales linearly with success, and the "resolution" definition rewards ambiguous closes. Ranse is sovereign — customers pay their own inference bill — so we don't *need* to charge per resolution. But we can ship the instrument that lets buyers think in outcome dollars, and provide a hosted SaaS path later.
+
+#### Concept
+An **outcome ledger** that values each `ticket_outcome_event` against a workspace-configurable price book and reports a `cost_per_outcome` and a `value_delivered` figure. Read-only telemetry by default; if/when Ranse runs a hosted SaaS, the same ledger can drive invoicing.
+
+#### Data model
+```
+workspace_outcome_pricing
+  workspace_id TEXT PRIMARY KEY
+  config_json TEXT NOT NULL            -- prices keyed by outcome kind + verified flag
+  inference_cost_cents_per_1k INTEGER  -- optional self-reported model cost
+  currency TEXT NOT NULL DEFAULT 'USD'
+  updated_at INTEGER NOT NULL
+
+outcome_ledger_entry
+  id TEXT PRIMARY KEY
+  workspace_id TEXT NOT NULL
+  ticket_id TEXT NOT NULL
+  outcome_event_id TEXT
+  kind TEXT NOT NULL                   -- 'verified_resolution' | 'autonomous_resolution' | 'escalation' | 'follow_up_cost' | 'inference_cost'
+  amount_cents INTEGER NOT NULL        -- signed: positive = value, negative = cost
+  metadata_json TEXT
+  created_at INTEGER NOT NULL
+```
+
+#### Price book defaults
+| Outcome | Default cents | Rationale |
+|---|---|---|
+| verified_resolution | +1500 | Industry comparator for an AI resolution worth |
+| autonomous_resolution (not yet verified) | +500 | Provisional; reconciles to verified at window close |
+| follow_up_cost | -300 | Customer came back; cost of incomplete resolution |
+| escalation | -200 | Routed to human; partial credit lost |
+| inference_cost | computed | From recorded LLM call token counts |
+
+All editable per workspace. Stored as a single JSON blob to avoid migrations when we add an outcome kind.
+
+#### Service
+`src/billing/outcomes.ts`
+- `recordLedgerEntry(env, …)` — called from outcome hooks
+- `loadPricing(env, workspaceId)` — with defaults fallback
+- `computeOutcomeStatement(env, workspaceId, windowDays)` — returns `{ entries, totals, cost_per_verified_resolution, roi_ratio, breakdown }`
+- `replayBackfill(env, workspaceId, since)` — rebuilds the ledger from existing outcome events for first-time pricing setup.
+
+#### API
+- `GET /api/billing/pricing` / `PUT /api/billing/pricing`
+- `GET /api/billing/statement?days=30`
+- `POST /api/billing/statement/backfill` (owner only)
+
+#### UI
+`Settings → Pricing` with editable price book + live preview of last 30 days' statement. Operations dashboard adds a "Cost per verified resolution" card under the resolution mix.
+
+#### Tests
+- Ledger entries created on outcome events
+- Statement computes correct totals across mixed outcome kinds
+- Backfill is idempotent
+- Negative entries are signed correctly
+
+---
+
+### Move 3 — MCP Action Library
+
+#### Problem
+75–80% of action-requiring tickets still escalate. Fin "explains, doesn't fix" — it can describe an order but cannot edit a shipping address, process a refund, or pause a subscription. This is a category-level gap. Ranse already supports MCP-native actions but ships only 5 first-party templates.
+
+#### Scope
+Expand `src/mcp/first-party/catalog.ts` from 5 to 20 templates covering the highest-leverage support actions across ecom, SaaS, identity, and ops. Each template includes:
+
+1. Entry in `FIRST_PARTY_MCP_TEMPLATES`
+2. Tool-contract JSON (`src/procedures/library-mcp-tools.ts` extension)
+3. A reference procedure under `src/procedures/library-data.ts` consuming the tools
+4. Inline evals + provenance via the existing pipeline
+5. Documentation in `procedure-library/README.md`
+
+#### Catalog
+
+| ID | Label | Tools (read / write) | Reference procedure |
+|---|---|---|---|
+| stripe | Stripe | customers.search, charges.retrieve / refunds.create | refund-intake (existing) |
+| shopify | Shopify | orders.search, orders.retrieve / orders.update_address, refunds.create | order-address-edit, ecom-refund |
+| recharge | Recharge | subscriptions.retrieve / subscriptions.pause, subscriptions.cancel | subscription-pause |
+| salesforce | Salesforce | cases.search, contacts.retrieve / cases.create | enterprise-escalation |
+| hubspot | HubSpot | contacts.search, deals.retrieve / contacts.update | crm-context-sync |
+| linear | Linear | issues.search / issues.create, issues.update | (existing) bug-escalation |
+| github | GitHub | issues.list / issues.create | (existing) feature-request-intake |
+| pagerduty | PagerDuty | incidents.list / incidents.create, incidents.acknowledge | outage-report |
+| jira | Jira | issues.search / issues.create | jira-bug-escalation |
+| zendesk | Zendesk import | tickets.list (read-only migration) | zendesk-migration-import |
+| klaviyo | Klaviyo | profiles.search / profiles.suppress | unsubscribe-confirmation |
+| twilio-verify | Twilio Verify | verifications.create | verify-identity-channel-aware (existing) |
+| auth0 | Auth0 | users.search / tickets.password-change | password-reset (existing, retarget) |
+| notion | Notion | pages.search, databases.query / pages.create | docs-handoff |
+| datadog | Datadog | events.list / events.create | incident-cross-post |
+| snowflake | Snowflake | query.execute (read-only) | usage-lookup |
+| mixpanel | Mixpanel | events.query (read-only) | engagement-context |
+| slack | Slack | conversations.history / chat.postMessage | shared-channel-escalation |
+| calendly | Calendly | event-types.list, scheduled-events.list | meeting-context |
+| webhook | Generic webhook | webhook.call (existing) | (any) |
+
+#### Read vs write annotation
+Each tool carries `annotations.readOnlyHint` / `destructiveHint` so the procedure runner can auto-execute reads and pause writes for operator approval (Phase 5 contract preserved).
+
+#### Validation tests
+`tests/mcp-catalog.test.ts`:
+- Every catalog entry has a matching reference procedure
+- Every reference procedure validates against `procedure.v1` schema
+- Every destructive tool has `requires_approval: true` in its reference call
+- All tool contracts parse cleanly
+
+#### Out of scope
+We are not shipping MCP server implementations — those are the customer's eng team's job. We ship the contracts so when their MCP server exposes a tool by that exact name, our reference procedure works untouched.
+
+---
+
+### Move 4 — Public procedure marketplace
+
+#### Problem
+Vendor lock-in is the #2 reason teams switch off Fin. Their procedure library is opaque and trapped in their UI. Ranse already ships procedure-library forking via `ranse procedure add` but the discovery surface is in-app only.
+
+#### Concept
+A **public registry** (initially at `procedures.ranse.dev`, mirrored as JSON in-repo) where:
+- Anyone can browse / search procedures with eval pass rates
+- `ranse procedure add <slug>` resolves against the public manifest first, then falls back to in-tree library
+- Forks carry a parent SHA-256 fingerprint so updates can be diffed
+- Procedure authors get attribution
+
+#### Data model
+```
+procedure_marketplace_install
+  id TEXT PRIMARY KEY
+  workspace_id TEXT NOT NULL
+  slug TEXT NOT NULL
+  source_manifest_url TEXT
+  parent_fingerprint TEXT NOT NULL
+  installed_at INTEGER NOT NULL
+  installed_by TEXT
+  forked_version TEXT NOT NULL
+```
+
+Plus an export script (`scripts/marketplace-export.ts`) that turns the in-tree library into a marketplace-ready manifest with stable URLs, contributor metadata, eval pass rates from the last CI run, and SHA-256 fingerprints.
+
+#### Service
+`src/procedures/marketplace.ts`
+- `installFromManifest(env, workspaceId, slug, manifestUrl?)` — fetches manifest, validates schema, validates inline evals, persists install record
+- `listMarketplaceInstalls(env, workspaceId)`
+- `checkForUpdates(env, workspaceId)` — compares each install's `forked_version` against the current manifest entry
+
+#### API
+- `GET /api/procedures/marketplace/installs`
+- `POST /api/procedures/marketplace/install` `{ slug, manifest_url? }`
+- `GET /api/procedures/marketplace/manifest` (returns the workspace's own published manifest for mirroring)
+
+#### CLI
+`ranse procedure publish <file>` — produces a marketplace-shaped JSON with checksums + author + commit SHA. Output committed to a `marketplace/` directory in the workspace's procedures repo.
+
+#### Tests
+- Install round-trips fingerprint
+- Manifest validation rejects unknown schema versions
+- Update detection flags stale forks
+
+---
+
+### Move 5 — Customer-facing decision trace
+
+#### Problem
+The Register reported that **74% of AI customer-service rollouts get rolled back**. The Notch and CNBC pieces show CSAT often drops while resolution rates rise. This is a trust failure. Operators cannot defend the AI to skeptical customers, executives, or auditors. Compliance-grade traceability is a $50K/seat enterprise feature; we already built the plumbing internally and the move is to expose it externally.
+
+#### Concept
+Every AI-authored outbound reply optionally embeds a **"Why this answer?"** link signed with HMAC. Clicking it loads `/public/trace/:token` and renders a sanitized decision trace:
+
+- Plain-English reason for the recommendation
+- KB sources cited (titles + click-through if public)
+- Procedure name + step that produced this reply (no internal step IDs)
+- MCP tools called (label + read/write only — no payloads)
+- Confidence and grounding score
+- Approval reviewer if a human signed off
+- Eval pass rate of the procedure version
+- Last-knowledge-refresh timestamp on cited sources
+
+#### Security
+- HMAC-signed token bound to `(workspace_id, ticket_id, message_id, exp)`
+- Default 30-day expiry, configurable per workspace
+- Rate-limited per IP via existing KV
+- Customer PII redacted; only the customer's own messages on the same ticket are surfaced
+
+#### Data model
+No new table needed — the trace is computed at render time from existing rows: `procedure_run_step`, `mcp_tool_call`, `audit_event`, `message_index`, `knowledge_source`. New: `workspace_setting` keys for `decision_trace_enabled`, `decision_trace_branding`.
+
+#### Service
+`src/lib/decision-trace.ts`
+- `signTraceToken(env, …)` — uses existing HMAC infrastructure from `feedback-links.ts`
+- `verifyTraceToken(env, token)`
+- `buildPublicTrace(env, workspaceId, ticketId, messageId)` — assembles the sanitized payload
+
+#### API
+- `GET /public/trace/:token` (no auth) — renders HTML page
+- `GET /api/tickets/:id/messages/:messageId/trace-url` (operator) — generates a shareable link
+
+#### UI
+- `DecisionTracePublic.tsx` — standalone React route for the public page, dark/light, branded
+- Outbound mailer template appends "Why this answer?" link when `decision_trace_enabled`
+
+#### Tests
+- Token round-trip
+- Tampered token rejected
+- Expired token rejected
+- Trace omits internal IDs and other tickets' data
+- Rate-limit enforced
+
+---
+
+### Move 6 — Knowledge staleness signal
+
+#### Problem
+Builts AI's 500-ticket test pinpointed stale KB as the silent killer: "Fin gave a technically correct answer to the wrong question, or pulled from an article that was accurate six months ago." Our `src/insights/` already detects drift; the move is to make staleness a **first-class retrieval signal** that down-ranks stale chunks and a **Knowledge Health Score** on the dashboard.
+
+#### Definition
+A chunk's `staleness_score` ∈ [0, 1] is computed from:
+- Age since `last_crawled_at` (slow exponential decay)
+- Drift signal: cited but appears in low-CSAT replies
+- Conflict signal: contradicts higher-confidence chunks on the same topic (cosine similarity > 0.85 + tone mismatch)
+- Operator override: explicit `mark_stale` action
+
+#### Data model
+Extend existing `knowledge_source`:
+```
+ALTER TABLE knowledge_source ADD COLUMN staleness_score REAL NOT NULL DEFAULT 0;
+ALTER TABLE knowledge_source ADD COLUMN staleness_components_json TEXT;
+ALTER TABLE knowledge_source ADD COLUMN staleness_updated_at INTEGER;
+```
+
+New table for per-chunk overrides where needed (rare):
+```
+knowledge_chunk_override
+  id TEXT PRIMARY KEY
+  workspace_id TEXT NOT NULL
+  source_id TEXT NOT NULL
+  chunk_id TEXT NOT NULL
+  staleness_score REAL NOT NULL
+  reason TEXT
+  created_by TEXT
+  created_at INTEGER NOT NULL
+```
+
+#### Retrieval integration
+`src/knowledge/search.ts` rerank step multiplies the retrieval score by `(1 - source.staleness_score * 0.5)`. A staleness of 1.0 halves the score — never zeros it (still surface for operator review).
+
+#### Health score
+`workspace_knowledge_health` view:
+- Average staleness across sources
+- # sources stale (score > 0.6)
+- # sources cited in last 30d that are stale
+- "Health grade" A–F mapping from average
+
+#### Cron
+Weekly maintenance job already exists in `src/jobs/scheduled.ts` — append `recomputeStalenessScores`.
+
+#### UI
+- Content Library shows a staleness chip per source with mouse-over component breakdown
+- Operations dashboard gains a Knowledge Health card with grade + top 3 stale sources cited recently
+- `Refresh source` button in Content Library triggers re-crawl
+
+#### Tests
+- Age decay produces expected score curve
+- Cited-in-low-CSAT bumps score
+- Operator override pins score regardless of components
+- Retrieval rerank actually down-ranks stale sources
+- Health grade thresholds
+
+---
+
+### Move 7 — Proactive resolution loop (the capstone)
+
+#### Problem
+Every competitor is reactive. Insights detect unresolved-intent clusters but humans manually decide what to do. The move is to close the loop: detected cluster → auto-draft procedure + KB entry → run eval against historical cases → operator one-click approve → publish.
+
+#### Flow
+```
+weekly cron (existing)
+  ↓
+src/insights/proactive.ts
+  detectClusters()        # already exists via generateKbSuggestions
+  ↓
+  for each cluster:
+    proposeRemediation()  # LLM-generated procedure draft + KB entry
+    runProposalEvals()    # replay against historical eval_case set
+    if eval pass rate ≥ workspace threshold (default 0.8):
+      enqueueProposal(workspace, proposal)
+    else:
+      logRejection(reason: 'eval_regression')
+  ↓
+operator reviews queue
+  one-click accept → publish procedure (Phase 4 pipeline) + KB entry (Phase 8 accept flow)
+  one-click reject → record reason
+```
+
+#### Data model
+```
+proactive_proposal
+  id TEXT PRIMARY KEY
+  workspace_id TEXT NOT NULL
+  cluster_id TEXT NOT NULL                    -- ties to insight cluster
+  kind TEXT NOT NULL                          -- 'procedure' | 'knowledge' | 'combined'
+  draft_procedure_spec_json TEXT
+  draft_knowledge_entry_json TEXT
+  eval_pass_rate REAL
+  eval_run_id TEXT
+  status TEXT NOT NULL                        -- 'pending' | 'accepted' | 'rejected' | 'auto_rejected'
+  rejected_reason TEXT
+  proposed_at INTEGER NOT NULL
+  reviewed_at INTEGER
+  reviewed_by TEXT
+  applied_procedure_version TEXT
+  applied_knowledge_source_id TEXT
+```
+
+#### Service
+`src/insights/proactive.ts`
+- `discoverProposals(env, workspaceId)` — runs after cluster detection
+- `evaluateProposal(env, workspaceId, proposalId)`
+- `listProposals(env, workspaceId, status?)`
+- `acceptProposal(env, workspaceId, proposalId, userId)` — publishes procedure, accepts KB, marks applied
+- `rejectProposal(env, workspaceId, proposalId, userId, reason)`
+
+#### Eval gate
+A proposal can only be queued for human review if its draft procedure passes ≥ 80% of an automatically-selected sample of historical eval cases that match the cluster's intent. This is the core anti-regression promise: no proactive change can ship without empirical evidence against the workspace's own history.
+
+#### API
+- `GET /api/insights/proposals?status=pending`
+- `POST /api/insights/proposals/:id/accept`
+- `POST /api/insights/proposals/:id/reject`
+- `POST /api/insights/proposals/run` (admin, manual trigger)
+
+#### UI
+`Insights → Proposals` queue. Each card:
+- Cluster summary (top tickets, count, % unresolved)
+- Draft procedure: flow diagram (Phase 10 component) + raw spec
+- Draft KB entry: rendered markdown
+- Eval pass rate + sample case results
+- Accept / Reject buttons with reason
+
+#### Cron
+Append to the weekly maintenance job after KB suggestion generation. Optional manual trigger for testing.
+
+#### Tests
+- Proposal generated for known unresolved cluster
+- Eval gate rejects below-threshold proposal
+- Accept publishes a real procedure version + KB source
+- Reject records reason
+- Auto-rejection on eval regression doesn't auto-publish
+
+---
+
+### Sequencing
+
+The seven moves are independent enough to land in any order. The recommended sequence balances dependencies and visibility:
+
+| Order | Move | Reason |
+|---|---|---|
+| 1 | Honest Resolution (M1) | Pure data + dashboard; no new external surfaces; immediate marketing asset |
+| 2 | Knowledge staleness (M6) | Pure data + retrieval signal; supports M7 |
+| 3 | Outcome pricing (M2) | Pure data + UI; no new external surfaces |
+| 4 | Decision trace (M5) | Public surface; requires HMAC; trust-building externalization of work already done |
+| 5 | MCP Action Library (M3) | Content + reference procedures; bulk-author |
+| 6 | Procedure marketplace (M4) | Public surface; builds on M3 content |
+| 7 | Proactive loop (M7) | Capstone; uses M1, M5, M6, and the eval harness |
+
+### Success metrics
+
+Each move ships with a success criterion. Phase 11 is shippable when all seven are met.
+
+| Move | Metric | Threshold |
+|---|---|---|
+| M1 | Verified resolution rate computed for any workspace with ≥ 1 AI-authored reply | 100% coverage |
+| M2 | Outcome ledger entries persisted within 1s of outcome event | p99 latency |
+| M3 | Templates count + reference procedures + eval pass | ≥ 20 templates, 100% eval pass |
+| M4 | A procedure can be installed end-to-end from a published manifest | green path |
+| M5 | Decision trace renders for any AI-authored reply within 500ms | p95 |
+| M6 | Stale source down-ranked in retrieval; health grade exposed | both wired |
+| M7 | Proactive proposal generated, eval-gated, accepted, and applied | full loop closed |
+
+### Out of Phase 11 (deferred)
+
+- **Hosted SaaS billing.** M2 is the instrument, not the storefront. The hosted offering is its own decision.
+- **MCP server implementations.** We ship contracts and reference procedures; servers stay the customer's responsibility (Principle 4).
+- **Decision trace as a translatable / localized surface.** English-only at launch; localization is a separate phase.
+- **Marketplace ratings / reviews.** Initial version is attribution + checksums; community-driven curation is a later move.
 ## What we are explicitly not building
 
-- **Outcome-based pricing logic.** Self-hosters own their inference bill; pricing is irrelevant. The outcome event model (Phase 3) is useful telemetry, and would back a hosted SaaS on `getranse.com` later if we go that route.
 - **A proprietary "Ranse Apex" model.** Per-step model choice (Principle 2) is the feature; locking to one model is the anti-feature.
 - **A private connector marketplace.** MCP is the marketplace.
 - **A "CX Score" leaderboard or vanity score.** Insights are for the team operating the inbox, not a number to brag about.

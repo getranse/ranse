@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API } from './api';
+import { ThemeToggle } from './components/ThemeToggle';
 import { SetupView } from './views/Setup';
 import { LoginView } from './views/Login';
 import { InboxView } from './views/Inbox';
@@ -130,17 +131,26 @@ export function App() {
             Settings
           </a>
         </nav>
-        <div style={{ marginTop: 'auto', padding: '8px 10px' }}>
-          <div className="muted">{me?.user?.email}</div>
-          <button
-            style={{ marginTop: 8, width: '100%' }}
-            onClick={async () => {
-              await API.logout();
-              window.location.assign('/');
-            }}
-          >
-            Sign out
-          </button>
+        <div className="sidebar-footer">
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{ fontSize: 'var(--fs-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}
+              title={me?.user?.email}
+            >
+              {me?.user?.email}
+            </div>
+            <button
+              className="ghost"
+              style={{ marginTop: 4, padding: '2px 6px', fontSize: 'var(--fs-xs)' }}
+              onClick={async () => {
+                await API.logout();
+                window.location.assign('/');
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+          <ThemeToggle />
         </div>
       </aside>
       <main className="main">

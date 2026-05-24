@@ -1,6 +1,8 @@
 import type { Env } from '../env';
 import { audit } from './audit';
 import { ids } from './ids';
+import { rejectVerification } from '../insights/honest-resolution';
+import { ledgerKindForOutcome, recordLedgerEntry } from '../billing/outcomes';
 import type {
   FeedbackRating,
   FeedbackSource,
@@ -40,6 +42,32 @@ export async function recordOutcome(
     )
     .run();
   await incrementRollup(env, input.workspaceId, rollupColumnForOutcome(input.kind), 1);
+  // Honest Resolution rejections piggy-back on outcome events so any path that
+  // records an `escalated` or `customer_followed_up` outcome — autonomous,
+  // procedure, channel, or future code — invalidates a pending verification
+  // without each call-site having to remember.
+  if (input.kind === 'customer_followed_up') {
+    await rejectVerification(env, input.workspaceId, input.ticketId, 'follow_up', {
+      outcomeId: id,
+    }).catch((err) => console.warn('failed to reject verification on follow-up', err));
+  } else if (input.kind === 'escalated') {
+    await rejectVerification(env, input.workspaceId, input.ticketId, 'escalated', {
+      outcomeId: id,
+    }).catch((err) => console.warn('failed to reject verification on escalation', err));
+  }
+  // Outcome ledger entry mirrors every priced outcome. The ledger drives the
+  // operations dashboard "cost per verified resolution" and a future hosted
+  // SaaS would invoice off the same table.
+  const ledgerKind = ledgerKindForOutcome(input.kind);
+  if (ledgerKind) {
+    await recordLedgerEntry(env, {
+      workspaceId: input.workspaceId,
+      ticketId: input.ticketId,
+      outcomeEventId: id,
+      kind: ledgerKind,
+      metadata: { outcomeKind: input.kind },
+    }).catch((err) => console.warn('failed to record ledger entry', err));
+  }
   return id;
 }
 
@@ -117,6 +145,12 @@ export async function recordTicketFeedback(
     action: 'ticket.feedback_recorded',
     payload: { feedbackId: id, rating: input.rating, source: input.source ?? 'agent' },
   });
+  if (input.rating === 'negative') {
+    await rejectVerification(env, input.workspaceId, input.ticketId, 'negative_feedback', {
+      feedbackId: id,
+      source: input.source ?? 'agent',
+    }).catch((err) => console.warn('failed to reject verification on negative feedback', err));
+  }
   return id;
 }
 
@@ -155,6 +189,12 @@ export async function recordCustomerFeedback(
       action: 'ticket.feedback_recorded',
       payload: { feedbackId: existing.id, rating: input.rating, source: 'customer' },
     });
+    if (input.rating === 'negative' && existing.rating !== 'negative') {
+      await rejectVerification(env, input.workspaceId, input.ticketId, 'negative_feedback', {
+        feedbackId: existing.id,
+        source: 'customer',
+      }).catch((err) => console.warn('failed to reject verification on negative feedback', err));
+    }
     return existing.id;
   }
 

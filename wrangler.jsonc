@@ -29,6 +29,8 @@
       "/assets/workspace/*",
       "/assets/user/*",
       "/public/*",
+      "/demo",
+      "/demo/*",
       "/forms/*",
       "/widget/*",
       "/healthz"
