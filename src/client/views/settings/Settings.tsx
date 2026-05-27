@@ -17,12 +17,14 @@ import { WorkspaceBrandingSection } from './WorkspaceBrandingSection';
 export function SettingsView() {
   const [llmConfig, setLlmConfig] = useState<any[]>([]);
   const [aiDraftsEnabled, setAiDraftsEnabled] = useState(false);
+  const [auditReadLogging, setAuditReadLogging] = useState(false);
   const [saved, setSaved] = useState('');
 
   async function load() {
     const [l, w] = await Promise.all([API.llmConfig(), API.workspaceSettings()]);
     setLlmConfig(l.config ?? []);
     setAiDraftsEnabled(!!w.ai_drafts_enabled);
+    setAuditReadLogging(!!w.audit_read_logging);
   }
   useEffect(() => {
     load();
@@ -63,6 +65,28 @@ export function SettingsView() {
                 const next = e.target.checked;
                 setAiDraftsEnabled(next);
                 await API.setWorkspaceSettings({ ai_drafts_enabled: next });
+                flashSaved();
+              }}
+            />
+          </div>
+        </div>
+        <div className="setting-row">
+          <div className="setting-info">
+            <div className="setting-label">Audit read-access logging</div>
+            <div className="setting-desc">
+              Also record when agents view sensitive customer data — opening a ticket thread or
+              customer memory — in the audit log. Off by default: this is high-volume and only
+              needed for strict compliance regimes.
+            </div>
+          </div>
+          <div className="setting-control">
+            <input
+              type="checkbox"
+              checked={auditReadLogging}
+              onChange={async (e) => {
+                const next = e.target.checked;
+                setAuditReadLogging(next);
+                await API.setWorkspaceSettings({ audit_read_logging: next });
                 flashSaved();
               }}
             />

@@ -101,6 +101,25 @@ export function MyProfileSection({ onSaved }: { onSaved: (msg?: string) => void 
           />
         </div>
       </div>
+      <h2>Security</h2>
+      <div className="card">
+        <p className="muted" style={{ marginBottom: 8 }}>
+          Sign out of every other browser and device. Your current session stays active. Use this
+          if you've signed in somewhere you no longer trust.
+        </p>
+        <button
+          onClick={async () => {
+            const { revoked } = await API.revokeOtherSessions();
+            onSaved(
+              revoked === 0
+                ? 'No other active sessions.'
+                : `Signed out ${revoked} other session${revoked === 1 ? '' : 's'}.`,
+            );
+          }}
+        >
+          Sign out everywhere else
+        </button>
+      </div>
     </>
   );
 }

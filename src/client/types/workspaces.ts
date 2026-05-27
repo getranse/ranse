@@ -3,13 +3,14 @@ import type { WorkspaceRole } from '../../types/workspace';
 
 export interface WorkspaceSettings {
   ai_drafts_enabled: boolean;
+  audit_read_logging: boolean;
   from_name: string;
   logo_url: string;
   workspace_name: string;
 }
 
 export type WorkspaceSettingsInput = Partial<
-  Pick<WorkspaceSettings, 'ai_drafts_enabled' | 'from_name' | 'logo_url'>
+  Pick<WorkspaceSettings, 'ai_drafts_enabled' | 'audit_read_logging' | 'from_name' | 'logo_url'>
 >;
 
 export interface WorkspaceMailboxInput {

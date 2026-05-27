@@ -2,6 +2,7 @@ import { getAgentByName } from 'agents';
 import type { Hono } from 'hono';
 import { z } from 'zod';
 import { ACTION_KEYS } from '../../../types/llm';
+import { audit, auditContext } from '../../lib/audit';
 import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
 
 // LLM model config + BYOK provider keys, under /api/llm.
@@ -49,6 +50,14 @@ export function registerLlmRoutes(apiApp: Hono<Ctx>) {
         Date.now(),
       )
       .run();
+    await audit(c.env, {
+      workspaceId: s.workspaceId,
+      actorType: 'user',
+      actorId: s.userId,
+      action: 'llm.config_changed',
+      payload: { action_key: body.action_key, model_name: body.model_name },
+      context: auditContext(c),
+    });
     return c.json({ ok: true });
   });
 
@@ -65,13 +74,30 @@ export function registerLlmRoutes(apiApp: Hono<Ctx>) {
       .parse(await c.req.json());
     const stub = await getAgentByName(c.env.UserSecretsStore as never, s.workspaceId);
     await (stub as any).setKey({ provider: body.provider, apiKey: body.api_key });
+    await audit(c.env, {
+      workspaceId: s.workspaceId,
+      actorType: 'user',
+      actorId: s.userId,
+      action: 'llm.provider_key_set',
+      payload: { provider: body.provider },
+      context: auditContext(c),
+    });
     return c.json({ ok: true });
   });
 
   apiApp.delete('/llm/providers/:provider', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
+    const provider = c.req.param('provider');
     const stub = await getAgentByName(c.env.UserSecretsStore as never, s.workspaceId);
-    await (stub as any).deleteKey(c.req.param('provider'));
+    await (stub as any).deleteKey(provider);
+    await audit(c.env, {
+      workspaceId: s.workspaceId,
+      actorType: 'user',
+      actorId: s.userId,
+      action: 'llm.provider_key_deleted',
+      payload: { provider },
+      context: auditContext(c),
+    });
     return c.json({ ok: true });
   });
 }

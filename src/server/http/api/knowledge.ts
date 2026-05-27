@@ -13,6 +13,7 @@ import { apiError } from '../../lib/errors';
 import { r2Keys, putRaw, getText } from '../../lib/storage';
 import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
 import { readUploadedFile, safeFilename, titleFromFilename } from '../../lib/files';
+import { audit, auditContext } from '../../lib/audit';
 
 const MAX_KNOWLEDGE_PDF_BYTES = 10 * 1024 * 1024;
 
@@ -74,6 +75,14 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
       })
       .parse(await c.req.json());
     const result = await ingestKnowledgeSource(c.env, s.workspaceId, body);
+    await audit(c.env, {
+      workspaceId: s.workspaceId,
+      actorType: 'user',
+      actorId: s.userId,
+      action: 'knowledge.source_created',
+      payload: { id: result.sourceId, kind: body.kind, title: body.title },
+      context: auditContext(c),
+    });
     return c.json({ ok: true, id: result.sourceId, ...result });
   });
 
@@ -92,6 +101,14 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
       r2Key: source.r2_key ?? undefined,
       ticketId: source.ticket_id ?? undefined,
       messageId: source.message_id ?? undefined,
+    });
+    await audit(c.env, {
+      workspaceId: s.workspaceId,
+      actorType: 'user',
+      actorId: s.userId,
+      action: 'knowledge.source_reindexed',
+      payload: { id: source.id, kind: source.kind },
+      context: auditContext(c),
     });
     return c.json({ ok: true, id: result.sourceId, ...result });
   });
@@ -152,6 +169,14 @@ async function createKnowledgeFromPdf(c: Context<Ctx>, workspaceId: string): Pro
       title: String(form.get('title') ?? '').trim() || titleFromFilename(file.name),
       body: text,
       r2Key: key,
+    });
+    await audit(c.env, {
+      workspaceId,
+      actorType: 'user',
+      actorId: c.get('session').userId,
+      action: 'knowledge.source_created',
+      payload: { id: result.sourceId, kind: 'pdf', filename: file.name },
+      context: auditContext(c),
     });
     return c.json({ ok: true, id: result.sourceId, ...result });
   } catch (err) {

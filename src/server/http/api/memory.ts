@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { z } from 'zod';
 import { listMemory, redactMemory, upsertMemory } from '../../memory/store';
 import { apiError } from '../../lib/errors';
+import { audit, auditContext, isReadLoggingEnabled } from '../../lib/audit';
 import { CAN_WORK_TICKETS, requireWorkspaceRole, type Ctx } from './context';
 
 // Operator-facing memory CRUD. Reads are open to anyone who can work
@@ -24,7 +25,19 @@ const redactBody = z.object({ reason: z.string().min(2).max(240) });
 export function registerMemoryRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/memory/customers/:id', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const memory = await listMemory(c.env, s.workspaceId, c.req.param('id'));
+    const customerId = c.req.param('id');
+    const memory = await listMemory(c.env, s.workspaceId, customerId);
+    // PII read-access logging (opt-in per workspace; high-volume so off by default).
+    if (await isReadLoggingEnabled(c.env, s.workspaceId)) {
+      await audit(c.env, {
+        workspaceId: s.workspaceId,
+        actorType: 'user',
+        actorId: s.userId,
+        action: 'data.customer_memory_viewed',
+        payload: { customerId, count: memory.length },
+        context: auditContext(c),
+      });
+    }
     return c.json({ memory });
   });
 

@@ -1,6 +1,7 @@
 import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types';
 import type { Env } from '../env';
 import { runAllWorkspaceInsightsMaintenance } from '../insights';
+import { runAuditRetentionSweep } from './audit-retention-sweep';
 import { runCascadeSweep } from './cascade-sweep';
 import { runDispatchRetrySweep } from './dispatch-retry-sweep';
 import { runHonestResolutionSweep } from './honest-resolution-sweep';
@@ -42,6 +43,11 @@ export async function handleScheduled(
         runAllWorkspaceInsightsMaintenance(env)
           .then((r) => console.log('insights-maintenance', r))
           .catch((e) => console.error('insights-maintenance failed', e)),
+      );
+      ctx.waitUntil(
+        runAuditRetentionSweep(env)
+          .then((r) => console.log('audit-retention-sweep', r))
+          .catch((e) => console.error('audit-retention-sweep failed', e)),
       );
       break;
     default:

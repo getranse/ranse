@@ -16,6 +16,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
     const body = z
       .object({
         ai_drafts_enabled: z.boolean().optional(),
+        audit_read_logging: z.boolean().optional(),
         from_name: z.string().max(100).optional(),
         logo_url: z.union([z.string().url().max(500), z.literal('')]).optional(),
       })

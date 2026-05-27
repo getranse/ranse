@@ -1,11 +1,11 @@
 import type {
-  WorkspaceAuditEvent,
   WorkspaceInvitation,
   WorkspaceMailbox,
   WorkspaceMember,
   WorkspaceSummary,
   WorkspaceUsage,
 } from '../../types/workspace';
+import type { AuditEventRecord, AuditQuery } from '../../types/audit';
 import type { WorkspaceOutcomeDaily } from '../../types/autonomy';
 import type {
   WorkspaceInviteInput,
@@ -15,6 +15,19 @@ import type {
   WorkspaceSettingsInput,
 } from '../types/workspaces';
 import { api, uploadFile } from './core';
+
+function auditQueryString(query: AuditQuery): string {
+  const p = new URLSearchParams();
+  if (query.action) p.set('action', query.action);
+  if (query.category) p.set('category', query.category);
+  if (query.actorId) p.set('actor_id', query.actorId);
+  if (query.ticketId) p.set('ticket_id', query.ticketId);
+  if (query.from) p.set('from', String(query.from));
+  if (query.to) p.set('to', String(query.to));
+  if (query.limit) p.set('limit', String(query.limit));
+  const qs = p.toString();
+  return qs ? `?${qs}` : '';
+}
 
 export const workspaceApi = {
   createWorkspace: (name: string) =>
@@ -53,7 +66,14 @@ export const workspaceApi = {
       body: JSON.stringify({ user_id: userId }),
     }),
   workspaceUsage: () => api<{ usage: WorkspaceUsage }>('/api/workspaces/current/usage'),
-  workspaceAudit: () => api<{ events: WorkspaceAuditEvent[] }>('/api/workspaces/current/audit'),
+  workspaceAudit: (query: AuditQuery = {}) =>
+    api<{ events: AuditEventRecord[] }>(`/api/workspaces/current/audit${auditQueryString(query)}`),
+  workspaceAuditVerify: () =>
+    api<{ ok: boolean; checked: number; brokenAt?: string }>(
+      '/api/workspaces/current/audit/verify',
+    ),
+  workspaceAuditExportUrl: (query: AuditQuery = {}) =>
+    `/api/workspaces/current/audit/export?format=csv${auditQueryString(query).replace('?', '&')}`,
   workspaceOutcomeRollup: (days = 30) =>
     api<{ days: WorkspaceOutcomeDaily[] }>(`/api/workspaces/current/outcomes/rollup?days=${days}`),
   workspaceExport: () => api<any>('/api/workspaces/current/export'),

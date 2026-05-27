@@ -1,5 +1,5 @@
 import type { Env } from '../env';
-import { audit } from '../lib/audit';
+import { audit, diffChanges } from '../lib/audit';
 import { randomToken } from '../lib/crypto';
 import { ids } from '../lib/ids';
 import { WORKSPACE_ROLES, type WorkspaceInvitation, type WorkspaceMember, type WorkspaceRole, type WorkspaceSummary } from '../../types/workspace';
@@ -223,7 +223,13 @@ export async function updateWorkspaceMemberRole(
   await env.DB.prepare(`UPDATE workspace_user SET role = ? WHERE workspace_id = ? AND user_id = ?`)
     .bind(role, workspaceId, targetUserId)
     .run();
-  await audit(env, { workspaceId, actorType: 'user', actorId: actorUserId, action: 'workspace.member_role_changed', payload: { targetUserId, role } });
+  await audit(env, {
+    workspaceId,
+    actorType: 'user',
+    actorId: actorUserId,
+    action: 'workspace.member_role_changed',
+    payload: { targetUserId, changes: diffChanges({ role: current.role }, { role }) },
+  });
   return 'ok';
 }
 

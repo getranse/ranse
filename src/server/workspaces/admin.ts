@@ -1,10 +1,11 @@
 import type { Env } from '../env';
 import { listPublicChannels } from '../channels';
-import { audit } from '../lib/audit';
+import { audit, diffChanges } from '../lib/audit';
 import { randomToken } from '../lib/crypto';
 import { ids } from '../lib/ids';
 import { listWorkspaceOutcomeRollups } from '../outcomes';
-import type { WorkspaceAuditEvent, WorkspaceMailbox, WorkspaceUsage } from '../../types/workspace';
+import type { WorkspaceMailbox, WorkspaceUsage } from '../../types/workspace';
+import type { AuditEventRecord, AuditQuery } from '../../types/audit';
 import {
   type AutonomyPolicy,
   DEFAULT_AUTONOMY_THRESHOLD,
@@ -103,10 +104,13 @@ export async function updateWorkspaceMailbox(
     autonomyRolloutPercent?: number;
   },
 ): Promise<'ok' | 'not_found'> {
-  const existing = await env.DB.prepare(`SELECT id FROM mailbox WHERE id = ? AND workspace_id = ?`)
+  const mailboxFields = `display_name, auto_reply_policy, autonomy_policy, autonomy_threshold, autonomy_rollout_percent`;
+  const before = await env.DB.prepare(
+    `SELECT ${mailboxFields} FROM mailbox WHERE id = ? AND workspace_id = ?`,
+  )
     .bind(mailboxId, workspaceId)
-    .first<{ id: string }>();
-  if (!existing) return 'not_found';
+    .first<Record<string, unknown>>();
+  if (!before) return 'not_found';
   const updates: string[] = [];
   const binds: unknown[] = [];
   if (input.displayName !== undefined) {
@@ -137,12 +141,19 @@ export async function updateWorkspaceMailbox(
       .bind(...binds, mailboxId, workspaceId)
       .run();
   }
+  const after = updates.length
+    ? await env.DB.prepare(
+        `SELECT ${mailboxFields} FROM mailbox WHERE id = ? AND workspace_id = ?`,
+      )
+        .bind(mailboxId, workspaceId)
+        .first<Record<string, unknown>>()
+    : before;
   await audit(env, {
     workspaceId,
     actorType: 'user',
     actorId: actorUserId,
     action: 'mailbox.updated',
-    payload: { mailboxId },
+    payload: { mailboxId, changes: diffChanges(before, after ?? {}) },
   });
   return 'ok';
 }
@@ -194,17 +205,46 @@ export async function workspaceUsage(env: Env, workspaceId: string): Promise<Wor
 export async function workspaceAuditLog(
   env: Env,
   workspaceId: string,
-  limit: number,
-): Promise<WorkspaceAuditEvent[]> {
+  query: AuditQuery = {},
+): Promise<AuditEventRecord[]> {
+  const conditions = ['workspace_id = ?'];
+  const params: unknown[] = [workspaceId];
+  if (query.action) {
+    conditions.push('action = ?');
+    params.push(query.action);
+  }
+  if (query.category) {
+    conditions.push('category = ?');
+    params.push(query.category);
+  }
+  if (query.actorId) {
+    conditions.push('actor_id = ?');
+    params.push(query.actorId);
+  }
+  if (query.ticketId) {
+    conditions.push('ticket_id = ?');
+    params.push(query.ticketId);
+  }
+  if (query.from) {
+    conditions.push('created_at >= ?');
+    params.push(query.from);
+  }
+  if (query.to) {
+    conditions.push('created_at <= ?');
+    params.push(query.to);
+  }
+  const limit = Math.min(Math.max(query.limit ?? 50, 1), 1000);
+  params.push(limit);
   const rows = await env.DB.prepare(
-    `SELECT id, ticket_id, actor_type, actor_id, action, payload_json, created_at
+    `SELECT id, ticket_id, actor_type, actor_id, actor_email, actor_name, action, category,
+            severity, ip, user_agent, request_id, payload_json, prev_hash, hash, created_at
        FROM audit_event
-      WHERE workspace_id = ?
-      ORDER BY created_at DESC
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY created_at DESC, rowid DESC
       LIMIT ?`,
   )
-    .bind(workspaceId, limit)
-    .all<WorkspaceAuditEvent>();
+    .bind(...params)
+    .all<AuditEventRecord>();
   return rows.results ?? [];
 }
 
@@ -233,6 +273,6 @@ export async function workspaceExportManifest(env: Env, workspaceId: string) {
     mailboxes: await listWorkspaceMailboxes(env, workspaceId),
     publicChannels: await listPublicChannels(env, workspaceId),
     outcomeRollups: await listWorkspaceOutcomeRollups(env, workspaceId, 365),
-    audit: await workspaceAuditLog(env, workspaceId, 500),
+    audit: await workspaceAuditLog(env, workspaceId, { limit: 500 }),
   };
 }

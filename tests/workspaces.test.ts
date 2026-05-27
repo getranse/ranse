@@ -171,7 +171,11 @@ describe('workspace platform routes', () => {
 
     expect(mailboxes.mailboxes.map((m: any) => m.id)).toEqual(['mb_a']);
     expect(usage.usage.tickets).toBe(1);
-    expect(audit.events.map((e: any) => e.id)).toEqual(['aud_a']);
+    // Scoped to the active workspace: ws_a's seeded event is present, ws_b's is not.
+    // (Logging in also emits an auth.login event under ws_a, so aud_a isn't the only row.)
+    const auditIds = audit.events.map((e: any) => e.id);
+    expect(auditIds).toContain('aud_a');
+    expect(auditIds).not.toContain('aud_b');
   });
 
   it('stores mailbox autonomy policy and threshold through workspace admin routes', async () => {

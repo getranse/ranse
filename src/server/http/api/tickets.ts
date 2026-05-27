@@ -5,6 +5,7 @@ import { apiError } from '../../lib/errors';
 import { getText } from '../../lib/storage';
 import { listMemory } from '../../memory/store';
 import { buildTraceLink } from '../../lib/decision-trace';
+import { audit, auditContext, isReadLoggingEnabled } from '../../lib/audit';
 import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
 
 export function registerTicketRoutes(apiApp: Hono<Ctx>) {
@@ -20,6 +21,25 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const stub = await getSupervisor(c.env, s.workspaceId);
     const data = await (stub as any).getTicket(c.req.param('id'));
     if (!data) return apiError(c, 'not_found', 'That ticket doesn\'t exist or is not in your workspace.');
+    // PII read-access logging (opt-in per workspace; high-volume so off by
+    // default). A ticket thread exposes the customer's email and message
+    // bodies, so it's the primary read surface to log. Kept off the critical
+    // path — the enablement check and write both run after the response.
+    const context = auditContext(c);
+    c.executionCtx.waitUntil(
+      (async () => {
+        if (!(await isReadLoggingEnabled(c.env, s.workspaceId))) return;
+        await audit(c.env, {
+          workspaceId: s.workspaceId,
+          ticketId: c.req.param('id'),
+          actorType: 'user',
+          actorId: s.userId,
+          action: 'data.ticket_viewed',
+          payload: { ticketId: c.req.param('id') },
+          context,
+        });
+      })().catch((err) => console.warn('ticket read audit failed', err)),
+    );
     return c.json(data);
   });
 

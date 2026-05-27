@@ -1,5 +1,5 @@
 import type { Env } from '../../env';
-import { audit } from '../../lib/audit';
+import { audit, diffChanges } from '../../lib/audit';
 import type { AgentConfig } from '../../llm/config.types';
 import type { SupervisorState } from '../../../types/supervisor';
 
@@ -57,18 +57,26 @@ export async function getWorkspaceSettings(env: Env, workspaceId: string) {
     const s = w ? JSON.parse(w.settings_json || '{}') : {};
     return {
       ai_drafts_enabled: s.ai_drafts_enabled === true,
+      audit_read_logging: s.audit_read_logging === true,
       from_name: typeof s.from_name === 'string' ? s.from_name : '',
       logo_url: typeof s.logo_url === 'string' ? s.logo_url : '',
       workspace_name: w?.name ?? '',
     };
   } catch {
-    return { ai_drafts_enabled: false, from_name: '', logo_url: '', workspace_name: w?.name ?? '' };
+    return {
+      ai_drafts_enabled: false,
+      audit_read_logging: false,
+      from_name: '',
+      logo_url: '',
+      workspace_name: w?.name ?? '',
+    };
   }
 }
 
 export async function setWorkspaceSettings(env: Env, workspaceId: string, args: {
   actorUserId: string;
   ai_drafts_enabled?: boolean;
+  audit_read_logging?: boolean;
   from_name?: string;
   logo_url?: string;
 }): Promise<{ ok: boolean }> {
@@ -77,14 +85,22 @@ export async function setWorkspaceSettings(env: Env, workspaceId: string, args: 
     .first<{ settings_json: string }>();
   let settings: Record<string, unknown> = {};
   try { settings = w ? JSON.parse(w.settings_json || '{}') : {}; } catch { settings = {}; }
+  const before = { ...settings };
   if (args.ai_drafts_enabled !== undefined) settings.ai_drafts_enabled = !!args.ai_drafts_enabled;
+  if (args.audit_read_logging !== undefined) settings.audit_read_logging = !!args.audit_read_logging;
   if (args.from_name !== undefined) settings.from_name = args.from_name.trim().slice(0, 100);
   if (args.logo_url !== undefined) settings.logo_url = args.logo_url.trim().slice(0, 500);
 
   await env.DB.prepare(`UPDATE workspace SET settings_json = ? WHERE id = ?`)
     .bind(JSON.stringify(settings), workspaceId)
     .run();
-  await audit(env, { workspaceId, actorType: 'user', actorId: args.actorUserId, action: 'workspace.settings_changed', payload: args });
+  await audit(env, {
+    workspaceId,
+    actorType: 'user',
+    actorId: args.actorUserId,
+    action: 'workspace.settings_changed',
+    payload: { changes: diffChanges(before, settings) },
+  });
   return { ok: true };
 }
 

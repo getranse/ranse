@@ -45,7 +45,16 @@ export function createWorkspaceTestDb() {
       actor_id TEXT,
       action TEXT NOT NULL,
       payload_json TEXT NOT NULL DEFAULT '{}',
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      ip TEXT,
+      user_agent TEXT,
+      request_id TEXT,
+      actor_email TEXT,
+      actor_name TEXT,
+      category TEXT NOT NULL DEFAULT 'general',
+      severity TEXT NOT NULL DEFAULT 'info',
+      prev_hash TEXT,
+      hash TEXT
     );
     CREATE TABLE workspace_invitation (
       id TEXT PRIMARY KEY,
