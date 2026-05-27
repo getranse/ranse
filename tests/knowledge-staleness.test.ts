@@ -6,7 +6,7 @@ import {
   discountedRetrievalScore,
   markSourceStale,
   recomputeWorkspaceStaleness,
-} from '../src/insights/staleness';
+} from '../src/server/insights/staleness';
 import { createWorkspaceTestDb, seedWorkspace } from './helpers/workspace-db';
 
 function seedSource(

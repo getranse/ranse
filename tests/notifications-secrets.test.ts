@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 // Importing channels/index triggers built-in adapter registration. The
 // dispatcher resolves adapters from that registry, so this import is
 // required even though we don't use its exports directly.
-import '../src/channels';
-import { dispatchOutbound, retryBackoffMs } from '../src/channels/egress';
-import { isSealedString, openJson, partitionSecrets, sealJson } from '../src/lib/secrets';
-import { notifyCustomer } from '../src/notifications/cascade';
-import { upsertTemplate } from '../src/notifications/cascade/templates';
-import { canDeliverTo, setPreference } from '../src/notifications/preferences';
+import '../src/server/channels';
+import { dispatchOutbound, retryBackoffMs } from '../src/server/channels/egress';
+import { isSealedString, openJson, partitionSecrets, sealJson } from '../src/server/lib/secrets';
+import { notifyCustomer } from '../src/server/notifications/cascade';
+import { upsertTemplate } from '../src/server/notifications/cascade/templates';
+import { canDeliverTo, setPreference } from '../src/server/notifications/preferences';
 import {
   addMember,
   createWorkspaceTestDb,

@@ -1,4 +1,4 @@
-import type { Env } from '../env';
+import type { Env } from '../server/env';
 import type { PublicChannel, VoiceProviderKind } from './channels';
 
 // Domain types for the voice channel. Voice differs from text channels in

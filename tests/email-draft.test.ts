@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasExistingResponseForSourceMessage } from '../src/agents/supervisor/email-draft';
+import { hasExistingResponseForSourceMessage } from '../src/server/agents/supervisor/email-draft';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 
 function seedTicket(db: ReturnType<typeof createWorkspaceTestDb>['db']) {

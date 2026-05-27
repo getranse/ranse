@@ -4,7 +4,7 @@ import {
   discoverProposals,
   listProposals,
   rejectProposal,
-} from '../src/insights/proactive';
+} from '../src/server/insights/proactive';
 import { createWorkspaceTestDb, seedWorkspace } from './helpers/workspace-db';
 
 function seedSuggestion(

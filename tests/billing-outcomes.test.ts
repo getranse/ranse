@@ -5,12 +5,12 @@ import {
   priceBookFromRow,
   recordLedgerEntry,
   savePricing,
-} from '../src/billing/outcomes';
-import { recordOutcome } from '../src/lib/outcomes';
+} from '../src/server/billing/outcomes';
+import { recordOutcome } from '../src/server/outcomes';
 import {
   enqueueVerification,
   sweepDueVerifications,
-} from '../src/insights/honest-resolution';
+} from '../src/server/insights/honest-resolution';
 import { DEFAULT_PRICE_BOOK } from '../src/types/billing';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 

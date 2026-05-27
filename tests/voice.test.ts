@@ -4,12 +4,12 @@ import {
   listVoiceProviders,
   tryGetVoiceProvider,
   voiceProviderConfigFor,
-} from '../src/channels/voice';
-import { voiceAdapter } from '../src/channels/voice/adapter';
-import { applyVoiceEvents } from '../src/channels/voice/ingest';
-import { elevenlabsVoiceProvider } from '../src/channels/voice/providers/elevenlabs';
-import { twilioRealtimeVoiceProvider } from '../src/channels/voice/providers/twilio-realtime';
-import { hmacSign } from '../src/lib/crypto';
+} from '../src/server/channels/voice';
+import { voiceAdapter } from '../src/server/channels/voice/adapter';
+import { applyVoiceEvents } from '../src/server/channels/voice/ingest';
+import { elevenlabsVoiceProvider } from '../src/server/channels/voice/providers/elevenlabs';
+import { twilioRealtimeVoiceProvider } from '../src/server/channels/voice/providers/twilio-realtime';
+import { hmacSign } from '../src/server/lib/crypto';
 import type { PublicChannel } from '../src/types/channels';
 import {
   addMember,

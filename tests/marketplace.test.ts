@@ -4,7 +4,7 @@ import {
   exportMarketplaceManifest,
   installFromManifestEntry,
   listMarketplaceInstalls,
-} from '../src/procedures/marketplace';
+} from '../src/server/procedures/marketplace';
 import { MARKETPLACE_MANIFEST_SCHEMA } from '../src/types/marketplace';
 import { createWorkspaceTestDb, seedWorkspace } from './helpers/workspace-db';
 

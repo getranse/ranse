@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { searchKnowledge } from '../src/knowledge';
+import { searchKnowledge } from '../src/server/knowledge';
 import { createKnowledgeTestDb } from './helpers/knowledge-db';
 
 describe('searchKnowledge', () => {

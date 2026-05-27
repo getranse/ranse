@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/api/routes';
-import { app } from '../src/http/app';
+import { apiApp } from '../src/server/http/api/routes';
+import { app } from '../src/server/http/app';
 import {
   addMember,
   createWorkspaceTestDb,

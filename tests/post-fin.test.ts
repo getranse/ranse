@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import '../src/channels';
-import { computeOperationsMetrics } from '../src/insights/operations';
-import { ingestExtractedFacts, listMemory, redactMemory } from '../src/memory/store';
-import { layoutProcedure } from '../src/procedures/diagram';
+import '../src/server/channels';
+import { computeOperationsMetrics } from '../src/server/insights/operations';
+import { ingestExtractedFacts, listMemory, redactMemory } from '../src/server/memory/store';
+import { layoutProcedure } from '../src/server/procedures/diagram';
 import type { ProcedureSpec } from '../src/types/procedure';
 import {
   addMember,

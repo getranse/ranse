@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkText, extractReadableTextFromHtml, extractTextFromPdfBytes, ingestKnowledgeSource } from '../src/knowledge';
+import { chunkText, extractReadableTextFromHtml, extractTextFromPdfBytes, ingestKnowledgeSource } from '../src/server/knowledge';
 
 describe('extractReadableTextFromHtml', () => {
   it('extracts title and visible text while dropping scripts/styles', () => {

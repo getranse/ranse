@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ranse",
-  "main": "src/index.ts",
+  "main": "src/server/index.ts",
   "compatibility_date": "2026-04-17",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
@@ -29,8 +29,6 @@
       "/assets/workspace/*",
       "/assets/user/*",
       "/public/*",
-      "/demo",
-      "/demo/*",
       "/forms/*",
       "/widget/*",
       "/healthz"

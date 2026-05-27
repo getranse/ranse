@@ -3,8 +3,8 @@ import {
   buildPublicTrace,
   buildTraceLink,
   verifyTraceToken,
-} from '../src/lib/decision-trace';
-import { renderTracePage } from '../src/lib/decision-trace-page';
+} from '../src/server/lib/decision-trace';
+import { renderTracePage } from '../src/server/lib/decision-trace-page';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 
 function seedTicket(db: any, ticketId: string, workspaceId: string, mailboxId: string) {

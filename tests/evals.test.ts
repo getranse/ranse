@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/api/routes';
-import { anonymizeValue, detectResidualPii } from '../src/evals/anonymize';
-import { captureResolvedTicketEvalCase } from '../src/evals/capture';
-import { runEvalSuite, runProcedureSpecEvals } from '../src/evals/replay';
+import { apiApp } from '../src/server/http/api/routes';
+import { anonymizeValue, detectResidualPii } from '../src/server/evals/anonymize';
+import { captureResolvedTicketEvalCase } from '../src/server/evals/capture';
+import { runEvalSuite, runProcedureSpecEvals } from '../src/server/evals/replay';
 import {
   addMember,
   createWorkspaceTestDb,

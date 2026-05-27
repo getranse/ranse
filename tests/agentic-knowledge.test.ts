@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { agenticSearchKnowledge, searchProcedurePrimitive } from '../src/knowledge';
+import { agenticSearchKnowledge, searchProcedurePrimitive } from '../src/server/knowledge';
 import { createKnowledgeTestDb } from './helpers/knowledge-db';
 
 function seedPolicy(

@@ -9,7 +9,7 @@
   },
   "homepage": "https://getranse.com",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/server/index.ts",
   "bin": {
     "ranse": "./scripts/ranse.ts"
   },

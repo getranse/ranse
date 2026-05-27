@@ -4,8 +4,8 @@ import {
   enqueueVerification,
   rejectVerification,
   sweepDueVerifications,
-} from '../src/insights/honest-resolution';
-import { recordOutcome, recordTicketFeedback } from '../src/lib/outcomes';
+} from '../src/server/insights/honest-resolution';
+import { recordOutcome, recordTicketFeedback } from '../src/server/outcomes';
 import { VERIFICATION_WINDOW_MS } from '../src/types/honest-resolution';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 

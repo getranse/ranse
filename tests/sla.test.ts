@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeSLA, DEFAULT_SLA } from '../src/agents/specialists/sla';
+import { computeSLA, DEFAULT_SLA } from '../src/server/agents/specialists/sla';
 
 const HOUR = 3_600_000;
 

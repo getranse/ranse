@@ -4,12 +4,12 @@ import {
   listAdapters,
   resolveCustomerIdentity,
   tryGetAdapter,
-} from '../src/channels';
-import { slackAdapter } from '../src/channels/adapters/slack';
-import { smsAdapter } from '../src/channels/adapters/sms';
-import { telegramAdapter } from '../src/channels/adapters/telegram';
-import { whatsappAdapter } from '../src/channels/adapters/whatsapp';
-import { hmacSign } from '../src/lib/crypto';
+} from '../src/server/channels';
+import { slackAdapter } from '../src/server/channels/adapters/slack';
+import { smsAdapter } from '../src/server/channels/adapters/sms';
+import { telegramAdapter } from '../src/server/channels/adapters/telegram';
+import { whatsappAdapter } from '../src/server/channels/adapters/whatsapp';
+import { hmacSign } from '../src/server/lib/crypto';
 import type { PublicChannel } from '../src/types/channels';
 import {
   addMember,

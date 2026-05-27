@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/api/routes';
+import { apiApp } from '../src/server/http/api/routes';
 import {
   acceptKbSuggestion,
   detectKnowledgeDrift,
@@ -9,7 +9,7 @@ import {
   runAllWorkspaceInsightsMaintenance,
   scoreConversation,
   updateKbSuggestionStatus,
-} from '../src/insights';
+} from '../src/server/insights';
 import {
   addMember,
   createWorkspaceTestDb,

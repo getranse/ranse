@@ -5,7 +5,7 @@
 // shares this contract. Adding a new channel is one adapter file plus a
 // migration-free config blob.
 
-import type { Env } from '../env';
+import type { Env } from '../server/env';
 
 // Built-in adapter kinds. Keep this union exhaustive of the in-tree adapters;
 // the database column itself is free-text so contributed adapters do not need

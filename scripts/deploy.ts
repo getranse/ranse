@@ -293,7 +293,7 @@ async function main() {
   const cf = new Cloudflare({ apiToken: process.env.CLOUDFLARE_API_TOKEN });
 
   console.log('· Ensuring AI Gateway');
-  // Gateway name is hardcoded in src/llm/core.ts (GATEWAY_NAME) — keep the
+  // Gateway name is hardcoded in src/server/llm/core.ts (GATEWAY_NAME) — keep the
   // literal in sync here.
   await ensureAIGateway(cf, accountId, 'ranse');
 

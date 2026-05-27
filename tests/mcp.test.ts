@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/api/routes';
-import { listRemoteMcpTools } from '../src/mcp/client';
+import { apiApp } from '../src/server/http/api/routes';
+import { listRemoteMcpTools } from '../src/server/mcp/client';
 import {
   createMcpServer,
   createMcpToolCall,
   updateMcpToolCall,
   upsertDiscoveredMcpTools,
-} from '../src/mcp/storage';
-import { decideApproval } from '../src/lib/approvals';
-import { createProcedureRun, upsertProcedureVersion } from '../src/procedures/storage';
-import { runProcedure } from '../src/procedures/runner';
+} from '../src/server/mcp/storage';
+import { decideApproval } from '../src/server/approvals';
+import { createProcedureRun, upsertProcedureVersion } from '../src/server/procedures/storage';
+import { runProcedure } from '../src/server/procedures/runner';
 import {
   addMember,
   createWorkspaceTestDb,

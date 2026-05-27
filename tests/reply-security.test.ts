@@ -3,7 +3,7 @@ import {
   buildReplyAddress,
   parseReplyAddress,
   shouldSuppressAutoReply,
-} from '../src/email/reply-security';
+} from '../src/server/email/reply-security';
 
 const SECRET = 'mailbox-signing-secret-deadbeef';
 

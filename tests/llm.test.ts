@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseModel } from '../src/llm/core';
-import { DEFAULT_AGENT_CONFIG } from '../src/llm/config';
-import { MODELS_MASTER } from '../src/llm/config.types';
+import { parseModel } from '../src/server/llm/core';
+import { DEFAULT_AGENT_CONFIG } from '../src/server/llm/config';
+import { MODELS_MASTER } from '../src/server/llm/config.types';
 
 describe('parseModel', () => {
   it('splits "provider/model-id" correctly', () => {

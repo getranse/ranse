@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/api/routes';
-import { createMcpServer, upsertDiscoveredMcpTools } from '../src/mcp/storage';
+import { apiApp } from '../src/server/http/api/routes';
+import { createMcpServer, upsertDiscoveredMcpTools } from '../src/server/mcp/storage';
 import {
   getProcedureLibraryItem,
   getProcedureLibraryManifest,
   getProcedureLibraryReadiness,
   listProcedureLibrary,
   validateProcedureLibrary,
-} from '../src/procedures/library';
-import { runProcedureSpecEvals } from '../src/evals/replay';
+} from '../src/server/procedures/library';
+import { runProcedureSpecEvals } from '../src/server/evals/replay';
 import {
   addMember,
   createWorkspaceTestDb,
