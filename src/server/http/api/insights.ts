@@ -1,6 +1,5 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { apiError } from '../../lib/errors';
+import { apiError } from '../../../lib/errors';
 import {
   acceptKbSuggestion,
   detectKnowledgeDrift,
@@ -12,26 +11,29 @@ import {
   scoreWorkspaceConversations,
   updateKbSuggestionStatus,
   updateKnowledgeDriftStatus,
-} from '../../insights';
-import { computeOperationsMetrics } from '../../insights/operations';
-import { computeHonestResolutionMetrics } from '../../insights/honest-resolution';
+} from '../../platform/insights';
+import { computeOperationsMetrics } from '../../platform/insights/operations';
+import { computeHonestResolutionMetrics } from '../../platform/insights/honest-resolution';
 import {
   computeKnowledgeHealth,
   markSourceStale,
   recomputeWorkspaceStaleness,
-} from '../../insights/staleness';
+} from '../../platform/insights/staleness';
 import {
   acceptProposal,
   discoverProposals,
   listProposals,
   rejectProposal,
-} from '../../insights/proactive';
-import { PROACTIVE_PROPOSAL_STATUSES } from '../../../types/proactive';
+} from '../../platform/insights/proactive';
+import { PROACTIVE_PROPOSAL_STATUSES } from '../../../types/shared/proactive';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
-
-const limitSchema = z.object({ limit: z.number().int().min(1).max(500).optional() });
-const suggestionStatusSchema = z.object({ status: z.enum(['open', 'dismissed']) });
-const driftStatusSchema = z.object({ status: z.enum(['open', 'resolved', 'dismissed']) });
+import {
+  driftStatusSchema,
+  limitSchema,
+  markStaleBody,
+  rejectProposalBody,
+  suggestionStatusSchema,
+} from '../../schemas/insights';
 
 export function registerInsightRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/insights/summary', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
@@ -71,13 +73,7 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
     requireWorkspaceRole(OWNER_OR_ADMIN),
     async (c) => {
       const s = c.get('session');
-      const body = z
-        .object({
-          source_id: z.string().min(1),
-          score: z.number().min(0).max(1),
-          reason: z.string().max(500).optional(),
-        })
-        .parse(await c.req.json());
+      const body = markStaleBody.parse(await c.req.json());
       await markSourceStale(c.env, {
         workspaceId: s.workspaceId,
         sourceId: body.source_id,
@@ -219,9 +215,7 @@ export function registerInsightRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/insights/proposals/:id/reject', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({ reason: z.string().min(1).max(500) })
-      .parse(await c.req.json());
+    const body = rejectProposalBody.parse(await c.req.json());
     try {
       const proposal = await rejectProposal(
         c.env,

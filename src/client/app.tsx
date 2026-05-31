@@ -10,7 +10,7 @@ import { InsightsView } from './views/insights/Insights';
 import { InviteAcceptView } from './views/auth/InviteAccept';
 import { WorkspaceGate } from './views/workspace/WorkspaceGate';
 import { WorkspaceSwitcher } from './components/common/WorkspaceSwitcher';
-import type { AuthMe } from '../types/workspace';
+import type { AuthMe } from '../types/shared/workspace';
 
 type Route =
   | { name: 'inbox' }

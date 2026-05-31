@@ -47,7 +47,8 @@ CLI workflow:
 
 ```bash
 # Run inline evals shipped alongside a procedure spec
-bun scripts/ranse.ts eval procedures/refund-intake.yaml
+bun scripts/ranse.ts procedure add refund-intake --dir /tmp/ranse-procs --force
+bun scripts/ranse.ts eval /tmp/ranse-procs/refund-intake.yaml
 
 # Backfill resolved conversations from a deployed workspace
 bun scripts/ranse.ts eval capture-resolved --app-url "$RANSE_APP_URL" --cookie "$RANSE_COOKIE" --limit 100
@@ -62,7 +63,9 @@ The bundled GitHub Actions workflow always runs procedure evals for relevant PRs
 
 ## Procedure library
 
-Owners and admins can install vetted procedure templates from **Settings → Procedures**. The catalog shows whether the selected workspace has the required MCP servers and tools discovered before install. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>#sha256:<checksum>`.
+Owners and admins can install vetted procedure templates from **Settings → Procedures**. The built-in library is the seed for a future `getranse/procedures-library` community repo: each entry is forkable, ships with inline evals, and includes reference MCP tool specs for the systems it expects a workspace to expose.
+
+The catalog shows whether the selected workspace has the required MCP servers and tools discovered before install. Installed library procedures are published as immutable procedure versions with `source_ref = library:<slug>@<version>#sha256:<checksum>`.
 
 Local fork workflow:
 
@@ -70,11 +73,21 @@ Local fork workflow:
 bun scripts/ranse.ts procedure list
 bun scripts/ranse.ts procedure manifest
 bun scripts/ranse.ts procedure validate-library
-bun scripts/ranse.ts procedure add shipping-dispute --dir procedures
-bun scripts/ranse.ts eval procedures/shipping-dispute.yaml
+bun scripts/ranse.ts procedure add shipping-dispute --dir ./procedures
+bun scripts/ranse.ts eval ./procedures/shipping-dispute.yaml
 ```
 
-The CLI writes the procedure spec, `<slug>.mcp.json`, and `<slug>.provenance.json`. The provenance file records the library version, source ref, procedure SHA-256 checksum, and standards metadata used when the procedure was forked. Treat the MCP specs as contracts: each required reference is exercised by a `call_action` step, read-only tools may run automatically, and write/destructive tools must remain behind an approval gate unless you deliberately rework the procedure and its evals.
+The CLI creates the output directory you pass with `--dir` and writes three files:
+
+- `<slug>.yaml` or `<slug>.json` — the procedure spec to customize, review, and commit.
+- `<slug>.mcp.json` — reference MCP tool contracts to implement or map to existing servers, including MCP ToolAnnotations.
+- `<slug>.provenance.json` — immutable library version, source ref, procedure checksum, and standards metadata.
+
+`procedure manifest` emits the full machine-readable catalog for mirroring into a standalone community repo. `procedure validate-library` reruns schema checks, inline evals, checksum generation, MCP annotation checks, action-reference matching, and approval-safety checks for write/destructive tools.
+
+Use `bun scripts/ranse.ts procedure list` for the current catalog. Seed templates include refund intake, password reset, shipping disputes, privacy requests, subscription changes, escalation handoffs, CRM sync, incident reporting, and other MCP-backed support workflows.
+
+The upstream Ranse repo does not commit generated `procedures/` output. Treat the MCP specs as contracts: each required reference is exercised by a `call_action` step, read-only tools may run automatically, and write/destructive tools must remain behind an approval gate unless you deliberately rework the procedure and its evals.
 
 ## Insights
 

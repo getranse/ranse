@@ -4,13 +4,13 @@ import {
   listVoiceProviders,
   tryGetVoiceProvider,
   voiceProviderConfigFor,
-} from '../src/server/channels/voice';
-import { voiceAdapter } from '../src/server/channels/voice/adapter';
-import { applyVoiceEvents } from '../src/server/channels/voice/ingest';
-import { elevenlabsVoiceProvider } from '../src/server/channels/voice/providers/elevenlabs';
-import { twilioRealtimeVoiceProvider } from '../src/server/channels/voice/providers/twilio-realtime';
-import { hmacSign } from '../src/server/lib/crypto';
-import type { PublicChannel } from '../src/types/channels';
+} from '../src/server/inbox/channels/voice';
+import { voiceAdapter } from '../src/server/inbox/channels/voice/adapter';
+import { applyVoiceEvents } from '../src/server/inbox/channels/voice/ingest';
+import { elevenlabsVoiceProvider } from '../src/server/inbox/channels/voice/providers/elevenlabs';
+import { twilioRealtimeVoiceProvider } from '../src/server/inbox/channels/voice/providers/twilio-realtime';
+import { hmacSign } from '../src/lib/crypto';
+import type { PublicChannel } from '../src/types/shared/channels';
 import {
   addMember,
   createWorkspaceTestDb,

@@ -1,17 +1,12 @@
+import type { AuthedSession } from '../../../interfaces/http';
+export type { AuthedSession };
 import { getAgentByName } from 'agents';
 import type { Hono, MiddlewareHandler } from 'hono';
 import type { Env } from '../../env';
-import { getSession } from '../../lib/auth';
-import { apiError } from '../../lib/errors';
-import { getMembershipRole, hasWorkspaceRole } from '../../workspaces';
-import type { WorkspaceRole } from '../../../types/workspace';
-
-export interface AuthedSession {
-  sessionId: string;
-  userId: string;
-  workspaceId: string;
-  role: WorkspaceRole;
-}
+import { getSession } from '../../actions/auth';
+import { apiError } from '../../../lib/errors';
+import { getMembershipRole, hasWorkspaceRole } from '../../platform/workspaces';
+import type { WorkspaceRole } from '../../../types/shared/workspace';
 
 export type Ctx = { Bindings: Env; Variables: { session: AuthedSession } };
 

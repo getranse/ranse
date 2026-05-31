@@ -1,4 +1,4 @@
-import type { AdminForm, MailboxForm } from '../../../types/setup';
+import type { AdminForm, MailboxForm } from '../../../types/shared/setup';
 
 export function ReviewStep(props: {
   admin: AdminForm;

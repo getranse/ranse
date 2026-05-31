@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FIRST_PARTY_MCP_TEMPLATES } from '../src/server/mcp/first-party/catalog';
-import { PROCEDURE_LIBRARY } from '../src/server/procedures/library-data';
+import { FIRST_PARTY_MCP_TEMPLATES } from '../src/server/automation/mcp/first-party/catalog';
+import { PROCEDURE_LIBRARY } from '../src/server/automation/procedures/library-data';
 
 // Phase 11 Action Library validation. The catalog and the procedure library
 // have to stay in sync: every first-party MCP template should map to at least

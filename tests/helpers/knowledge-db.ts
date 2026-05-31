@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import type { KnowledgeSourceKind } from '../../src/types/knowledge';
+import type { KnowledgeSourceKind } from '../../src/types/shared/knowledge';
 
 type SourceRow = {
   id: string;

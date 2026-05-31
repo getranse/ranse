@@ -1,24 +1,16 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { workspaceConfig } from '../../agents/supervisor/settings';
-import { captureResolvedTicketEvalCases } from '../../evals/capture';
-import { runEvalSuite } from '../../evals/replay';
+import { workspaceConfig } from '../../inbox/agents/supervisor/settings';
+import { captureResolvedTicketEvalCases } from '../../automation/evals/capture';
+import { runEvalSuite } from '../../automation/evals/replay';
 import {
   getEvalRunDetail,
   listEvalCases,
   listEvalRuns,
   updateEvalCaseStatus,
-} from '../../evals/storage';
-import { apiError } from '../../lib/errors';
+} from '../../actions/evals';
+import { apiError } from '../../../lib/errors';
 import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
-
-const anonymizationSchema = z
-  .object({
-    redactEmails: z.boolean().optional(),
-    redactPhones: z.boolean().optional(),
-    redactRequesterName: z.boolean().optional(),
-  })
-  .optional();
+import { captureResolvedBody, caseStatusPatch, runEvalBody } from '../../schemas/evals';
 
 export function registerEvalRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/evals/cases', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
@@ -38,7 +30,7 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/evals/cases/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({ status: z.enum(['active', 'archived']) }).parse(await c.req.json());
+    const body = caseStatusPatch.parse(await c.req.json());
     const evalCase = await updateEvalCaseStatus(
       c.env,
       s.workspaceId,
@@ -58,12 +50,7 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/evals/cases/capture-resolved', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        limit: z.number().int().min(1).max(200).optional(),
-        anonymization: anonymizationSchema,
-      })
-      .parse(await c.req.json().catch(() => ({})));
+    const body = captureResolvedBody.parse(await c.req.json().catch(() => ({})));
     const result = await captureResolvedTicketEvalCases(c.env, s.workspaceId, {
       limit: body.limit,
       anonymization: body.anonymization,
@@ -74,15 +61,7 @@ export function registerEvalRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/evals/runs', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        limit: z.number().int().min(1).max(500).optional(),
-        case_ids: z.array(z.string()).max(500).optional(),
-        threshold: z.number().min(0.05).max(0.95).optional(),
-        score_drop_threshold: z.number().min(0.01).max(0.75).optional(),
-        source: z.enum(['api', 'cli', 'ci', 'scheduled']).optional(),
-      })
-      .parse(await c.req.json().catch(() => ({})));
+    const body = runEvalBody.parse(await c.req.json().catch(() => ({})));
     const result = await runEvalSuite(c.env, s.workspaceId, {
       limit: body.limit,
       caseIds: body.case_ids,

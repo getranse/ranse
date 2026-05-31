@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { authApp } from '../../src/server/http/auth';
-import { hashPassword } from '../../src/server/lib/password';
+import { hashPassword } from '../../src/lib/password';
 
 export function createWorkspaceTestDb() {
   const db = new DatabaseSync(':memory:');

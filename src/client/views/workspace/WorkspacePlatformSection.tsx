@@ -1,12 +1,9 @@
+import type { WorkspacePlatformSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
-import { formatDateTime } from '../../lib/format';
-import type { WorkspaceUsage } from '../../../types/workspace';
-import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/audit';
-
-interface WorkspacePlatformSectionProps {
-  onSaved: (message?: string) => void;
-}
+import { formatDateTime } from '../../../lib/format';
+import type { WorkspaceUsage } from '../../../types/shared/workspace';
+import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
 
 const CATEGORIES: (AuditCategory | '')[] = [
   '',

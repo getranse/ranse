@@ -1,5 +1,5 @@
 import type { Env } from '../env';
-import { tickCascadeForWorkspace } from '../notifications/cascade';
+import { tickCascadeForWorkspace } from '../inbox/notifications/cascade';
 
 // Per-tick cascade sweep. Iterates workspaces that have active plans and
 // advances their pending steps. Kept off the hot path of the SLA sweep so

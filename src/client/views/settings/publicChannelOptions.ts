@@ -1,17 +1,7 @@
-import type { PublicChannelKind } from '../../../types/channels';
+import type { KindOption } from '../../../interfaces/client';
+export type { KindOption };
 
 export type DraftConfig = Record<string, string>;
-
-// UI-level channel options. Voice fans out into one option per provider so
-// operators see "Voice (ElevenLabs)" / "Voice (Twilio)" / "Voice (Gemini)"
-// while the API still receives `kind: 'voice'` with the appropriate
-// nested provider config.
-export interface KindOption {
-  value: string;
-  label: string;
-  channelKind: PublicChannelKind;
-  voiceProvider?: 'elevenlabs' | 'twilio_realtime' | 'gemini_live';
-}
 
 export const KIND_OPTIONS: KindOption[] = [
   { value: 'chat', label: 'Chat widget', channelKind: 'chat' },

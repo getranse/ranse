@@ -4,9 +4,9 @@ import {
   enqueueVerification,
   rejectVerification,
   sweepDueVerifications,
-} from '../src/server/insights/honest-resolution';
-import { recordOutcome, recordTicketFeedback } from '../src/server/outcomes';
-import { VERIFICATION_WINDOW_MS } from '../src/types/honest-resolution';
+} from '../src/server/platform/insights/honest-resolution';
+import { recordOutcome, recordTicketFeedback } from '../src/server/platform/outcomes';
+import { VERIFICATION_WINDOW_MS } from '../src/types/shared/honest-resolution';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 
 function seedTicket(db: any, ticketId: string, workspaceId: string, mailboxId: string) {

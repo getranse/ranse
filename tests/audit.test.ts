@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { audit, diffChanges, isReadLoggingEnabled, verifyAuditChain } from '../src/server/lib/audit';
-import { auditMeta } from '../src/types/audit';
+import { audit, diffChanges, isReadLoggingEnabled, verifyAuditChain } from '../src/server/actions/audit';
+import { auditMeta } from '../src/types/shared/audit';
 import { createWorkspaceTestDb, seedWorkspace } from './helpers/workspace-db';
 
 describe('audit', () => {

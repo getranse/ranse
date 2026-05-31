@@ -1,4 +1,4 @@
-import type { MyProfile, ProfileInput } from '../types/profile';
+import type { MyProfile, ProfileInput } from '../../types/client/profile';
 import { api, uploadFile } from './core';
 
 export const profileApi = {

@@ -6,7 +6,7 @@ import {
   type OperationsMetricsResponse,
   type OutcomeStatementResponse,
 } from '../../api';
-import { formatDuration, formatPercent } from '../../lib/format';
+import { formatDuration, formatPercent } from '../../../lib/format';
 import { Metric } from './Metric';
 import { HonestResolutionCard, KnowledgeHealthCard, OutcomeStatementCard } from './OperationsCards';
 
@@ -15,7 +15,7 @@ import { HonestResolutionCard, KnowledgeHealthCard, OutcomeStatementCard } from 
 // time-to-first-response + time-to-resolution percentiles, CSAT, and
 // follow-up rate. The window selector (7/30/90 days) re-fetches.
 
-const WINDOW_OPTIONS = [7, 30, 90];
+import { WINDOW_OPTIONS } from '../../../config/insights';
 
 export function OperationsDashboard() {
   const [days, setDays] = useState(30);

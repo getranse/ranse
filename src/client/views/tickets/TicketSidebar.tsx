@@ -1,18 +1,8 @@
-import { formatDateTime } from '../../lib/format';
-import type { TicketViewData } from '../../../types/ticket';
+import type { TicketSidebarProps } from '../../../interfaces/client';
+import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
 import { CustomerMemoryDrawer } from '../../components/tickets/CustomerMemoryDrawer';
 import { API, type ProcedureListEntry } from '../../api';
-
-interface TicketSidebarProps {
-  ticket: TicketViewData['ticket'];
-  audit: TicketViewData['audit'];
-  outcomes?: TicketViewData['outcomes'];
-  feedback?: TicketViewData['feedback'];
-  procedureRuns?: TicketViewData['procedureRuns'];
-  mcpToolCalls?: TicketViewData['mcpToolCalls'];
-  onReload: () => Promise<void>;
-}
 
 export function TicketSidebar({
   ticket,

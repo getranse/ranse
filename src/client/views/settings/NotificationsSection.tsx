@@ -1,3 +1,4 @@
+import type { Props } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API, ApiRequestError } from '../../api';
 
@@ -5,10 +6,6 @@ type Meta = Awaited<ReturnType<typeof API.notificationsMeta>>;
 type ChannelMeta = Meta['channels'][number];
 type EventMeta = Meta['events'][number];
 type Channel = Awaited<ReturnType<typeof API.listNotificationChannels>>['channels'][number];
-
-interface Props {
-  onSaved: () => void;
-}
 
 export function NotificationsSection({ onSaved }: Props) {
   const [meta, setMeta] = useState<Meta | null>(null);

@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
 import { z } from 'zod';
-import { r2Keys, putRaw } from '../../lib/storage';
+import { r2Keys, putRaw } from '../../../lib/storage';
 import { OWNER_OR_ADMIN, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
-import { readUploadedImage } from '../../lib/files';
+import { readUploadedImage } from '../../../lib/files';
 
 export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/settings/workspace', async (c) => {

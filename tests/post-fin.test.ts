@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import '../src/server/channels';
-import { computeOperationsMetrics } from '../src/server/insights/operations';
-import { ingestExtractedFacts, listMemory, redactMemory } from '../src/server/memory/store';
-import { layoutProcedure } from '../src/server/procedures/diagram';
-import type { ProcedureSpec } from '../src/types/procedure';
+import '../src/server/inbox/channels';
+import { computeOperationsMetrics } from '../src/server/platform/insights/operations';
+import { ingestExtractedFacts, listMemory, redactMemory } from '../src/server/actions/memory';
+import { layoutProcedure } from '../src/server/automation/procedures/diagram';
+import type { ProcedureSpec } from '../src/types/shared/procedure';
 import {
   addMember,
   createWorkspaceTestDb,

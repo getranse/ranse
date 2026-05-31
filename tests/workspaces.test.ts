@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { apiApp } from '../src/server/http/api/routes';
 import { authApp } from '../src/server/http/auth';
-import { buildReplyAddress } from '../src/server/email/reply-security';
-import { resolveMailboxForRecipients } from '../src/server/email/routing';
-import { r2Keys } from '../src/server/lib/storage';
+import { buildReplyAddress } from '../src/server/inbox/email/reply-security';
+import { resolveMailboxForRecipients } from '../src/server/inbox/email/routing';
+import { r2Keys } from '../src/lib/storage';
 import {
   addMember,
   createWorkspaceTestDb,

@@ -1,4 +1,4 @@
-import type { KbSuggestionStatus, KnowledgeDriftStatus } from '../../types/insights';
+import type { KbSuggestionStatus, KnowledgeDriftStatus } from '../../types/shared/insights';
 import type {
   ConversationScoreEntry,
   HonestResolutionResponse,
@@ -8,7 +8,7 @@ import type {
   KnowledgeHealthResponse,
   OperationsMetricsResponse,
   ProactiveProposalResponse,
-} from '../types/insights';
+} from '../../types/client/insights';
 import { api } from './core';
 
 export const insightApi = {

@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { dismissOnboarding, getOnboardingState } from '../../onboarding/state';
+import { dismissOnboarding, getOnboardingState } from '../../platform/onboarding/state';
 import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from './context';
 
 // Two endpoints: read state, dismiss banner. Dismissal is workspace-wide

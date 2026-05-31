@@ -1,17 +1,14 @@
+import type { WorkspaceMailboxesSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
-import type { AutonomyPolicy } from '../../../types/autonomy';
+import type { AutonomyPolicy } from '../../../types/shared/autonomy';
 import {
   DEFAULT_AUTONOMY_ROLLOUT_PERCENT,
   DEFAULT_AUTONOMY_THRESHOLD,
   normalizeAutonomyPolicy,
-} from '../../../types/autonomy';
-import type { WorkspaceMailbox } from '../../../types/workspace';
+} from '../../../types/shared/autonomy';
+import type { WorkspaceMailbox } from '../../../types/shared/workspace';
 import { PolicySelect, RolloutInput, ThresholdInput } from './MailboxAutonomyControls';
-
-interface WorkspaceMailboxesSectionProps {
-  onSaved: (message?: string) => void;
-}
 
 type MailboxDraft = {
   address: string;

@@ -5,13 +5,13 @@ import {
   priceBookFromRow,
   recordLedgerEntry,
   savePricing,
-} from '../src/server/billing/outcomes';
-import { recordOutcome } from '../src/server/outcomes';
+} from '../src/server/platform/billing/outcomes';
+import { recordOutcome } from '../src/server/platform/outcomes';
 import {
   enqueueVerification,
   sweepDueVerifications,
-} from '../src/server/insights/honest-resolution';
-import { DEFAULT_PRICE_BOOK } from '../src/types/billing';
+} from '../src/server/platform/insights/honest-resolution';
+import { DEFAULT_PRICE_BOOK } from '../src/types/shared/billing';
 import { createWorkspaceTestDb, seedMailbox, seedWorkspace } from './helpers/workspace-db';
 
 function seedTicket(db: any, ticketId: string, workspaceId: string, mailboxId: string) {

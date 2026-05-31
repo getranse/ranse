@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../env';
-import { buildPublicTrace, verifyTraceToken } from '../lib/decision-trace';
-import { renderTracePage } from '../lib/decision-trace-page';
+import { buildPublicTrace, verifyTraceToken } from '../actions/decision-trace';
+import { renderTracePage } from '../../lib/decision-trace-page';
 
 // Public, unauthenticated decision-trace surface. Mounted at /public/trace/:token.
 // We split into its own Hono so it sits under /public alongside channel

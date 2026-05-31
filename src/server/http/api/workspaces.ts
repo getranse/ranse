@@ -1,5 +1,4 @@
 import type { Context, Hono } from 'hono';
-import { z } from 'zod';
 import {
   createWorkspaceMailbox,
   listWorkspaceMailboxes,
@@ -7,9 +6,9 @@ import {
   workspaceAuditLog,
   workspaceExportManifest,
   workspaceUsage,
-} from '../../workspaces/admin';
-import { listWorkspaceOutcomeRollups } from '../../outcomes';
-import { sendWorkspaceInvitationEmail } from '../../email/invitations';
+} from '../../platform/workspaces/admin';
+import { listWorkspaceOutcomeRollups } from '../../platform/outcomes';
+import { sendWorkspaceInvitationEmail } from '../../inbox/email/invitations';
 import {
   archiveWorkspace,
   createWorkspaceInvitation,
@@ -22,22 +21,22 @@ import {
   transferWorkspaceOwnership,
   updateWorkspaceMemberRole,
   updateWorkspaceName,
-} from '../../workspaces';
-import { WORKSPACE_ROLES, type WorkspaceInvitation } from '../../../types/workspace';
-import { AUTONOMY_POLICIES } from '../../../types/autonomy';
+} from '../../platform/workspaces';
+import type { WorkspaceInvitation } from '../../../types/shared/workspace';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
-import { apiError } from '../../lib/errors';
-import { audit, auditContext, verifyAuditChain } from '../../lib/audit';
-import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/audit';
-
-const mailboxBody = z.object({
-  address: z.string().email().optional(),
-  display_name: z.string().max(100).nullable().optional(),
-  auto_reply_policy: z.enum(['off', 'safe', 'always']).optional(),
-  autonomy_policy: z.enum(AUTONOMY_POLICIES).optional(),
-  autonomy_threshold: z.number().min(0.5).max(0.99).optional(),
-  autonomy_rollout_percent: z.number().min(0).max(100).optional(),
-});
+import { apiError } from '../../../lib/errors';
+import { audit, auditContext, verifyAuditChain } from '../../actions/audit';
+import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
+import {
+  archiveConfirm,
+  createMailboxBody,
+  deleteConfirm,
+  inviteBody,
+  roleBody,
+  transferOwnershipBody,
+  updateMailboxBody,
+  updateNameBody,
+} from '../../schemas/workspaces';
 
 export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/workspaces/current/members', async (c) => {
@@ -47,28 +46,28 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/workspaces/current', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({ name: z.string().min(1).max(100) }).parse(await c.req.json());
+    const body = updateNameBody.parse(await c.req.json());
     await updateWorkspaceName(c.env, s.workspaceId, s.userId, body.name);
     return c.json({ ok: true });
   });
 
   apiApp.post('/workspaces/current/archive', requireWorkspaceRole(['owner']), async (c) => {
     const s = c.get('session');
-    z.object({ confirm: z.literal('archive') }).parse(await c.req.json().catch(() => ({})));
+    archiveConfirm.parse(await c.req.json().catch(() => ({})));
     await archiveWorkspace(c.env, s.workspaceId, s.userId);
     return c.json({ ok: true, currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId) });
   });
 
   apiApp.delete('/workspaces/current', requireWorkspaceRole(['owner']), async (c) => {
     const s = c.get('session');
-    z.object({ confirm: z.literal('delete') }).parse(await c.req.json().catch(() => ({})));
+    deleteConfirm.parse(await c.req.json().catch(() => ({})));
     await deleteWorkspace(c.env, s.workspaceId, s.userId);
     return c.json({ ok: true, currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId) });
   });
 
   apiApp.post('/workspaces/current/transfer-ownership', requireWorkspaceRole(['owner']), async (c) => {
     const s = c.get('session');
-    const body = z.object({ user_id: z.string().min(1) }).parse(await c.req.json());
+    const body = transferOwnershipBody.parse(await c.req.json());
     const result = await transferWorkspaceOwnership(c.env, s.workspaceId, s.userId, body.user_id);
     if (result === 'not_found') return apiError(c, 'not_found', 'Target user is not a workspace member.');
     return c.json({ ok: true });
@@ -141,7 +140,7 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/workspaces/current/mailboxes', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = mailboxBody.extend({ address: z.string().email() }).parse(await c.req.json());
+    const body = createMailboxBody.parse(await c.req.json());
     try {
       const mailbox = await createWorkspaceMailbox(c.env, s.workspaceId, s.userId, {
         address: body.address,
@@ -162,7 +161,7 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/workspaces/current/mailboxes/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = mailboxBody.omit({ address: true }).parse(await c.req.json());
+    const body = updateMailboxBody.parse(await c.req.json());
     const result = await updateWorkspaceMailbox(c.env, s.workspaceId, s.userId, c.req.param('id'), {
       displayName: body.display_name,
       autoReplyPolicy: body.auto_reply_policy,
@@ -182,10 +181,7 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/workspaces/current/invitations', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      email: z.string().email(),
-      role: z.enum(WORKSPACE_ROLES),
-    }).parse(await c.req.json());
+    const body = inviteBody.parse(await c.req.json());
     if (body.role === 'owner' && s.role !== 'owner') {
       return apiError(c, 'forbidden', 'Only owners can invite owners.');
     }
@@ -198,7 +194,7 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/workspaces/current/members/:userId', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({ role: z.enum(WORKSPACE_ROLES) }).parse(await c.req.json());
+    const body = roleBody.parse(await c.req.json());
     const targetRole = await getMembershipRole(c.env, c.req.param('userId'), s.workspaceId);
     if (s.role !== 'owner' && (body.role === 'owner' || targetRole === 'owner')) {
       return apiError(c, 'forbidden', 'Only owners can change owner access.');
@@ -258,13 +254,13 @@ const AUDIT_CSV_COLUMNS: (keyof AuditEventRecord)[] = [
 ];
 
 function auditEventsToCsv(events: AuditEventRecord[]): string {
-  const escape = (value: unknown) => {
+  const escapeCsv = (value: unknown) => {
     const str = value == null ? '' : String(value);
     return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
   const lines = [AUDIT_CSV_COLUMNS.join(',')];
   for (const event of events) {
-    lines.push(AUDIT_CSV_COLUMNS.map((col) => escape(event[col])).join(','));
+    lines.push(AUDIT_CSV_COLUMNS.map((col) => escapeCsv(event[col])).join(','));
   }
   return lines.join('\n');
 }

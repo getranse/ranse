@@ -1,4 +1,4 @@
-import type { AdminForm } from '../../../types/setup';
+import type { AdminForm } from '../../../types/shared/setup';
 
 export function AdminStep(props: {
   admin: AdminForm;

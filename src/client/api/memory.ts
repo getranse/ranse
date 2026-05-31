@@ -1,4 +1,4 @@
-import type { CustomerMemoryEntry } from '../types/memory';
+import type { CustomerMemoryEntry } from '../../types/client/memory';
 import { api } from './core';
 
 export const memoryApi = {

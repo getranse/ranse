@@ -1,9 +1,6 @@
+import type { McpActionsSectionProps } from '../../../interfaces/client';
 import { useEffect, useMemo, useState } from 'react';
 import { API, type McpServerEntry, type McpToolEntry } from '../../api';
-
-interface McpActionsSectionProps {
-  onSaved: (message?: string) => void;
-}
 
 type AuthType = 'none' | 'bearer' | 'header';
 

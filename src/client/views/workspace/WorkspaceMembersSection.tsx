@@ -1,10 +1,7 @@
+import type { WorkspaceMembersSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
-import { WORKSPACE_ROLES, type WorkspaceInvitation, type WorkspaceMember, type WorkspaceRole } from '../../../types/workspace';
-
-interface WorkspaceMembersSectionProps {
-  onSaved: (message?: string) => void;
-}
+import { WORKSPACE_ROLES, type WorkspaceInvitation, type WorkspaceMember, type WorkspaceRole } from '../../../types/shared/workspace';
 
 export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProps) {
   const [workspaceName, setWorkspaceName] = useState('');

@@ -2,14 +2,14 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { deleteCookie } from 'hono/cookie';
 import type { Env } from '../env';
-import { createSession, getSession, setSessionCookie, verifyPassword } from '../lib/auth';
-import { hashPassword, needsRehash } from '../lib/password';
-import { apiError } from '../lib/errors';
-import { audit, auditContext } from '../lib/audit';
-import { listUserWorkspaces } from '../workspaces';
+import { createSession, getSession, setSessionCookie, verifyPassword } from '../actions/auth';
+import { hashPassword, needsRehash } from '../../lib/password';
+import { apiError } from '../../lib/errors';
+import { audit, auditContext } from '../actions/audit';
+import { listUserWorkspaces } from '../platform/workspaces';
 import { registerAuthWorkspaceRoutes } from './auth-workspaces';
 import type { Context } from 'hono';
-import type { AuditAction } from '../../types/audit';
+import type { AuditAction } from '../../types/shared/audit';
 
 export const authApp = new Hono<{ Bindings: Env }>();
 

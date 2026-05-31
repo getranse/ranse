@@ -9,7 +9,7 @@ import {
   runAllWorkspaceInsightsMaintenance,
   scoreConversation,
   updateKbSuggestionStatus,
-} from '../src/server/insights';
+} from '../src/server/platform/insights';
 import {
   addMember,
   createWorkspaceTestDb,

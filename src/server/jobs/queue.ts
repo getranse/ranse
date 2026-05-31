@@ -1,12 +1,7 @@
+import type { WebhookDeliveryMessage } from '../../interfaces/jobs';
 import type { MessageBatch } from '@cloudflare/workers-types';
 import type { Env } from '../env';
-import { getHandler } from '../notifications/channels';
-
-interface WebhookDeliveryMessage {
-  url: string;
-  signature: string;
-  payload: unknown;
-}
+import { getHandler } from '../inbox/notifications/channels';
 
 export async function handleQueueBatch(batch: MessageBatch, env: Env): Promise<void> {
   for (const msg of batch.messages) {

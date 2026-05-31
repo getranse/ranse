@@ -29,10 +29,11 @@ bun run dev
 
 ## Procedure library contributions
 
-- Start from `procedure-library/README.md`, `src/procedures/library-data.ts`, and `src/procedures/library-mcp-tools.ts`.
+- Start from `docs/operations.md`, `src/server/automation/procedures/library-data.ts`, and `src/server/automation/procedures/library-mcp-tools.ts`.
+- Keep procedures generic enough for another company to fork. Do not bake customer-specific policy text, private route names, or proprietary tool names into shared library procedures.
 - Every library procedure must include inline `evals`, a generic owner of `ranse-library`, deterministic provenance, and reference MCP tool specs for external system assumptions. Required MCP references must be exercised by `call_action` steps, and write/destructive actions must stay behind approval.
+- Include MCP `openWorldHint`, `readOnlyHint`, and destructive/idempotent hints where applicable.
 - Run `bun scripts/ranse.ts procedure validate-library`, `bun scripts/ranse.ts procedure add <slug> --dir /tmp/ranse-procs --force`, `bun scripts/ranse.ts eval /tmp/ranse-procs/<slug>.yaml`, and `bunx vitest run tests/procedure-library.test.ts`.
-- Do not bake customer-specific policy text, private route names, or proprietary tool names into shared library procedures.
 
 ## Commit messages
 

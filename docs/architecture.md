@@ -139,11 +139,11 @@ Settings -> Procedures
   └─ upsertProcedureVersion(source_kind = seed, source_ref = library:<slug>@<version>#sha256:<checksum>)
 
 ranse procedure add <slug>
-  ├─ read built-in catalog from src/procedures/library-data.ts
+  ├─ read built-in catalog from src/server/automation/procedures/library-data.ts
   ├─ validate inline evals
-  ├─ write procedures/<slug>.yaml
-  ├─ write procedures/<slug>.mcp.json
-  └─ write procedures/<slug>.provenance.json
+  ├─ write <output-dir>/<slug>.yaml
+  ├─ write <output-dir>/<slug>.mcp.json
+  └─ write <output-dir>/<slug>.provenance.json
 ```
 
 The built-in catalog is code, not database state, so deploys carry the exact procedure specs, evals, and reference MCP contracts reviewed in git. List/detail responses include deterministic SHA-256 provenance, the Ranse procedure schema version, MCP readiness for the selected workspace, and the MCP schema version used for reference ToolAnnotations. Validation requires each required MCP reference to be exercised by a `call_action` step; write and destructive actions cannot opt out of approval.

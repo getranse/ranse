@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dismissOnboarding, getOnboardingState } from '../src/server/onboarding/state';
+import { dismissOnboarding, getOnboardingState } from '../src/server/platform/onboarding/state';
 import {
   addMember,
   createWorkspaceTestDb,

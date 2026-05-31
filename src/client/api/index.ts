@@ -17,7 +17,7 @@ import { ticketApi } from './tickets';
 import { workspaceApi } from './workspaces';
 
 export { ApiRequestError, api } from './core';
-export type * from '../types';
+export type * from '../../types/client';
 
 /**
  * Flat facade over the per-domain API modules. Call sites use `API.<method>()`;

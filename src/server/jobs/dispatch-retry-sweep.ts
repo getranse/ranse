@@ -1,13 +1,12 @@
-import { retryPendingDispatch } from '../channels/egress';
+import { retryPendingDispatch } from '../inbox/channels/egress';
 import type { Env } from '../env';
+import { MAX_DISPATCHES_PER_TICK } from '../../config/jobs';
 
 // Periodic outbound dispatch retry. Looks for `channel_outbound_dispatch`
 // rows whose `next_attempt_at <= now` and re-fires the adapter. Failures
 // pick the next backoff slot; once `max_attempts` is reached the row
 // settles into status='failed' and shows up in the operator dispatch panel
 // for manual intervention.
-
-const MAX_DISPATCHES_PER_TICK = 100;
 
 export async function runDispatchRetrySweep(
   env: Env,

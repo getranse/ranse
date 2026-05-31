@@ -1,4 +1,4 @@
-import type { ProvisionInput } from '../types/setup';
+import type { ProvisionInput } from '../../types/client/setup';
 import { api } from './core';
 
 export const setupApi = {

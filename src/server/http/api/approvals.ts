@@ -1,9 +1,9 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { decideApproval, getApprovalRequest } from '../../approvals';
-import { apiError } from '../../lib/errors';
-import { resumeProcedureRunner } from '../../procedures/orchestration';
+import { decideApproval, getApprovalRequest } from '../../actions/approvals';
+import { apiError } from '../../../lib/errors';
+import { resumeProcedureRunner } from '../../automation/procedures/orchestration';
 import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
+import { approveBody, rejectBody } from '../../schemas/approvals';
 
 export function registerApprovalRoutes(apiApp: Hono<Ctx>) {
   apiApp.post('/approvals/:id/approve', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
@@ -23,9 +23,7 @@ export function registerApprovalRoutes(apiApp: Hono<Ctx>) {
       }
       return c.json({ ok: true });
     }
-    const body = z.object({
-      edits: z.object({ subject: z.string().optional(), body_markdown: z.string().optional() }).optional(),
-    }).parse(await c.req.json().catch(() => ({})));
+    const body = approveBody.parse(await c.req.json().catch(() => ({})));
     const stub = await getSupervisor(c.env, s.workspaceId);
     const result = await (stub as any).approveAndSend({ approvalId: c.req.param('id'), actorUserId: s.userId, edits: body.edits });
     return c.json(result);
@@ -33,7 +31,7 @@ export function registerApprovalRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/approvals/:id/reject', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({ reason: z.string().optional() }).parse(await c.req.json().catch(() => ({})));
+    const body = rejectBody.parse(await c.req.json().catch(() => ({})));
     const approval = await getApprovalRequest(c.env, s.workspaceId, c.req.param('id'));
     if (!approval) return apiError(c, 'not_found', 'That approval does not exist.');
     if (approval.kind === 'call_external') {

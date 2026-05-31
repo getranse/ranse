@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ingestEmail } from '../src/server/agents/supervisor/email-flow';
+import { ingestEmail } from '../src/server/inbox/agents/supervisor/email-flow';
 import {
   createWorkspaceTestDb,
   seedMailbox,

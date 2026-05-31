@@ -3,12 +3,12 @@ import type {
   ProcedureRunDetail,
   ProcedureListItem,
   ProcedureSpec,
-} from '../../types/procedure';
+} from '../../types/shared/procedure';
 import type {
   ProcedureLibraryDetail,
   ProcedureLibraryListEntry,
   ProcedureListEntry,
-} from '../types/procedures';
+} from '../../types/client/procedures';
 import { api } from './core';
 
 export const procedureApi = {

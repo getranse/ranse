@@ -1,21 +1,20 @@
 import type { Context, Hono } from 'hono';
-import { z } from 'zod';
 import {
   extractTextFromPdfBytes,
   agenticSearchKnowledge,
   importResolvedTickets,
   ingestKnowledgeSource,
   listKnowledgeSources,
-} from '../../knowledge';
+} from '../../automation/knowledge';
 import type { Env } from '../../env';
-import { ids } from '../../lib/ids';
-import { apiError } from '../../lib/errors';
-import { r2Keys, putRaw, getText } from '../../lib/storage';
+import { ids } from '../../../lib/ids';
+import { apiError } from '../../../lib/errors';
+import { r2Keys, putRaw, getText } from '../../../lib/storage';
 import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
-import { readUploadedFile, safeFilename, titleFromFilename } from '../../lib/files';
-import { audit, auditContext } from '../../lib/audit';
-
-const MAX_KNOWLEDGE_PDF_BYTES = 10 * 1024 * 1024;
+import { readUploadedFile, safeFilename, titleFromFilename } from '../../../lib/files';
+import { audit, auditContext } from '../../actions/audit';
+import { createSourceBody, importResolvedBody, searchBody } from '../../schemas/knowledge';
+import { MAX_KNOWLEDGE_PDF_BYTES } from '../../../config/knowledge';
 
 export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/knowledge', async (c) => {
@@ -50,30 +49,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     if ((c.req.header('content-type') ?? '').includes('multipart/form-data')) {
       return createKnowledgeFromPdf(c, s.workspaceId);
     }
-    const body = z
-      .object({
-        kind: z.enum(['manual', 'url']).default('manual'),
-        title: z.string().min(1).max(300).optional(),
-        body: z.string().min(1).max(500000).optional(),
-        url: z.string().url().max(2000).optional(),
-      })
-      .superRefine((value, ctx) => {
-        if (value.kind === 'manual' && !value.body) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['body'],
-            message: 'Manual sources need a body.',
-          });
-        }
-        if (value.kind === 'url' && !value.url) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['url'],
-            message: 'URL sources need a URL.',
-          });
-        }
-      })
-      .parse(await c.req.json());
+    const body = createSourceBody.parse(await c.req.json());
     const result = await ingestKnowledgeSource(c.env, s.workspaceId, body);
     await audit(c.env, {
       workspaceId: s.workspaceId,
@@ -115,14 +91,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/knowledge/search', async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        query: z.string().min(1).max(4000),
-        limit: z.number().int().min(1).max(20).optional(),
-        max_hops: z.number().int().min(1).max(5).optional(),
-        scope: z.enum(['knowledge', 'resolved_tickets', 'customer_data', 'all']).optional(),
-      })
-      .parse(await c.req.json());
+    const body = searchBody.parse(await c.req.json());
     const result = await agenticSearchKnowledge(c.env, s.workspaceId, body.query, {
       limit: body.limit ?? 5,
       maxHops: body.max_hops ?? 3,
@@ -136,9 +105,7 @@ export function registerKnowledgeRoutes(apiApp: Hono<Ctx>) {
     requireWorkspaceRole(OWNER_OR_ADMIN),
     async (c) => {
       const s = c.get('session');
-      const body = z
-        .object({ limit: z.number().int().min(1).max(200).optional() })
-        .parse(await c.req.json().catch(() => ({})));
+      const body = importResolvedBody.parse(await c.req.json().catch(() => ({})));
       return c.json({
         ok: true,
         ...(await importResolvedTickets(c.env, s.workspaceId, body.limit ?? 50)),

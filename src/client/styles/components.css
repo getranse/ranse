@@ -336,6 +336,7 @@
   margin: 0;
 }
 .visually-hidden {
+  /* biome-ignore lint/complexity/noImportantStyles: sr-only utility must win over composed classes */
   position: absolute !important;
   width: 1px;
   height: 1px;
@@ -433,12 +434,12 @@
   border-color: var(--success);
   color: var(--bg-elevated);
 }
+.onboarding-step .label {
+  color: var(--text);
+}
 .onboarding-step.done .label {
   color: var(--text-muted);
   text-decoration: line-through;
-}
-.onboarding-step .label {
-  color: var(--text);
 }
 .onboarding-step .desc {
   color: var(--text-muted);

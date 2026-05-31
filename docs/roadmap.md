@@ -198,14 +198,14 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 
 *Principle 6*
 
-- Built-in catalog ships refund intake, password reset, shipping dispute, and GDPR data request workflows.
+- Built-in catalog ships vetted support workflows with inline evals and MCP reference contracts.
 - Settings exposes the catalog so owners/admins can install procedures directly into the selected workspace, with MCP readiness surfaced before install.
-- `ranse procedure list` and `ranse procedure add <slug>` fork procedures into a repo-local `procedures/` directory as YAML or JSON.
+- `ranse procedure list` and `ranse procedure add <slug>` fork procedures into a caller-selected output directory, defaulting to `procedures/`, as YAML or JSON.
 - `ranse procedure manifest` exports the full machine-readable catalog for a standalone community mirror.
 - Each library procedure ships with inline eval cases, deterministic SHA-256 provenance, and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json` plus `<slug>.provenance.json`.
 - Library procedures now exercise required MCP contracts through `call_action`; read-only lookups can run automatically, while write/destructive actions pause for operator approval.
 - Library validation runs every procedure's inline evals, checksum generation, immutable clone behavior, route permissions, MCP reference matching, and unsafe-action checks in `tests/procedure-library.test.ts`.
-- `procedure-library/README.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
+- `docs/operations.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
 
 ## Phase 8 — Insights & auto-improving KB
 **Status: shipped.**
@@ -301,7 +301,7 @@ Each move is grounded in a documented Fin / category pain point and maps to exis
 | 1 | Honest Resolution metric | Forced-close counting, 38% vs 50% reality gap | `src/lib/outcomes.ts`, `src/insights/operations.ts` |
 | 2 | Outcome-based pricing instrument | $0.99/resolution unpredictability, perverse incentives | `ticket_outcome_event`, `workspace_outcome_daily` |
 | 3 | MCP Action Library (20+) | Fin explains but cannot fix (refunds, addresses, subs) | `src/mcp/first-party/catalog.ts` |
-| 4 | Public procedure marketplace | Vendor lock-in, slow content velocity | `src/procedures/library*` |
+| 4 | Public procedure marketplace | Vendor lock-in, slow content velocity | `src/server/automation/procedures/library*` |
 | 5 | Customer-facing decision trace | 74% rollback rate driven by trust failure | `src/lib/audit.ts`, Answer Inspection |
 | 6 | Knowledge staleness signal | Stale KB silently kills resolution rate | `src/insights/` drift, `knowledge_source` |
 | 7 | Proactive resolution loop | Reactive ceiling; no competitor closes this loop | `src/insights/`, procedures, evals |
@@ -432,10 +432,10 @@ All editable per workspace. Stored as a single JSON blob to avoid migrations whe
 Expand `src/mcp/first-party/catalog.ts` from 5 to 20 templates covering the highest-leverage support actions across ecom, SaaS, identity, and ops. Each template includes:
 
 1. Entry in `FIRST_PARTY_MCP_TEMPLATES`
-2. Tool-contract JSON (`src/procedures/library-mcp-tools.ts` extension)
-3. A reference procedure under `src/procedures/library-data.ts` consuming the tools
+2. Tool-contract JSON (`src/server/automation/procedures/library-mcp-tools.ts` extension)
+3. A reference procedure under `src/server/automation/procedures/library-data.ts` consuming the tools
 4. Inline evals + provenance via the existing pipeline
-5. Documentation in `procedure-library/README.md`
+5. Documentation in `docs/operations.md` and `CONTRIBUTING.md`
 
 #### Catalog
 
@@ -505,7 +505,7 @@ procedure_marketplace_install
 Plus an export script (`scripts/marketplace-export.ts`) that turns the in-tree library into a marketplace-ready manifest with stable URLs, contributor metadata, eval pass rates from the last CI run, and SHA-256 fingerprints.
 
 #### Service
-`src/procedures/marketplace.ts`
+`src/server/automation/procedures/marketplace.ts`
 - `installFromManifest(env, workspaceId, slug, manifestUrl?)` — fetches manifest, validates schema, validates inline evals, persists install record
 - `listMarketplaceInstalls(env, workspaceId)`
 - `checkForUpdates(env, workspaceId)` — compares each install's `forked_version` against the current manifest entry

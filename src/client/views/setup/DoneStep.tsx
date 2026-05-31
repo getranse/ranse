@@ -1,4 +1,4 @@
-import type { SetupChecks } from '../../../types/setup';
+import type { SetupChecks } from '../../../types/shared/setup';
 
 export function DoneStep({ checks, onDone }: { checks: SetupChecks; onDone: () => void }) {
   return (

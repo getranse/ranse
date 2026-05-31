@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
-
-const PROVIDERS = ['openai', 'anthropic', 'google-ai-studio', 'grok', 'openrouter'];
+import { BYOK_PROVIDERS as PROVIDERS } from '../../../config/llm';
 
 export function LlmProvidersSection({ onSaved }: { onSaved: (msg?: string) => void }) {
   const [providers, setProviders] = useState<string[]>([]);

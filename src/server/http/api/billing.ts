@@ -5,9 +5,9 @@ import {
   loadPricing,
   priceBookFromRow,
   savePricing,
-} from '../../billing/outcomes';
+} from '../../platform/billing/outcomes';
 import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
-import { DEFAULT_PRICE_BOOK } from '../../../types/billing';
+import { DEFAULT_PRICE_BOOK } from '../../../types/shared/billing';
 
 const priceBookSchema = z
   .object({

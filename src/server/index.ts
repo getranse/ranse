@@ -5,15 +5,15 @@ import type {
   ScheduledController,
 } from '@cloudflare/workers-types';
 import type { Env } from './env';
-import { handleEmailMessage } from './email/handler';
+import { handleEmailMessage } from './inbox/email/handler';
 import { app } from './http/app';
 import { handleScheduled } from './jobs/scheduled';
 import { handleQueueBatch } from './jobs/queue';
 
-export { WorkspaceSupervisorAgent } from './agents/WorkspaceSupervisorAgent';
-export { MailboxAgent } from './agents/MailboxAgent';
-export { UserSecretsStore } from './agents/UserSecretsStore';
-export { ProcedureRunnerAgent } from './agents/ProcedureRunnerAgent';
+export { WorkspaceSupervisorAgent } from './inbox/agents/WorkspaceSupervisorAgent';
+export { MailboxAgent } from './inbox/agents/MailboxAgent';
+export { UserSecretsStore } from './inbox/agents/UserSecretsStore';
+export { ProcedureRunnerAgent } from './inbox/agents/ProcedureRunnerAgent';
 
 export default {
   fetch: app.fetch,

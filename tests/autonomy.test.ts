@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { autonomyRollout, decideAutonomy, scoreAutonomousDraft } from '../src/server/agents/supervisor/autonomy';
+import { autonomyRollout, decideAutonomy, scoreAutonomousDraft } from '../src/server/inbox/agents/supervisor/autonomy';
 import {
   normalizeAutonomyPolicy,
   normalizeAutonomyRolloutPercent,
   normalizeAutonomyThreshold,
   type AutonomousDraftScore,
-} from '../src/types/autonomy';
-import type { DraftResult } from '../src/server/agents/specialists/draft';
-import type { TriageResult } from '../src/server/agents/specialists/triage';
-import type { AgenticKnowledgeResult } from '../src/types/knowledge';
+} from '../src/types/shared/autonomy';
+import type { DraftResult } from '../src/server/inbox/agents/specialists/draft';
+import type { TriageResult } from '../src/server/inbox/agents/specialists/triage';
+import type { AgenticKnowledgeResult } from '../src/types/shared/knowledge';
 
 const triage: TriageResult = {
   category: 'billing',

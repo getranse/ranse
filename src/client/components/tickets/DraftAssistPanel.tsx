@@ -1,28 +1,7 @@
-import { formatDate } from '../../lib/format';
+import type { DraftAssistPanelProps, AssistState } from '../../../interfaces/client';
+import { formatDate } from '../../../lib/format';
 import { useEffect, useRef, useState } from 'react';
 import { API } from '../../api';
-
-// Real-time draft assist. Operator types in the reply composer, we
-// debounce 300ms, call /api/tickets/:id/draft-assist, render the
-// completion as a "ghost text" suggestion + show KB hits and similar
-// past tickets in a sidebar. Pressing Tab while the suggestion is
-// visible appends it to the draft. Confidence < 0.4 hides the
-// suggestion (the backend already filters these, but we double-gate).
-
-interface DraftAssistPanelProps {
-  ticketId: string;
-  draft: string;
-  onAcceptCompletion: (completion: string) => void;
-}
-
-interface AssistState {
-  loading: boolean;
-  completion: string;
-  confidence: number;
-  knowledge: { id: string; title: string; url?: string; snippet?: string }[];
-  similar: { id: string; subject: string; resolved_at: number | null; preview: string | null }[];
-  error: string | null;
-}
 
 const INITIAL_STATE: AssistState = {
   loading: false,

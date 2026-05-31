@@ -2,15 +2,15 @@
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify as stringifyYaml } from 'yaml';
-import { runProcedureSpecEvals } from '../src/server/evals/replay';
-import { loadProcedureFile } from '../src/server/procedures/files';
+import { runProcedureSpecEvals } from '../src/server/automation/evals/replay';
+import { loadProcedureFile } from '../src/server/automation/procedures/files';
 import {
   getProcedureLibraryItem,
   getProcedureLibraryManifest,
   listProcedureLibrary,
   validateProcedureLibrary,
-} from '../src/server/procedures/library';
-import { simulateProcedure } from '../src/server/procedures/simulate';
+} from '../src/server/automation/procedures/library';
+import { simulateProcedure } from '../src/server/automation/procedures/simulate';
 
 const [, , command, ...args] = process.argv;
 

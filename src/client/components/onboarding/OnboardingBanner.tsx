@@ -1,15 +1,6 @@
+import type { OnboardingBannerProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API, type OnboardingStateResponse } from '../../api';
-
-// Onboarding checklist banner. Renders at the top of the Inbox until the
-// operator either completes all three steps (auto-hidden) or dismisses
-// manually. State is derived from real activity, so creating a knowledge
-// source / channel / outbound reply flips the corresponding step
-// automatically — no client-side bookkeeping required.
-
-interface OnboardingBannerProps {
-  onNavigate: (href: string) => void;
-}
 
 export function OnboardingBanner({ onNavigate }: OnboardingBannerProps) {
   const [state, setState] = useState<OnboardingStateResponse | null>(null);

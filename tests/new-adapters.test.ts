@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import '../src/server/channels'; // adapter side-effect registration
-import { appleBusinessAdapter } from '../src/server/channels/adapters/apple-business';
-import { instagramAdapter } from '../src/server/channels/adapters/instagram';
-import { messengerAdapter } from '../src/server/channels/adapters/messenger';
-import { rcsAdapter } from '../src/server/channels/adapters/rcs';
-import { teamsAdapter } from '../src/server/channels/adapters/teams';
-import { webhookAdapter } from '../src/server/channels/adapters/webhook';
-import { hmacSign } from '../src/server/lib/crypto';
-import type { PublicChannel } from '../src/types/channels';
+import '../src/server/inbox/channels'; // adapter side-effect registration
+import { appleBusinessAdapter } from '../src/server/inbox/channels/adapters/apple-business';
+import { instagramAdapter } from '../src/server/inbox/channels/adapters/instagram';
+import { messengerAdapter } from '../src/server/inbox/channels/adapters/messenger';
+import { rcsAdapter } from '../src/server/inbox/channels/adapters/rcs';
+import { teamsAdapter } from '../src/server/inbox/channels/adapters/teams';
+import { webhookAdapter } from '../src/server/inbox/channels/adapters/webhook';
+import { hmacSign } from '../src/lib/crypto';
+import type { PublicChannel } from '../src/types/shared/channels';
 
 vi.mock('agents', () => ({
   getAgentByName: () => ({ start: async () => undefined, resume: async () => undefined }),

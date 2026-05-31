@@ -1,6 +1,5 @@
 import type { Env } from '../env';
-
-const DEFAULT_RETENTION_DAYS = 365;
+import { DEFAULT_RETENTION_DAYS } from '../../config/audit';
 
 /**
  * Purge audit events older than the configured retention window. Set

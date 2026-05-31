@@ -1,5 +1,5 @@
 import { API } from '../../api';
-import { ACTION_KEYS, type ActionKey } from '../../../types/llm';
+import { ACTION_KEYS, type ActionKey } from '../../../types/shared/llm';
 
 type LlmConfigRow = {
   action_key: ActionKey;

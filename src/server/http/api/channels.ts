@@ -1,44 +1,11 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { createPublicChannel, listPublicChannels, updatePublicChannel } from '../../channels';
-import { apiError } from '../../lib/errors';
-import { PUBLIC_CHANNEL_KINDS } from '../../../types/channels';
+import { createPublicChannel, listPublicChannels, updatePublicChannel } from '../../inbox/channels';
+import { apiError } from '../../../lib/errors';
 import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+import { channelBody, channelPatch } from '../../schemas/channels';
 
 // All Phase 9 channels live behind one CRUD: the per-adapter config goes
 // into `config` and is opaque to this route — the adapter validates it.
-
-const kindSchema = z.enum(PUBLIC_CHANNEL_KINDS as unknown as [string, ...string[]]);
-const prioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
-
-const channelBody = z.object({
-  kind: kindSchema,
-  mailbox_id: z.string().min(1),
-  name: z.string().min(1).max(80),
-  enabled: z.boolean().optional(),
-  require_email: z.boolean().optional(),
-  allowed_origins: z.array(z.string().max(300)).max(20).optional(),
-  welcome_message: z.string().max(240).nullable().optional(),
-  config: z.record(z.unknown()).optional(),
-  sla_first_response_minutes: z
-    .number()
-    .int()
-    .min(1)
-    .max(60 * 24 * 30)
-    .nullable()
-    .optional(),
-  sla_resolution_minutes: z
-    .number()
-    .int()
-    .min(1)
-    .max(60 * 24 * 30)
-    .nullable()
-    .optional(),
-  default_priority: prioritySchema.nullable().optional(),
-  default_assignee_user_id: z.string().min(1).max(120).nullable().optional(),
-});
-
-const channelPatch = channelBody.omit({ kind: true, mailbox_id: true }).partial();
 
 export function registerChannelRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/channels/public', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {

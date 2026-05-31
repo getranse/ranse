@@ -1,11 +1,6 @@
+import type { WorkspaceGateProps } from '../../../interfaces/client';
 import { useState } from 'react';
 import { API } from '../../api';
-import type { AuthMe } from '../../../types/workspace';
-
-interface WorkspaceGateProps {
-  me: AuthMe;
-  onChanged: () => void;
-}
 
 export function WorkspaceGate({ me, onChanged }: WorkspaceGateProps) {
   const [workspaceId, setWorkspaceId] = useState(me.workspaces?.[0]?.id ?? '');

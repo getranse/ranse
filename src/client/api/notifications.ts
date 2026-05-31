@@ -2,7 +2,7 @@ import type {
   NotificationChannel,
   NotificationChannelInput,
   NotificationMeta,
-} from '../types/notifications';
+} from '../../types/client/notifications';
 import { api } from './core';
 
 export const notificationApi = {

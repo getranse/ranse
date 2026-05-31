@@ -1,16 +1,6 @@
+import type { CustomerMemoryDrawerProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API, type CustomerMemoryEntry } from '../../api';
-
-// Customer memory drawer. Shown in the ticket sidebar when the ticket is
-// linked to a customer (`ticket.customer_id`). Lists durable facts that
-// procedures and drafts already use; operators can add their own notes
-// or redact incorrect extractor inferences. Operator-authored rows
-// are protected on the backend — the extractor never overwrites them.
-
-interface CustomerMemoryDrawerProps {
-  customerId: string;
-  customerName?: string | null;
-}
 
 const KIND_LABELS: Record<string, string> = {
   fact: 'Fact',

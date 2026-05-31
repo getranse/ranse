@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashPassword, verifyPassword, needsRehash } from '../src/server/lib/password';
+import { hashPassword, verifyPassword, needsRehash } from '../src/lib/password';
 
 describe('password hashing', () => {
   it('rejects passwords shorter than 12 chars', async () => {

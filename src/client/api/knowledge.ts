@@ -4,7 +4,7 @@ import type {
   KnowledgeInput,
   KnowledgeSearchHit,
   KnowledgeSource,
-} from '../types/knowledge';
+} from '../../types/client/knowledge';
 import { api, uploadFile } from './core';
 
 export const knowledgeApi = {

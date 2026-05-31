@@ -1,9 +1,8 @@
 import { getAgentByName } from 'agents';
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { ACTION_KEYS } from '../../../types/llm';
-import { audit, auditContext } from '../../lib/audit';
+import { audit, auditContext } from '../../actions/audit';
 import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
+import { llmConfigBody, providerKeyBody } from '../../schemas/llm';
 
 // LLM model config + BYOK provider keys, under /api/llm.
 export function registerLlmRoutes(apiApp: Hono<Ctx>) {
@@ -21,15 +20,7 @@ export function registerLlmRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/llm', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        action_key: z.enum(ACTION_KEYS),
-        model_name: z.string().min(1),
-        fallback_model: z.string().optional(),
-        temperature: z.number().min(0).max(2).optional(),
-        reasoning_effort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
-      })
-      .parse(await c.req.json());
+    const body = llmConfigBody.parse(await c.req.json());
     await c.env.DB.prepare(
       `INSERT INTO workspace_llm_config (workspace_id, action_key, model_name, fallback_model, reasoning_effort, temperature, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -69,9 +60,7 @@ export function registerLlmRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/llm/providers', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({ provider: z.string(), api_key: z.string().min(1) })
-      .parse(await c.req.json());
+    const body = providerKeyBody.parse(await c.req.json());
     const stub = await getAgentByName(c.env.UserSecretsStore as never, s.workspaceId);
     await (stub as any).setKey({ provider: body.provider, apiKey: body.api_key });
     await audit(c.env, {

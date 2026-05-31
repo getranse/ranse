@@ -1,4 +1,4 @@
-import type { OnboardingStateResponse } from '../types/onboarding';
+import type { OnboardingStateResponse } from '../../types/client/onboarding';
 import { api } from './core';
 
 export const onboardingApi = {

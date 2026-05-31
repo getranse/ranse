@@ -1,4 +1,4 @@
-import { formatDateTime } from '../../lib/format';
+import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
 import { OnboardingBanner } from '../../components/onboarding/OnboardingBanner';
 import { API } from '../../api';

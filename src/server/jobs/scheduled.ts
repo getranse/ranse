@@ -1,6 +1,6 @@
 import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types';
 import type { Env } from '../env';
-import { runAllWorkspaceInsightsMaintenance } from '../insights';
+import { runAllWorkspaceInsightsMaintenance } from '../platform/insights';
 import { runAuditRetentionSweep } from './audit-retention-sweep';
 import { runCascadeSweep } from './cascade-sweep';
 import { runDispatchRetrySweep } from './dispatch-retry-sweep';

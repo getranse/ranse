@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { apiApp } from '../src/server/http/api/routes';
-import { createProcedureRun, upsertProcedureVersion } from '../src/server/procedures/storage';
-import { runProcedure } from '../src/server/procedures/runner';
-import { normalizeProcedureSpec } from '../src/server/procedures/schema';
-import { simulateProcedure } from '../src/server/procedures/simulate';
+import { createProcedureRun, upsertProcedureVersion } from '../src/server/actions/procedures';
+import { runProcedure } from '../src/server/automation/procedures/runner';
+import { normalizeProcedureSpec } from '../src/server/schemas/procedure-spec';
+import { simulateProcedure } from '../src/server/automation/procedures/simulate';
 import {
   addMember,
   createWorkspaceTestDb,

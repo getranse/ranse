@@ -1,10 +1,7 @@
-import { formatDateTime } from '../../lib/format';
+import type { EvalsSectionProps } from '../../../interfaces/client';
+import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
 import { API, type EvalCaseEntry, type EvalRunEntry } from '../../api';
-
-interface EvalsSectionProps {
-  onSaved: (message?: string) => void;
-}
 
 export function EvalsSection({ onSaved }: EvalsSectionProps) {
   const [cases, setCases] = useState<EvalCaseEntry[]>([]);

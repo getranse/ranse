@@ -1,10 +1,6 @@
+import type { InviteAcceptViewProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
-
-interface InviteAcceptViewProps {
-  token: string;
-  onDone: () => void;
-}
 
 export function InviteAcceptView({ token, onDone }: InviteAcceptViewProps) {
   const [error, setError] = useState('');

@@ -1,0 +1,77 @@
+import type { SessionData } from '../../interfaces/lib';
+export type { SessionData };
+import type { Context } from 'hono';
+import { getCookie, setCookie } from 'hono/cookie';
+import type { Env } from '../env';
+import { hashPassword as hashPw, verifyPassword as verifyPw } from '../../lib/password';
+import { hmacSign, hmacVerify } from '../../lib/crypto';
+import { ids } from '../../lib/ids';
+import { SESSION_MAX_AGE_SECONDS as MAX_AGE } from '../../config/auth';
+
+const COOKIE_NAME = 'ranse_session';
+
+export async function createSession(
+  env: Env,
+  userId: string,
+  workspaceId?: string,
+): Promise<string> {
+  const sessionId = ids.session();
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO session (id, user_id, workspace_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
+  )
+    .bind(sessionId, userId, workspaceId ?? null, now + MAX_AGE * 1000, now)
+    .run();
+  return sessionId;
+}
+
+export async function setSessionCookie<E extends { Bindings: Env }>(
+  c: Context<E>,
+  sessionId: string,
+): Promise<void> {
+  const secret = c.env.COOKIE_SIGNING_KEY;
+  if (!secret) throw new Error('COOKIE_SIGNING_KEY not configured');
+  const sig = await hmacSign(secret, sessionId);
+  // Determine Secure from the actual request scheme — robust against a
+  // misconfigured APP_URL var pointing at localhost in production.
+  const isHttps = new URL(c.req.url).protocol === 'https:';
+  setCookie(c, COOKIE_NAME, `${sessionId}.${sig}`, {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: MAX_AGE,
+  });
+}
+
+export async function getSession<E extends { Bindings: Env }>(
+  c: Context<E>,
+): Promise<SessionData | null> {
+  const raw = getCookie(c, COOKIE_NAME);
+  if (!raw) return null;
+  const secret = c.env.COOKIE_SIGNING_KEY;
+  if (!secret) return null;
+  const [sessionId, sig] = raw.split('.');
+  if (!sessionId || !sig) return null;
+  const expected = await hmacSign(secret, sessionId);
+  if (!hmacVerify(expected, sig)) return null;
+  const row = await c.env.DB.prepare(
+    `SELECT id, user_id, workspace_id, expires_at FROM session WHERE id = ?`,
+  )
+    .bind(sessionId)
+    .first<{ id: string; user_id: string; workspace_id: string | null; expires_at: number }>();
+  if (!row) return null;
+  if (row.expires_at < Date.now()) return null;
+  return { sessionId: row.id, userId: row.user_id, workspaceId: row.workspace_id ?? undefined };
+}
+
+export async function requireUser<E extends { Bindings: Env }>(
+  c: Context<E>,
+): Promise<SessionData> {
+  const s = await getSession(c);
+  if (!s) throw new Response('Unauthorized', { status: 401 });
+  return s;
+}
+
+export const hashPassword = hashPw;
+export const verifyPassword = verifyPw;

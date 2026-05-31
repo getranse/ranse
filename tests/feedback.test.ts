@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { recordFeedback } from '../src/server/agents/supervisor/ticket-actions';
+import { recordFeedback } from '../src/server/inbox/agents/supervisor/ticket-actions';
 import { feedbackApp } from '../src/server/http/feedback';
-import { buildFeedbackLinks } from '../src/server/lib/feedback-links';
+import { buildFeedbackLinks } from '../src/lib/feedback-links';
 import {
   addMember,
   createWorkspaceTestDb,

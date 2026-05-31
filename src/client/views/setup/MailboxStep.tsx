@@ -1,5 +1,5 @@
-import type { ProvisionStep } from '../../../types/provisioning';
-import type { MailboxForm, ProvisionForm } from '../../../types/setup';
+import type { ProvisionStep } from '../../../types/shared/provisioning';
+import type { MailboxForm, ProvisionForm } from '../../../types/shared/setup';
 import { secretToggleStyle } from './styles';
 
 export function MailboxStep(props: {

@@ -1,11 +1,6 @@
+import type { WorkspaceSwitcherProps } from '../../../interfaces/client';
 import { useState } from 'react';
 import { API } from '../../api';
-import type { AuthMe } from '../../../types/workspace';
-
-interface WorkspaceSwitcherProps {
-  me: AuthMe;
-  onChanged: () => void;
-}
 
 export function WorkspaceSwitcher({ me, onChanged }: WorkspaceSwitcherProps) {
   const [creating, setCreating] = useState(false);

@@ -4,16 +4,16 @@ import type {
   WorkspaceMember,
   WorkspaceSummary,
   WorkspaceUsage,
-} from '../../types/workspace';
-import type { AuditEventRecord, AuditQuery } from '../../types/audit';
-import type { WorkspaceOutcomeDaily } from '../../types/autonomy';
+} from '../../types/shared/workspace';
+import type { AuditEventRecord, AuditQuery } from '../../types/shared/audit';
+import type { WorkspaceOutcomeDaily } from '../../types/shared/autonomy';
 import type {
   WorkspaceInviteInput,
   WorkspaceMailboxInput,
   WorkspaceMailboxUpdate,
   WorkspaceSettings,
   WorkspaceSettingsInput,
-} from '../types/workspaces';
+} from '../../types/client/workspaces';
 import { api, uploadFile } from './core';
 
 function auditQueryString(query: AuditQuery): string {

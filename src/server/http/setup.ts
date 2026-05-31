@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
 import type { Env } from '../env';
-import { hashPassword, createSession, setSessionCookie, getSession } from '../lib/auth';
-import { ids } from '../lib/ids';
-import { audit } from '../lib/audit';
-import { apiError } from '../lib/errors';
-import { createWorkspaceMailbox } from '../workspaces/admin';
-import { getMembershipRole, nextWorkspaceSlug } from '../workspaces';
-import { applyProvisioning } from '../email/provisioning';
+import { hashPassword, createSession, setSessionCookie, getSession } from '../actions/auth';
+import { ids } from '../../lib/ids';
+import { audit } from '../actions/audit';
+import { apiError } from '../../lib/errors';
+import { createWorkspaceMailbox } from '../platform/workspaces/admin';
+import { getMembershipRole, nextWorkspaceSlug } from '../platform/workspaces';
+import { applyProvisioning } from '../inbox/email/provisioning';
+import { addMailboxBody, bootstrapBody, provisionBody } from '../schemas/setup';
 
 export const setupApp = new Hono<{ Bindings: Env }>();
 
@@ -37,14 +37,7 @@ setupApp.post('/bootstrap', async (c) => {
     );
   }
 
-  const schema = z.object({
-    setup_token: z.string().min(1),
-    workspace_name: z.string().min(1).max(100),
-    admin_email: z.string().email(),
-    admin_password: z.string().min(12),
-    admin_name: z.string().min(1).max(100).optional(),
-  });
-  const body = schema.parse(await c.req.json());
+  const body = bootstrapBody.parse(await c.req.json());
 
   const expected = c.env.ADMIN_SETUP_TOKEN;
   if (!expected || body.setup_token !== expected) {
@@ -101,12 +94,7 @@ setupApp.post('/mailbox', async (c) => {
     return apiError(c, 'forbidden', 'Only workspace owners and admins can add mailboxes.');
   }
 
-  const body = z
-    .object({
-      address: z.string().email(),
-      display_name: z.string().max(100).optional(),
-    })
-    .parse(await c.req.json());
+  const body = addMailboxBody.parse(await c.req.json());
 
   const mailbox = await createWorkspaceMailbox(c.env, session.workspaceId, session.userId, {
     address: body.address,
@@ -123,15 +111,7 @@ setupApp.post('/mailbox', async (c) => {
  * zone is on CF), enable Email Routing, and create a forwarding rule.
  */
 setupApp.post('/provision', async (c) => {
-  const body = z
-    .object({
-      api_token: z.string().min(20),
-      account_id: z.string().min(8),
-      domain: z.string().min(3),
-      mailbox_address: z.string().email(),
-      worker_name: z.string().min(1).max(63),
-    })
-    .parse(await c.req.json());
+  const body = provisionBody.parse(await c.req.json());
 
   const steps = await applyProvisioning({
     apiToken: body.api_token,

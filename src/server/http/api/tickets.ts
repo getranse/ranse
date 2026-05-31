@@ -1,12 +1,20 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
 import type { Env } from '../../env';
-import { apiError } from '../../lib/errors';
-import { getText } from '../../lib/storage';
-import { listMemory } from '../../memory/store';
-import { buildTraceLink } from '../../lib/decision-trace';
-import { audit, auditContext, isReadLoggingEnabled } from '../../lib/audit';
+import { apiError } from '../../../lib/errors';
+import { getText } from '../../../lib/storage';
+import { listMemory } from '../../actions/memory';
+import { buildTraceLink } from '../../actions/decision-trace';
+import { audit, auditContext, isReadLoggingEnabled } from '../../actions/audit';
 import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
+import {
+  aiDraftsBody,
+  assignBody,
+  draftAssistBody,
+  feedbackBody,
+  noteBody,
+  replyBody,
+  statusBody,
+} from '../../schemas/tickets';
 
 export function registerTicketRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/tickets', async (c) => {
@@ -45,7 +53,7 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/assign', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({ userId: z.string().nullable() }).parse(await c.req.json());
+    const body = assignBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).assignTicket({ ticketId: c.req.param('id'), userId: body.userId, actorUserId: s.userId });
     return c.json({ ok: true });
@@ -53,15 +61,14 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/status', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({ status: z.enum(['open', 'pending', 'resolved', 'closed', 'spam']) })
-      .parse(await c.req.json());
+    const body = statusBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).setTicketStatus({ ticketId: c.req.param('id'), status: body.status, actorUserId: s.userId });
     if (body.status === 'resolved' || body.status === 'closed') {
       // Memory extraction runs after the resolution returns to the
       // operator. waitUntil keeps it off the request critical path; a
       // failure here never blocks the status change.
-      const { extractMemoryFromTicket } = await import('../../memory');
+      const { extractMemoryFromTicket } = await import('../../automation/memory');
       c.executionCtx.waitUntil(
         extractMemoryFromTicket(c.env, {
           workspaceId: s.workspaceId,
@@ -74,7 +81,7 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/note', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({ body: z.string().min(1).max(20000) }).parse(await c.req.json());
+    const body = noteBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).addInternalNote({ ticketId: c.req.param('id'), body: body.body, actorUserId: s.userId });
     return c.json({ ok: true });
@@ -82,11 +89,7 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/reply', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      body: z.string().min(1).max(50000),
-      subject: z.string().max(998).optional(),
-      cited_knowledge_ids: z.array(z.string()).max(20).optional(),
-    }).parse(await c.req.json());
+    const body = replyBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     const result = await (stub as any).replyDirect({
       ticketId: c.req.param('id'),
@@ -107,13 +110,8 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/draft-assist', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        draft: z.string().max(50_000),
-        cursor: z.number().int().min(0).max(50_000).optional(),
-      })
-      .parse(await c.req.json());
-    const { runDraftAssist } = await import('../../agents/specialists/assist');
+    const body = draftAssistBody.parse(await c.req.json());
+    const { runDraftAssist } = await import('../../inbox/agents/specialists/assist');
     const ticketId = c.req.param('id');
     const ctx = await loadAssistContext(c.env, s.workspaceId, ticketId);
     if (!ctx) return apiError(c, 'not_found', 'Ticket not found.');
@@ -131,7 +129,7 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/ai-drafts', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({ enabled: z.boolean().nullable() }).parse(await c.req.json());
+    const body = aiDraftsBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).setTicketAiDrafts({ ticketId: c.req.param('id'), actorUserId: s.userId, enabled: body.enabled });
     return c.json({ ok: true });
@@ -173,11 +171,7 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/tickets/:id/feedback', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      rating: z.enum(['positive', 'negative']),
-      message_id: z.string().nullable().optional(),
-      comment: z.string().max(2000).nullable().optional(),
-    }).parse(await c.req.json());
+    const body = feedbackBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     const result = await (stub as any).recordFeedback({
       ticketId: c.req.param('id'),

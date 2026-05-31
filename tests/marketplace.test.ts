@@ -4,8 +4,8 @@ import {
   exportMarketplaceManifest,
   installFromManifestEntry,
   listMarketplaceInstalls,
-} from '../src/server/procedures/marketplace';
-import { MARKETPLACE_MANIFEST_SCHEMA } from '../src/types/marketplace';
+} from '../src/server/automation/procedures/marketplace';
+import { MARKETPLACE_MANIFEST_SCHEMA } from '../src/types/shared/marketplace';
 import { createWorkspaceTestDb, seedWorkspace } from './helpers/workspace-db';
 
 describe('procedure marketplace', () => {

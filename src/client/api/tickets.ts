@@ -1,4 +1,4 @@
-import type { DraftAssistResult, TicketDraft } from '../types/tickets';
+import type { DraftAssistResult, TicketDraft } from '../../types/client/tickets';
 import { api } from './core';
 
 export const ticketApi = {

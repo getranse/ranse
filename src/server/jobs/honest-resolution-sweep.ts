@@ -1,5 +1,5 @@
 import type { Env } from '../env';
-import { sweepDueVerifications } from '../insights/honest-resolution';
+import { sweepDueVerifications } from '../platform/insights/honest-resolution';
 
 // Periodic sweep that promotes pending verified_resolution rows to verified
 // once their 7-day window closes with no rejection signal. The sweep is

@@ -4,13 +4,13 @@ import {
   listAdapters,
   resolveCustomerIdentity,
   tryGetAdapter,
-} from '../src/server/channels';
-import { slackAdapter } from '../src/server/channels/adapters/slack';
-import { smsAdapter } from '../src/server/channels/adapters/sms';
-import { telegramAdapter } from '../src/server/channels/adapters/telegram';
-import { whatsappAdapter } from '../src/server/channels/adapters/whatsapp';
-import { hmacSign } from '../src/server/lib/crypto';
-import type { PublicChannel } from '../src/types/channels';
+} from '../src/server/inbox/channels';
+import { slackAdapter } from '../src/server/inbox/channels/adapters/slack';
+import { smsAdapter } from '../src/server/inbox/channels/adapters/sms';
+import { telegramAdapter } from '../src/server/inbox/channels/adapters/telegram';
+import { whatsappAdapter } from '../src/server/inbox/channels/adapters/whatsapp';
+import { hmacSign } from '../src/lib/crypto';
+import type { PublicChannel } from '../src/types/shared/channels';
 import {
   addMember,
   createWorkspaceTestDb,

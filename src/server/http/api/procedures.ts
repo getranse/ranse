@@ -1,20 +1,19 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { apiError } from '../../lib/errors';
+import { apiError } from '../../../lib/errors';
 import {
   getProcedureLibraryItem,
   getProcedureLibraryManifest,
   getProcedureLibraryReadiness,
   installProcedureFromLibrary,
   listProcedureLibraryWithReadiness,
-} from '../../procedures/library';
+} from '../../automation/procedures/library';
 import {
   checkForUpdates,
   exportMarketplaceManifest,
   installFromManifestEntry,
   listMarketplaceInstalls,
-} from '../../procedures/marketplace';
-import { resumeProcedureRunner, startProcedureRunner } from '../../procedures/orchestration';
+} from '../../automation/procedures/marketplace';
+import { resumeProcedureRunner, startProcedureRunner } from '../../automation/procedures/orchestration';
 import {
   createProcedureRun,
   getActiveProcedure,
@@ -22,18 +21,14 @@ import {
   listProcedures,
   upsertProcedureVersion,
   updateRun,
-} from '../../procedures/storage';
+} from '../../actions/procedures';
 import { CAN_WORK_TICKETS, type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
-
-const runBodySchema = z.object({
-  ticket_id: z.string().min(1),
-  context: z.record(z.unknown()).optional(),
-});
-
-const resumeBodySchema = z.object({
-  event: z.enum(['customer_reply', 'approval_decided', 'manual_resume']),
-  payload: z.record(z.unknown()).optional(),
-});
+import {
+  marketplaceInstallBody,
+  resumeBodySchema,
+  runBodySchema,
+  upsertProcedureBody,
+} from '../../schemas/procedures';
 
 export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/procedures', async (c) => {
@@ -44,13 +39,7 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/procedures', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        spec: z.unknown(),
-        source_kind: z.enum(['api', 'git', 'seed']).optional(),
-        source_ref: z.string().max(500).nullable().optional(),
-      })
-      .parse(await c.req.json());
+    const body = upsertProcedureBody.parse(await c.req.json());
     try {
       const result = await upsertProcedureVersion(c.env, {
         workspaceId: s.workspaceId,
@@ -89,14 +78,7 @@ export function registerProcedureRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/procedures/marketplace/install', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        entry: z.unknown(),
-        source_manifest_url: z.string().url().optional(),
-        source_author: z.string().max(200).optional(),
-        source_repo: z.string().max(200).optional(),
-      })
-      .parse(await c.req.json());
+    const body = marketplaceInstallBody.parse(await c.req.json());
     try {
       const install = await installFromManifestEntry(c.env, {
         workspaceId: s.workspaceId,

@@ -1,13 +1,7 @@
-import { DEFAULT_SLA, findBreachingTickets } from '../agents/specialists/sla';
+import type { SLABreachAuditPayload } from '../../interfaces/jobs';
+import { DEFAULT_SLA, findBreachingTickets } from '../inbox/agents/specialists/sla';
 import type { Env } from '../env';
-import { audit } from '../lib/audit';
-
-interface SLABreachAuditPayload {
-  first_response_breached: boolean;
-  resolution_breached: boolean;
-  priority: string;
-  due_at: number;
-}
+import { audit } from '../actions/audit';
 
 /**
  * Iterates every workspace and emits audit events for any ticket whose SLA

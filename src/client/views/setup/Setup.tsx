@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { ProvisionStep } from '../../../types/provisioning';
-import type { AdminForm, MailboxForm, ProvisionForm, SetupChecks, SetupStep } from '../../../types/setup';
+import type { ProvisionStep } from '../../../types/shared/provisioning';
+import type { AdminForm, MailboxForm, ProvisionForm, SetupChecks, SetupStep } from '../../../types/shared/setup';
 import { API } from '../../api';
 import { AdminStep } from './AdminStep';
 import { DoneStep } from './DoneStep';

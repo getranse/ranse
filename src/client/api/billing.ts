@@ -1,4 +1,4 @@
-import type { OutcomeStatementResponse, PricingResponse } from '../types/billing';
+import type { OutcomeStatementResponse, PricingResponse } from '../../types/client/billing';
 import { api } from './core';
 
 export const billingApi = {

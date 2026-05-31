@@ -1,15 +1,6 @@
-import type { ProposedReply, ReplyEdits, TicketViewData } from '../../../types/ticket';
+import type { TicketApprovalCardProps } from '../../../interfaces/client';
+import type { ProposedReply, } from '../../../types/shared/ticket';
 import { AnswerInspection } from '../knowledge/AnswerInspection';
-
-interface TicketApprovalCardProps {
-  approval: TicketViewData['approvals'][number];
-  editing: boolean;
-  edits: ReplyEdits;
-  setEdits: (edits: ReplyEdits) => void;
-  onEdit: (proposed: ProposedReply) => void;
-  onApprove: (edits?: ReplyEdits) => Promise<void>;
-  onReject: () => Promise<void>;
-}
 
 export function TicketApprovalCard({
   approval,

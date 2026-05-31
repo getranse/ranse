@@ -1,4 +1,4 @@
-import type { AutonomyPolicy } from '../../../types/autonomy';
+import type { AutonomyPolicy } from '../../../types/shared/autonomy';
 
 export const MAILBOX_POLICY_OPTIONS: Array<{ value: AutonomyPolicy; label: string }> = [
   { value: 'draft_only', label: 'Draft only' },

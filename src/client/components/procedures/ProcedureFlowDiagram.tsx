@@ -1,19 +1,7 @@
+import type { ProcedureFlowDiagramProps, ShapeStyle } from '../../../interfaces/client';
 import { useMemo } from 'react';
-import type { DiagramEdge, DiagramNode } from '../../../server/procedures/diagram';
-import { layoutProcedure } from '../../../server/procedures/diagram';
-import type { ProcedureSpec } from '../../../types/procedure';
-
-// SVG renderer for a procedure flow. Pure data → DOM, no interactivity
-// beyond the operator hovering edges/nodes (tooltip is the node title
-// attribute). Layout math is `src/procedures/diagram.ts`; this file is
-// strictly presentation so the diagram is easy to swap for a richer
-// renderer later (mermaid, react-flow) without touching the spec-shape
-// contract.
-
-interface ProcedureFlowDiagramProps {
-  spec: ProcedureSpec;
-  maxHeight?: number;
-}
+import type { DiagramEdge, DiagramNode } from '../../../server/automation/procedures/diagram';
+import { layoutProcedure } from '../../../server/automation/procedures/diagram';
 
 const COLORS = {
   terminal: '#111827',
@@ -119,12 +107,6 @@ function renderNode(node: DiagramNode) {
       )}
     </g>
   );
-}
-
-interface ShapeStyle {
-  stroke: string;
-  strokeWidth: number;
-  fill: string;
 }
 
 function renderShape(node: DiagramNode, style: ShapeStyle) {

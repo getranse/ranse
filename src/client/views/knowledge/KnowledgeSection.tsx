@@ -1,4 +1,5 @@
-import { formatDateTime } from '../../lib/format';
+import type { KnowledgeSectionProps } from '../../../interfaces/client';
+import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
 import {
   API,
@@ -7,10 +8,6 @@ import {
   type KnowledgeSource,
 } from '../../api';
 import { AnswerInspection } from './AnswerInspection';
-
-interface KnowledgeSectionProps {
-  onSaved: (message?: string) => void;
-}
 
 export function KnowledgeSection({ onSaved }: KnowledgeSectionProps) {
   const [sources, setSources] = useState<KnowledgeSource[]>([]);

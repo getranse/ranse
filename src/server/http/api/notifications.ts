@@ -1,10 +1,10 @@
 import type { Context, Hono } from 'hono';
-import { z } from 'zod';
-import { ids } from '../../lib/ids';
-import { apiError } from '../../lib/errors';
-import { EVENTS, EVENT_NAMES, type EventName } from '../../notifications/events';
-import { CHANNEL_KINDS, getHandler, listHandlers } from '../../notifications/channels';
+import { ids } from '../../../lib/ids';
+import { apiError } from '../../../lib/errors';
+import { EVENTS, EVENT_NAMES } from '../../inbox/notifications/events';
+import { getHandler, listHandlers } from '../../inbox/notifications/channels';
 import { OWNER_OR_ADMIN, type Ctx, requireWorkspaceRole } from './context';
+import { createChannelBody, patchChannelBody } from '../../schemas/notifications';
 
 export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/notifications/meta', async (c) => c.json({
@@ -32,13 +32,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/notifications/channels', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      kind: z.enum(CHANNEL_KINDS as [string, ...string[]]),
-      target: z.string().min(1).max(2000),
-      events: z.array(z.enum(EVENT_NAMES as [EventName, ...EventName[]])).min(1),
-      label: z.string().max(100).optional(),
-      enabled: z.boolean().optional(),
-    }).parse(await c.req.json());
+    const body = createChannelBody.parse(await c.req.json());
 
     const handler = getHandler(body.kind)!;
     const validationError = handler.validateTarget(body.target);
@@ -57,11 +51,7 @@ export function registerNotificationRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.patch('/notifications/channels/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z.object({
-      enabled: z.boolean().optional(),
-      events: z.array(z.enum(EVENT_NAMES as [EventName, ...EventName[]])).min(1).optional(),
-      label: z.string().max(100).nullable().optional(),
-    }).parse(await c.req.json());
+    const body = patchChannelBody.parse(await c.req.json());
 
     const updates: string[] = [];
     const binds: any[] = [];

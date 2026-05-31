@@ -1,9 +1,9 @@
-import {
-  type HonestResolutionResponse,
-  type KnowledgeHealthResponse,
-  type OutcomeStatementResponse,
+import type {
+  HonestResolutionResponse,
+  KnowledgeHealthResponse,
+  OutcomeStatementResponse,
 } from '../../api';
-import { formatCents, formatPercent } from '../../lib/format';
+import { formatCents, formatPercent } from '../../../lib/format';
 import { Metric } from './Metric';
 
 export function KnowledgeHealthCard({ data }: { data: KnowledgeHealthResponse }) {

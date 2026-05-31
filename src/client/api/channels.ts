@@ -2,7 +2,7 @@ import type {
   PublicChannelEntry,
   PublicChannelInput,
   PublicChannelUpdate,
-} from '../types/channels';
+} from '../../types/client/channels';
 import { api } from './core';
 
 export const channelApi = {

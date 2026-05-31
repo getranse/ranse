@@ -1,5 +1,5 @@
-import type { EvalRunDetail } from '../../types/evals';
-import type { EvalCaseEntry, EvalRunEntry } from '../types/evals';
+import type { EvalRunDetail } from '../../types/shared/evals';
+import type { EvalCaseEntry, EvalRunEntry } from '../../types/client/evals';
 import { api } from './core';
 
 export const evalApi = {
