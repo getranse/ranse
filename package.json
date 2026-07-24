@@ -41,7 +41,7 @@
     "@base-ui-components/react": "^1.0.0-rc.0",
     "agents": "^0.11.4",
     "ai": "^5.0.0",
-    "cloudflare": "^5.2.0",
+    "cloudflare": "^7.0.0",
     "cmdk": "^1.1.1",
     "hono": "^4.12.14",
     "openai": "^6.34.0",
