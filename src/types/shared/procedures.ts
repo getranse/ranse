@@ -1,46 +1,16 @@
-import type {
-  ProcedureCondition,
-  ProcedureLibraryEntry,
-  ProcedureLibraryItem,
-  ProcedureLibraryManifest,
-  ProcedureLibraryMcpToolSpec,
-  ProcedureLibraryProvenance,
-  ProcedureLibraryReadiness,
-  ProcedureLibraryReadinessTool,
-  ProcedureLibraryStandards,
-  ProcedureListItem,
-  ProcedureRun,
-  ProcedureRunDetail,
-  ProcedureSimulationResult,
-  ProcedureSimulationStep,
-  ProcedureSpec,
-  ProcedureStepRun,
-  ProcedureTrigger,
-  ProcedureVersion,
-} from '../../interfaces/procedures';
+import type { ProcedureCondition } from '../../interfaces/procedures';
 
-export type {
-  ProcedureCondition,
-  ProcedureLibraryEntry,
-  ProcedureLibraryItem,
-  ProcedureLibraryManifest,
-  ProcedureLibraryMcpToolSpec,
-  ProcedureLibraryProvenance,
-  ProcedureLibraryReadiness,
-  ProcedureLibraryReadinessTool,
-  ProcedureLibraryStandards,
-  ProcedureListItem,
-  ProcedureRun,
-  ProcedureRunDetail,
-  ProcedureSimulationResult,
-  ProcedureSimulationStep,
-  ProcedureSpec,
-  ProcedureStepRun,
-  ProcedureTrigger,
-  ProcedureVersion,
-};
+// Structural procedure interfaces live in interfaces/procedures; this module
+// re-exports them beside the shared unions so consumers import one path.
+export type * from '../../interfaces/procedures';
 
 import type { KnowledgeSearchScope } from './knowledge';
+
+export type {
+  ProcedureEventType,
+  ProcedureRunStatus,
+  ProcedureStepRunStatus,
+} from './procedure-runs';
 
 export const PROCEDURE_TRIGGER_TYPES = ['manual', 'ticket_created', 'intent'] as const;
 export type ProcedureTriggerType = (typeof PROCEDURE_TRIGGER_TYPES)[number];
@@ -58,20 +28,6 @@ export type ProcedureLibraryCategory =
   | 'analytics'
   | 'docs'
   | 'admin';
-export type ProcedureRunStatus =
-  | 'queued'
-  | 'running'
-  | 'waiting'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
-export type ProcedureStepRunStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'skipped';
-export type ProcedureEventType =
-  | 'customer_reply'
-  | 'approval_decided'
-  | 'manual_resume'
-  | 'timeout';
-
 export type ProcedureStep =
   | {
       id: string;
