@@ -13,6 +13,11 @@ export const ticketApi = {
   untagTicket: (id: string, tagId: string) =>
     api<any>(`/api/tickets/${id}/tags/${tagId}`, { method: 'DELETE' }),
   macros: () => api<any>('/api/macros'),
+  mergeTicket: (id: string, sourceTicketId: string) =>
+    api<any>(`/api/tickets/${id}/merge`, {
+      method: 'POST',
+      body: JSON.stringify({ sourceTicketId }),
+    }),
   ticket: <T = any>(id: string) => api<T>(`/api/tickets/${id}`),
   setStatus: (id: string, status: string) =>
     api(`/api/tickets/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),

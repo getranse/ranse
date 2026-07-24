@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import type { TicketSidebarProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
 import { API, type ProcedureListEntry } from '../../api';
+import { AiDraftsToggle } from '../../components/tickets/AiDraftsToggle';
 import { CustomerMemoryDrawer } from '../../components/tickets/CustomerMemoryDrawer';
+import { MergeControl } from '../../components/tickets/MergeControl';
 import { TicketTags } from '../../components/tickets/TicketTags';
 
 export function TicketSidebar({
@@ -31,10 +33,6 @@ export function TicketSidebar({
     await onReload();
   }
 
-  function aiDraftsValue(enabled: number | null | undefined): string {
-    return enabled == null ? 'inherit' : enabled === 1 ? 'on' : 'off';
-  }
-
   return (
     <aside className="card">
       <strong>Status</strong>
@@ -54,22 +52,12 @@ export function TicketSidebar({
       </div>
       <TicketTags ticketId={ticket.id} />
       <h2 style={{ marginTop: 16 }}>AI auto-drafts</h2>
-      <div style={{ fontSize: 12, marginTop: 4 }}>
-        <select
-          value={aiDraftsValue(ticket.ai_drafts_enabled)}
-          onChange={async (e) => {
-            const value = e.target.value;
-            const enabled = value === 'inherit' ? null : value === 'on';
-            await API.setTicketAiDrafts(ticket.id, enabled);
-            await onReload();
-          }}
-          style={{ width: '100%', padding: 4 }}
-        >
-          <option value="inherit">Inherit workspace default</option>
-          <option value="on">On for this ticket</option>
-          <option value="off">Off for this ticket</option>
-        </select>
-      </div>
+      <AiDraftsToggle
+        ticketId={ticket.id}
+        enabled={ticket.ai_drafts_enabled}
+        onChanged={onReload}
+      />
+      <MergeControl ticketId={ticket.id} onMerged={onReload} />
       <h2 style={{ marginTop: 16 }}>Feedback</h2>
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         <button onClick={() => recordFeedback('positive')}>Helpful</button>

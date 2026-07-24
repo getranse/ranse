@@ -71,6 +71,7 @@ export const AUDIT_ACTIONS = {
   triage: { category: 'data', severity: 'info' },
   'ticket.triaged': { category: 'data', severity: 'info' },
   'ticket.internal_note': { category: 'data', severity: 'info' },
+  'ticket.merged': { category: 'data', severity: 'notice' },
   'ticket.feedback_recorded': { category: 'data', severity: 'info' },
   'ticket.ai_drafts_changed': { category: 'admin', severity: 'info' },
   escalation: { category: 'procedure', severity: 'notice' },
@@ -81,7 +82,6 @@ export const AUDIT_ACTIONS = {
   'honest_resolution.verified': { category: 'data', severity: 'info' },
   'honest_resolution.rejected': { category: 'data', severity: 'notice' },
   'automation.duplicate_skipped': { category: 'general', severity: 'info' },
-  // approvals
   'approval.created': { category: 'admin', severity: 'notice' },
   'approval.rejected': { category: 'admin', severity: 'notice' },
   create_approval: { category: 'admin', severity: 'notice' },
