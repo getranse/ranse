@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { apiApp } from '../src/server/http/api/routes';
 import { anonymizeValue, detectResidualPii } from '../src/server/automation/evals/anonymize';
 import { captureResolvedTicketEvalCase } from '../src/server/automation/evals/capture';
 import { runEvalSuite, runProcedureSpecEvals } from '../src/server/automation/evals/replay';
+import { apiApp } from '../src/server/http/api/routes';
 import {
   addMember,
   createWorkspaceTestDb,
@@ -65,6 +65,18 @@ function seedResolvedConversation(db: ReturnType<typeof createWorkspaceTestDb>['
      ) VALUES ('out_eval', 'ws_a', 'tkt_eval', 'resolved_autonomously', 'agent', '{}', 20)`,
   ).run();
 }
+
+const emptyRetrieval = async () => ({
+  hits: [],
+  trace: {
+    plan: { originalQuery: 'refund', scope: 'all' as const, subqueries: ['refund'], maxHops: 1 },
+    hops: [],
+    finalAnswerable: false,
+    stopReason: 'no_hits' as const,
+    startedAt: 1,
+    durationMs: 1,
+  },
+});
 
 describe('eval anonymization', () => {
   it('redacts stable customer identifiers without storing originals', () => {
@@ -132,43 +144,25 @@ describe('historical eval capture and replay', () => {
     await captureResolvedTicketEvalCase(env, 'ws_a', 'tkt_eval');
 
     const passing = await runEvalSuite(env, 'ws_a', {
-      retrievalRunner: async () => ({
-        hits: [],
-        trace: {
-          plan: { originalQuery: 'refund', scope: 'all', subqueries: ['refund'], maxHops: 1 },
-          hops: [],
-          finalAnswerable: false,
-          stopReason: 'no_hits',
-          startedAt: 1,
-          durationMs: 1,
-        },
-      }),
+      retrievalRunner: emptyRetrieval,
       draftRunner: async () => ({
         subject: 'Re: Refund for order 123',
         body_markdown:
           'Your refund for order 123 has been approved and should arrive within five business days.',
         tone: 'friendly',
+        language: 'en',
         cites_knowledge_ids: [],
         confidence: 0.9,
         needs_human_review_reasons: [],
       }),
     });
     const failing = await runEvalSuite(env, 'ws_a', {
-      retrievalRunner: async () => ({
-        hits: [],
-        trace: {
-          plan: { originalQuery: 'refund', scope: 'all', subqueries: ['refund'], maxHops: 1 },
-          hops: [],
-          finalAnswerable: false,
-          stopReason: 'no_hits',
-          startedAt: 1,
-          durationMs: 1,
-        },
-      }),
+      retrievalRunner: emptyRetrieval,
       draftRunner: async () => ({
         subject: 'Re: Refund for order 123',
         body_markdown: 'We cannot help with this.',
         tone: 'friendly',
+        language: 'en',
         cites_knowledge_ids: [],
         confidence: 0.9,
         needs_human_review_reasons: [],
@@ -210,6 +204,7 @@ describe('historical eval capture and replay', () => {
         body_markdown:
           'Hi, your refund for order 123 has been approved and should arrive within five business days.',
         tone: 'friendly',
+        language: 'en',
         cites_knowledge_ids: [],
         confidence: 0.9,
         needs_human_review_reasons: [],
@@ -223,6 +218,7 @@ describe('historical eval capture and replay', () => {
         subject: 'Re: Refund for order 123',
         body_markdown: 'Your refund has been approved and should arrive.',
         tone: 'friendly',
+        language: 'en',
         cites_knowledge_ids: [],
         confidence: 0.9,
         needs_human_review_reasons: [],

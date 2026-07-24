@@ -15,6 +15,10 @@ export const DraftResult = z.object({
   subject: z.string().default(''),
   body_markdown: z.string(),
   tone: z.enum(['friendly', 'formal', 'apologetic', 'informative']).default('friendly'),
+  language: z
+    .string()
+    .default('en')
+    .describe('ISO 639-1 code of the language the reply is written in'),
   cites_knowledge_ids: z.array(z.string()).default([]),
   confidence: z.number().min(0).max(1).default(0.5),
   needs_human_review_reasons: z.array(z.string()).default([]),

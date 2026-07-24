@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { autonomyRollout, decideAutonomy, scoreAutonomousDraft } from '../src/server/inbox/agents/supervisor/autonomy';
+import type { DraftResult } from '../src/server/inbox/agents/specialists/draft';
+import type { TriageResult } from '../src/server/inbox/agents/specialists/triage';
+import {
+  autonomyRollout,
+  decideAutonomy,
+  scoreAutonomousDraft,
+} from '../src/server/inbox/agents/supervisor/autonomy';
 import {
   normalizeAutonomyPolicy,
   normalizeAutonomyRolloutPercent,
   normalizeAutonomyThreshold,
-  type AutonomousDraftScore,
 } from '../src/types/shared/autonomy';
-import type { DraftResult } from '../src/server/inbox/agents/specialists/draft';
-import type { TriageResult } from '../src/server/inbox/agents/specialists/triage';
 import type { AgenticKnowledgeResult } from '../src/types/shared/knowledge';
 
 const triage: TriageResult = {
@@ -24,6 +27,7 @@ const draft: DraftResult = {
   subject: 'Re: Refund',
   body_markdown: 'You are eligible for a refund within 30 days.',
   tone: 'friendly',
+  language: 'en',
   cites_knowledge_ids: ['chunk_1'],
   confidence: 0.96,
   needs_human_review_reasons: [],
@@ -66,11 +70,8 @@ describe('mailbox autonomy policy', () => {
 
     expect(score.score).toBeGreaterThan(0.85);
     expect(score.riskReasons).toEqual([]);
-    expect(decideAutonomy({
-      policy: 'auto_send_if_confident',
-      threshold: 0.85,
-      score,
-    })).toEqual({ action: 'auto_send', reason: 'confidence_threshold_met' });
+    const decision = decideAutonomy({ policy: 'auto_send_if_confident', threshold: 0.85, score });
+    expect(decision).toEqual({ action: 'auto_send', reason: 'confidence_threshold_met' });
   });
 
   it('fails closed when evidence is insufficient', () => {
@@ -82,11 +83,8 @@ describe('mailbox autonomy policy', () => {
     });
 
     expect(score.hardBlockReasons).toContain('insufficient_evidence');
-    expect(decideAutonomy({
-      policy: 'auto_send_always',
-      threshold: 0.5,
-      score: score as AutonomousDraftScore,
-    }).action).toBe('create_approval');
+    const decision = decideAutonomy({ policy: 'auto_send_always', threshold: 0.5, score });
+    expect(decision.action).toBe('create_approval');
   });
 
   it('lets auto-send-always bypass score risks but not hard blockers', () => {
@@ -101,11 +99,8 @@ describe('mailbox autonomy policy', () => {
     });
 
     expect(score.riskReasons).toContain('low_llm_confidence');
-    expect(decideAutonomy({
-      policy: 'auto_send_always',
-      threshold: 0.99,
-      score,
-    })).toEqual({ action: 'auto_send', reason: 'auto_send_always' });
+    const decision = decideAutonomy({ policy: 'auto_send_always', threshold: 0.99, score });
+    expect(decision).toEqual({ action: 'auto_send', reason: 'auto_send_always' });
   });
 
   it('gates autonomous send by deterministic rollout percentage', () => {
@@ -113,11 +108,12 @@ describe('mailbox autonomy policy', () => {
     const score = scoreAutonomousDraft({ draft, triage, retrieval, now: 1_000 });
 
     expect(rollout.allowed).toBe(false);
-    expect(decideAutonomy({
+    const decision = decideAutonomy({
       policy: 'auto_send_if_confident',
       threshold: 0.5,
       rolloutAllowed: rollout.allowed,
       score,
-    })).toEqual({ action: 'create_approval', reason: 'outside_autonomy_rollout' });
+    });
+    expect(decision).toEqual({ action: 'create_approval', reason: 'outside_autonomy_rollout' });
   });
 });

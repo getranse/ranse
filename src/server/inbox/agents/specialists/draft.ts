@@ -1,8 +1,9 @@
-import type { Env } from '../../../env';
 import { infer } from '../../../../lib/llm/infer';
 import type { AgentConfig } from '../../../../types/server/llm';
 import type { KnowledgeHit } from '../../../../types/shared/knowledge';
+import type { Env } from '../../../env';
 import { DraftResult } from '../../../schemas/draft';
+
 export { DraftResult };
 
 export async function runDraft(params: {
@@ -35,12 +36,14 @@ Output a single JSON object with EXACTLY these fields and no others:
   "subject": string,           // Re: <original subject>
   "body_markdown": string,     // the reply, in markdown
   "tone": "friendly" | "formal" | "apologetic" | "informative",
+  "language": string,          // ISO 639-1 code of the language the reply is written in
   "cites_knowledge_ids": string[],   // ids you actually used; [] if none
   "confidence": number,        // 0..1
   "needs_human_review_reasons": string[]  // [] if none
 }
 
 Rules:
+- Write the reply in the customer's own language, and set "language" to its ISO 639-1 code.
 - Address the customer by first name if known.
 - Use brand voice if provided, otherwise warm and professional.
 - Only cite knowledge_ids you actually used.

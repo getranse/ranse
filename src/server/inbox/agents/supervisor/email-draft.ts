@@ -4,6 +4,7 @@ import { audit } from '../../../actions/audit';
 import { agenticSearchKnowledge, recordKnowledgeUsage } from '../../../automation/knowledge';
 import type { Env } from '../../../env';
 import { buildReplyAddress } from '../../email/reply-security';
+import { contentHardBlocks } from '../specialists/content-risk';
 import { type DraftResult, runDraft } from '../specialists/draft';
 import { runTriage, type TriageResult } from '../specialists/triage';
 import { tryAutoSend } from './auto-send';
@@ -14,6 +15,7 @@ import {
   scoreAutonomousDraft,
 } from './autonomy';
 import type { workspaceConfig } from './settings';
+import { markSpam, persistTriage } from './triage-persist';
 
 export async function triageAndDraft(
   ctx: {
@@ -76,6 +78,11 @@ export async function triageAndDraft(
   });
   const mailboxAutonomy = await loadMailboxAutonomy(ctx.env, ctx.workspaceId, payload.mailboxId);
   const autonomyScore = scoreAutonomousDraft({ draft, triage, retrieval });
+  // Content guardrails (injection, restricted topics, language mismatch)
+  // always force the approval path, whatever the confidence score says.
+  autonomyScore.hardBlockReasons.push(
+    ...contentHardBlocks(`${payload.subject}\n${payload.text}`, triage, draft),
+  );
   const rollout = autonomyRollout({
     mailboxId: payload.mailboxId,
     ticketId,
@@ -183,34 +190,6 @@ async function startIntentProcedures(
     },
     eventKey: `intent:${args.messageId}:${triage.category}`,
   });
-}
-
-async function persistTriage(
-  env: Env,
-  workspaceId: string,
-  ticketId: string,
-  triage: TriageResult,
-) {
-  await env.DB.prepare(
-    `UPDATE ticket SET category = ?, priority = ?, sentiment = ?, updated_at = ?
-      WHERE id = ? AND workspace_id = ?`,
-  )
-    .bind(triage.category, triage.priority, triage.sentiment, Date.now(), ticketId, workspaceId)
-    .run();
-  await audit(env, {
-    workspaceId,
-    ticketId,
-    actorType: 'agent',
-    actorId: 'triage',
-    action: 'ticket.triaged',
-    payload: triage as any,
-  });
-}
-
-async function markSpam(env: Env, workspaceId: string, ticketId: string) {
-  await env.DB.prepare(`UPDATE ticket SET status = 'spam' WHERE id = ? AND workspace_id = ?`)
-    .bind(ticketId, workspaceId)
-    .run();
 }
 
 export async function hasExistingResponseForSourceMessage(
