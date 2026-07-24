@@ -31,6 +31,10 @@
       "/public/*",
       "/forms/*",
       "/widget/*",
+      "/feedback",
+      "/feedback/*",
+      "/portal",
+      "/help/*",
       "/healthz"
     ]
   },
