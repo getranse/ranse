@@ -12,6 +12,7 @@ export const ticketApi = {
     api<any>(`/api/tickets/${id}/tags`, { method: 'POST', body: JSON.stringify({ tagId }) }),
   untagTicket: (id: string, tagId: string) =>
     api<any>(`/api/tickets/${id}/tags/${tagId}`, { method: 'DELETE' }),
+  macros: () => api<any>('/api/macros'),
   ticket: <T = any>(id: string) => api<T>(`/api/tickets/${id}`),
   setStatus: (id: string, status: string) =>
     api(`/api/tickets/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),

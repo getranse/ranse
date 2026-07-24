@@ -90,3 +90,10 @@ export interface Tag {
   color: string | null;
   created_at: number;
 }
+
+export interface Macro {
+  id: string;
+  name: string;
+  body: string;
+  created_at: number;
+}

@@ -3,6 +3,8 @@ import { formatDateTime } from '../../../lib/format';
 import type { ReplyEdits, TicketViewData } from '../../../types/shared/ticket';
 import { type AnswerInspectionHit, type AnswerInspectionTrace, API } from '../../api';
 import { DraftAssistPanel } from '../../components/tickets/DraftAssistPanel';
+import { MacroPicker } from '../../components/tickets/MacroPicker';
+import { MessageThread } from '../../components/tickets/MessageThread';
 import { AnswerInspection } from '../knowledge/AnswerInspection';
 import { TicketApprovalCard } from './TicketApprovalCard';
 import { TicketSidebar } from './TicketSidebar';
@@ -76,23 +78,7 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
           ))}
 
           <h2>Thread</h2>
-          <div className="thread">
-            {data.messages.map((m) => (
-              <div key={m.id} className={`msg ${m.direction}`}>
-                <div className="msg-header">
-                  <span>
-                    {m.direction === 'inbound'
-                      ? m.from_address
-                      : m.direction === 'outbound'
-                        ? `You → ${m.to_address}`
-                        : 'Internal note'}
-                  </span>
-                  <span>{formatDateTime(m.sent_at)}</span>
-                </div>
-                <div className="msg-body">{m.preview}</div>
-              </div>
-            ))}
-          </div>
+          <MessageThread messages={data.messages} />
 
           <h2>Reply</h2>
           <textarea
@@ -121,6 +107,14 @@ export function TicketView({ id, onBack }: { id: string; onBack: () => void }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <MacroPicker
+              vars={{
+                customer_email: ticket.requester_email,
+                customer_name: ticket.requester_name ?? ticket.requester_email,
+                ticket_subject: ticket.subject,
+              }}
+              onInsert={(body) => setReply((prev) => (prev.trim() ? `${prev}\n\n${body}` : body))}
+            />
             <button
               className="primary"
               disabled={!reply.trim() || sending}
