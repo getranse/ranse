@@ -6,7 +6,7 @@ Both. The wedge is "shared inbox with first-class AI assist + approvals." You ca
 
 ### Which LLM providers are supported?
 
-Out of the box: **Workers AI** (no setup), **OpenAI**, **Anthropic**, **Google AI Studio**, **Grok**, **OpenRouter**, and **Cerebras**. Add new ones by extending `src/llm/config.types.ts` `MODELS_MASTER`.
+Out of the box: **Workers AI** (no setup), **OpenAI**, **Anthropic**, **Google AI Studio**, **Grok**, **OpenRouter**, and **Cerebras**. Add new ones by extending `src/config/llm.ts` `MODELS_MASTER`.
 
 ### Does it work without any paid API keys?
 
@@ -30,7 +30,7 @@ Yes, in R2 under `raw/{workspaceId}/{mailboxId}/{messageId}.eml`. This preserves
 
 ### Can I contribute a new specialist agent?
 
-Yes — add a file under `src/agents/specialists/`, export a Zod schema + runner function, wire it into the supervisor where it fits in the event flow. PRs welcome.
+Yes — add a file under `src/server/inbox/agents/specialists/`, export a Zod schema + runner function, wire it into the supervisor where it fits in the event flow. PRs welcome.
 
 ### What's the relationship between Ranse (OSS) and getranse.com (SaaS)?
 

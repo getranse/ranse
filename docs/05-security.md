@@ -68,7 +68,7 @@ Every state change writes an `audit_event`:
 - `approval.created`, `approval.rejected`, `reply.sent`
 - `workspace.created`, `mailbox.created`
 
-Events are immutable (append-only). D1 TTL is currently unbounded; configure a retention policy in `wrangler.jsonc` (Phase 3).
+Events are immutable (append-only) and hash-chained. Retention is opt-in: set the `AUDIT_RETENTION_DAYS` env var to a positive number of days and the weekly sweep purges an old prefix (the retained suffix still verifies); unset keeps events forever.
 
 ## BYOK (per-workspace API keys)
 

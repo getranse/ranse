@@ -16,7 +16,7 @@ Every phase below is derived from one of these. If a feature doesn't connect bac
 Every byte — tickets, KB chunks, embeddings, prompts, traces — stays inside the customer's own Cloudflare account. With Workers AI a workspace can run **zero third-party LLM providers**. This is the only viable answer for EU, healthcare, finance, gov, and any buyer with a procurement team. Fin's architecture cannot offer this.
 
 ### 2. Per-step model choice
-LLM calls go through `src/llm/` and the AI Gateway `/compat` endpoint. That means a workspace picks the model **per agent step**: Haiku for triage classification, Opus for multi-turn procedures, Workers AI Llama for routine drafts, OpenRouter for everything else. Cost and quality optimization that's structurally impossible on a closed-stack agent locked to one in-house model.
+LLM calls go through `src/lib/llm/` and the AI Gateway `/compat` endpoint. That means a workspace picks the model **per agent step**: Haiku for triage classification, Opus for multi-turn procedures, Workers AI Llama for routine drafts, OpenRouter for everything else. Cost and quality optimization that's structurally impossible on a closed-stack agent locked to one in-house model.
 
 ### 3. Procedures as code, not as UI
 Procedures live as YAML/TS files in the workspace's own repo, committed and PR-reviewed. Diff'able, testable, rollback-able, code-reviewable by the people who actually understand the business logic — engineers. Fin's procedures are trapped in their authoring UI; ours are first-class git artifacts.
@@ -35,7 +35,7 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 ## Where we are
 
-**Phase 0 — Bootstrap** is shipped. One-click deploy, setup wizard, inbound email via Email Routing, `WorkspaceSupervisorAgent` DO orchestrating `triage → knowledge → draft → approval`, multi-provider LLM dispatcher (`src/llm/`), human approval gate before send, notification channels (`src/notifications/`).
+**Phase 0 — Bootstrap** is shipped. One-click deploy, setup wizard, inbound email via Email Routing, `WorkspaceSupervisorAgent` DO orchestrating `triage → knowledge → draft → approval`, multi-provider LLM dispatcher (`src/lib/llm/`), human approval gate before send, notification channels (`src/server/inbox/notifications/`).
 
 **Phase 1 — Retrieval foundations** is shipped. Workspaces get a Vectorize-backed knowledge index with Workers AI embeddings, manual sources, help-center URL crawling, PDF uploads stored in R2, resolved-ticket import, two-stage retrieve → rerank with a per-workspace reranker override, Content Library freshness/duplicate/usage signals, and Answer Inspection on drafts.
 
@@ -63,7 +63,7 @@ Most "AI agent" tools are chat shaped and bolt email on. Real B2B support lives 
 
 That's now equivalent or ahead of Fin on every customer-visible axis — and ahead structurally because the same buyer self-hosts it on their own Cloudflare account with multi-provider LLM routing, MCP-native actions, evals against their actual ticket history, and a forkable procedure library no closed SaaS can replicate.
 
-**Phase 11 — 100 steps ahead of Fin** is in progress. Seven moves that turn structural advantages into features Fin cannot match: Honest Resolution metric (verified-by-customer, no forced closes), outcome-based pricing instrument (cost-per-verified-resolution ledger), MCP Action Library (20+ first-party templates covering refund / address edit / subscription pause / etc.), public procedure marketplace with attribution + fingerprints, customer-facing decision trace ("Why this answer?" public link), knowledge staleness as a first-class retrieval signal, and the proactive resolution loop (cluster → draft procedure + KB → eval-gated → one-click publish). The full plan is in the Phase 11 section below.
+**Phase 11 — 100 steps ahead of Fin** is shipped. Seven moves that turn structural advantages into features Fin cannot match: Honest Resolution metric (verified-by-customer, no forced closes), outcome-based pricing instrument (cost-per-verified-resolution ledger), MCP Action Library (20+ first-party templates covering refund / address edit / subscription pause / etc.), public procedure marketplace with attribution + fingerprints, customer-facing decision trace ("Why this answer?" public link), knowledge staleness as a first-class retrieval signal, and the proactive resolution loop (cluster → draft procedure + KB → eval-gated → one-click publish). The full plan is in the Phase 11 section below.
 
 ## Phase 1 — Retrieval foundations
 **Status: shipped.**
@@ -223,7 +223,7 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 
 *Principle 7 — email is the wedge; other channels are derivatives*
 
-Channels are now plug-and-play behind a single `ChannelAdapter` contract (`src/channels/adapters/`). Adding a new built-in channel is one adapter file (signature verify, ingress parse, egress send, capability map, optional `onActivate` to register the webhook with the provider) plus one line in `adapters/index.ts`. Adapter config lives in `public_channel.config_json` so new channels do not require schema migrations.
+Channels are now plug-and-play behind a single `ChannelAdapter` contract (`src/server/inbox/channels/adapters/`). Adding a new built-in channel is one adapter file (signature verify, ingress parse, egress send, capability map, optional `onActivate` to register the webhook with the provider) plus one line in `adapters/index.ts`. Adapter config lives in `public_channel.config_json` so new channels do not require schema migrations.
 
 **Shipped surfaces:**
 
@@ -267,16 +267,16 @@ The four highest-leverage gaps Fin had over Ranse before this phase. All four sh
 - **Real-time draft assist** (`/api/tickets/:id/draft-assist`). Operator types in the reply composer; the endpoint returns a one-sentence completion (ghost text) plus 4 KB hits and 3 similar past resolved tickets. Uses the fast `summarize` action — never blocks on the agentic retrieval loop — so p95 stays low enough for keystroke cadence. KB grounding is the same vector pipeline drafts use, so suggestions are workspace-private.
 - **Long-term customer memory.** `customer_memory` table holds distilled durable facts about a customer (account type, preferences, prior complaints, communication style) extracted by an LLM after each resolved ticket. Memory injects into every procedure run as `customer.memory[]`, the draft generator reads it, and operators can list/edit/redact via `/api/memory/customers/:id`. The extractor is conservative — facts below 0.4 confidence are dropped, sensitive PII is explicitly prohibited, and operator-authored entries can never be overwritten by inference.
 - **Operations dashboards.** `/api/insights/operations` returns resolution rate, autonomous-resolution rate, procedure-resolution rate, deflection rate, time-to-first-response p50/p90, time-to-resolution p50/p90, CSAT score, follow-up rate, and ticket volume broken out by `origin_channel_kind`. All computed from existing tables — no new ingest pipeline.
-- **Procedure flow diagram.** `layoutProcedure(spec)` is a pure data transform from `ProcedureSpec` to `{ nodes, edges, width, height }`. The `ProcedureFlowDiagram` React component (`src/ui/components/ProcedureFlowDiagram.tsx`) renders it as SVG with decision diamonds for `if`, IO parallelograms for `ask_customer` / `wait_for_event`, rectangles for `call_action` / `add_note` / `set_ticket_field`, double-stroke loop containers, approval-gate badges on write actions, and yes/no labels on `if` edges. Live-previewed in the Procedures settings tab as the operator edits the JSON spec. Procedures stay code-first (Principle 3); the diagram is the read-only view non-engineers can review.
+- **Procedure flow diagram.** `layoutProcedure(spec)` is a pure data transform from `ProcedureSpec` to `{ nodes, edges, width, height }`. The `ProcedureFlowDiagram` React component (`src/client/components/procedures/ProcedureFlowDiagram.tsx`) renders it as SVG with decision diamonds for `if`, IO parallelograms for `ask_customer` / `wait_for_event`, rectangles for `call_action` / `add_note` / `set_ticket_field`, double-stroke loop containers, approval-gate badges on write actions, and yes/no labels on `if` edges. Live-previewed in the Procedures settings tab as the operator edits the JSON spec. Procedures stay code-first (Principle 3); the diagram is the read-only view non-engineers can review.
 
 ### UI components shipped
 
 | Component | Location | Wired into |
 |---|---|---|
-| `DraftAssistPanel` | `src/ui/components/DraftAssistPanel.tsx` | `Ticket.tsx` reply composer |
-| `OperationsDashboard` | `src/ui/components/OperationsDashboard.tsx` | `Insights.tsx` (top of view) |
-| `CustomerMemoryDrawer` | `src/ui/components/CustomerMemoryDrawer.tsx` | `TicketSidebar.tsx` when `ticket.customer_id` is set |
-| `ProcedureFlowDiagram` | `src/ui/components/ProcedureFlowDiagram.tsx` | `ProceduresSection.tsx` live spec preview |
+| `DraftAssistPanel` | `src/client/components/tickets/DraftAssistPanel.tsx` | `Ticket.tsx` reply composer |
+| `OperationsDashboard` | `src/client/components/insights/OperationsDashboard.tsx` | `Insights.tsx` (top of view) |
+| `CustomerMemoryDrawer` | `src/client/components/tickets/CustomerMemoryDrawer.tsx` | `TicketSidebar.tsx` when `ticket.customer_id` is set |
+| `ProcedureFlowDiagram` | `src/client/components/procedures/ProcedureFlowDiagram.tsx` | `ProceduresSection.tsx` live spec preview |
 
 ## Phase 10.1 — Theme and onboarding
 **Status: shipped.**
@@ -290,7 +290,7 @@ The four highest-leverage gaps Fin had over Ranse before this phase. All four sh
 
 ## Phase 11 — 100 steps ahead of Fin
 
-> **Status: in progress.** Phase 11 is the first phase where Ranse stops chasing Fin's surface area and starts shipping the features Fin *structurally cannot*. The capability map after Phase 10 already covered every customer-visible axis Fin has. Phase 11 is the wedge.
+> **Status: shipped.** Phase 11 is the first phase where Ranse stops chasing Fin's surface area and starts shipping the features Fin *structurally cannot*. The capability map after Phase 10 already covered every customer-visible axis Fin has. Phase 11 is the wedge.
 
 ### The seven moves
 
@@ -298,13 +298,13 @@ Each move is grounded in a documented Fin / category pain point and maps to exis
 
 | # | Move | Pain solved | Foundation |
 |---|------|------------|------------|
-| 1 | Honest Resolution metric | Forced-close counting, 38% vs 50% reality gap | `src/lib/outcomes.ts`, `src/insights/operations.ts` |
+| 1 | Honest Resolution metric | Forced-close counting, 38% vs 50% reality gap | `src/lib/outcomes.ts`, `src/server/platform/insights/operations.ts` |
 | 2 | Outcome-based pricing instrument | $0.99/resolution unpredictability, perverse incentives | `ticket_outcome_event`, `workspace_outcome_daily` |
-| 3 | MCP Action Library (20+) | Fin explains but cannot fix (refunds, addresses, subs) | `src/mcp/first-party/catalog.ts` |
+| 3 | MCP Action Library (20+) | Fin explains but cannot fix (refunds, addresses, subs) | `src/server/automation/mcp/first-party/catalog.ts` |
 | 4 | Public procedure marketplace | Vendor lock-in, slow content velocity | `src/server/automation/procedures/library*` |
 | 5 | Customer-facing decision trace | 74% rollback rate driven by trust failure | `src/lib/audit.ts`, Answer Inspection |
-| 6 | Knowledge staleness signal | Stale KB silently kills resolution rate | `src/insights/` drift, `knowledge_source` |
-| 7 | Proactive resolution loop | Reactive ceiling; no competitor closes this loop | `src/insights/`, procedures, evals |
+| 6 | Knowledge staleness signal | Stale KB silently kills resolution rate | `src/server/platform/insights/` drift, `knowledge_source` |
+| 7 | Proactive resolution loop | Reactive ceiling; no competitor closes this loop | `src/server/platform/insights/`, procedures, evals |
 
 ### Move 1 — Honest Resolution metric
 
@@ -337,7 +337,7 @@ verified_resolution
 ```
 
 #### Service
-`src/insights/honest-resolution.ts`
+`src/server/platform/insights/honest-resolution.ts`
 - `enqueueVerification(env, ticket, aiMessage)` — called when an autonomous or procedure reply lands. Inserts a `pending` row with `window_closes_at = now + 7d`.
 - `rejectVerification(env, ticketId, reason)` — called on human reply / escalation / negative feedback / follow-up signal. Idempotent.
 - `sweepDueVerifications(env, workspaceId)` — promotes pending rows whose window closed and have no rejection.
@@ -350,7 +350,7 @@ verified_resolution
 `OperationsDashboard` gets a second resolution card showing both rates side by side, with a small explainer popover. Marketing surface: same component renders on a public benchmarks page for opted-in workspaces.
 
 #### Cron
-Sweep on the existing 5-minute scheduled tick (`src/jobs/scheduled.ts`). Already runs SLA + cascade + dispatch sweeps; verification sweep is one more call.
+Sweep on the existing 5-minute scheduled tick (`src/server/jobs/scheduled.ts`). Already runs SLA + cascade + dispatch sweeps; verification sweep is one more call.
 
 #### Tests
 - AI auto-send + no reply for 8 days → verified
@@ -401,7 +401,7 @@ outcome_ledger_entry
 All editable per workspace. Stored as a single JSON blob to avoid migrations when we add an outcome kind.
 
 #### Service
-`src/billing/outcomes.ts`
+`src/server/platform/billing/outcomes.ts`
 - `recordLedgerEntry(env, …)` — called from outcome hooks
 - `loadPricing(env, workspaceId)` — with defaults fallback
 - `computeOutcomeStatement(env, workspaceId, windowDays)` — returns `{ entries, totals, cost_per_verified_resolution, roi_ratio, breakdown }`
@@ -429,7 +429,7 @@ All editable per workspace. Stored as a single JSON blob to avoid migrations whe
 75–80% of action-requiring tickets still escalate. Fin "explains, doesn't fix" — it can describe an order but cannot edit a shipping address, process a refund, or pause a subscription. This is a category-level gap. Ranse already supports MCP-native actions but ships only 5 first-party templates.
 
 #### Scope
-Expand `src/mcp/first-party/catalog.ts` from 5 to 20 templates covering the highest-leverage support actions across ecom, SaaS, identity, and ops. Each template includes:
+Expand `src/server/automation/mcp/first-party/catalog.ts` from 5 to 20 templates covering the highest-leverage support actions across ecom, SaaS, identity, and ops. Each template includes:
 
 1. Entry in `FIRST_PARTY_MCP_TEMPLATES`
 2. Tool-contract JSON (`src/server/automation/procedures/library-mcp-tools.ts` extension)
@@ -577,7 +577,7 @@ No new table needed — the trace is computed at render time from existing rows:
 ### Move 6 — Knowledge staleness signal
 
 #### Problem
-Builts AI's 500-ticket test pinpointed stale KB as the silent killer: "Fin gave a technically correct answer to the wrong question, or pulled from an article that was accurate six months ago." Our `src/insights/` already detects drift; the move is to make staleness a **first-class retrieval signal** that down-ranks stale chunks and a **Knowledge Health Score** on the dashboard.
+Builts AI's 500-ticket test pinpointed stale KB as the silent killer: "Fin gave a technically correct answer to the wrong question, or pulled from an article that was accurate six months ago." Our `src/server/platform/insights/` already detects drift; the move is to make staleness a **first-class retrieval signal** that down-ranks stale chunks and a **Knowledge Health Score** on the dashboard.
 
 #### Definition
 A chunk's `staleness_score` ∈ [0, 1] is computed from:
@@ -608,7 +608,7 @@ knowledge_chunk_override
 ```
 
 #### Retrieval integration
-`src/knowledge/search.ts` rerank step multiplies the retrieval score by `(1 - source.staleness_score * 0.5)`. A staleness of 1.0 halves the score — never zeros it (still surface for operator review).
+`src/server/automation/knowledge/search.ts` rerank step multiplies the retrieval score by `(1 - source.staleness_score * 0.5)`. A staleness of 1.0 halves the score — never zeros it (still surface for operator review).
 
 #### Health score
 `workspace_knowledge_health` view:
@@ -618,7 +618,7 @@ knowledge_chunk_override
 - "Health grade" A–F mapping from average
 
 #### Cron
-Weekly maintenance job already exists in `src/jobs/scheduled.ts` — append `recomputeStalenessScores`.
+Weekly maintenance job already exists in `src/server/jobs/scheduled.ts` — append `recomputeStalenessScores`.
 
 #### UI
 - Content Library shows a staleness chip per source with mouse-over component breakdown
@@ -643,7 +643,7 @@ Every competitor is reactive. Insights detect unresolved-intent clusters but hum
 ```
 weekly cron (existing)
   ↓
-src/insights/proactive.ts
+src/server/platform/insights/proactive.ts
   detectClusters()        # already exists via generateKbSuggestions
   ↓
   for each cluster:
@@ -680,7 +680,7 @@ proactive_proposal
 ```
 
 #### Service
-`src/insights/proactive.ts`
+`src/server/platform/insights/proactive.ts`
 - `discoverProposals(env, workspaceId)` — runs after cluster detection
 - `evaluateProposal(env, workspaceId, proposalId)`
 - `listProposals(env, workspaceId, status?)`

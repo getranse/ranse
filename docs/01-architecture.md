@@ -11,7 +11,7 @@ Ranse is a single Cloudflare Worker app with four Durable Object classes, struct
 
 ## Specialist sub-agents
 
-Function-based, not DOs. They live in `src/agents/specialists/` and return structured results via Zod-validated JSON schemas:
+Function-based, not DOs. They live in `src/server/inbox/agents/specialists/` and return structured results via Zod-validated JSON schemas:
 
 - `triage` — category, priority, sentiment, language, spam detection.
 - `summarize` — thread summary + next-step hint.
@@ -72,7 +72,7 @@ exports/{workspaceId}/{exportId}.zip
 
 ## Multi-provider LLM
 
-All LLM calls funnel through `src/llm/infer.ts` → `src/llm/core.ts`. Provider choice is carried in the model name string (`anthropic/claude-sonnet-4-6`, `openai/gpt-4o`, `workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast`, etc.).
+All LLM calls funnel through `src/lib/llm/infer.ts` → `src/lib/llm/core.ts`. Provider choice is carried in the model name string (`anthropic/claude-sonnet-4-6`, `openai/gpt-4o`, `workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast`, etc.).
 
 Resolution precedence for API keys:
 1. Per-request runtime override (from `UserSecretsStore`)
@@ -189,7 +189,7 @@ Public channels are derivatives of the ticket model, not a separate inbox. A cha
 
 ## Channel adapters (Phase 9.1)
 
-Every async surface — chat widget, hosted form, Slack, SMS, Discord, Telegram, WhatsApp — implements the same `ChannelAdapter` contract in `src/channels/adapters/`:
+Every async surface — chat widget, hosted form, Slack, SMS, Discord, Telegram, WhatsApp — implements the same `ChannelAdapter` contract in `src/server/inbox/channels/adapters/`:
 
 ```ts
 interface ChannelAdapter {
@@ -239,7 +239,7 @@ sendThreadedReply
 Identity stitching:
 
 - One row in `customer` per person; one row in `channel_identity` per (channel, external_id).
-- Stitching is conservative: when an ingress payload carries an email or phone that already exists on another identity (or on a customer's primary contact), we reuse that customer; otherwise we open a fresh customer. Operators can manually merge in the UI later.
+- Stitching is conservative: when an ingress payload carries an email or phone that already exists on another identity (or on a customer's primary contact), we reuse that customer; otherwise we open a fresh customer. Manual merge from the UI is planned but not yet implemented.
 - This is what gives the operator a single chronological history when the same person reaches out over email today and SMS tomorrow.
 
 Capabilities + procedures:
@@ -250,9 +250,9 @@ Capabilities + procedures:
 
 Adding a new channel:
 
-1. Implement `ChannelAdapter` in `src/channels/adapters/<kind>.ts` (capability map, signature verify, parse, egress).
-2. Register it in `src/channels/adapters/index.ts`.
-3. Add the kind to `ChannelKind` and `PUBLIC_CHANNEL_KINDS` in `src/types/channels.ts`.
+1. Implement `ChannelAdapter` in `src/server/inbox/channels/adapters/<kind>.ts` (capability map, signature verify, parse, egress).
+2. Register it in `src/server/inbox/channels/adapters/index.ts`.
+3. Add the kind to `ChannelKind` and `PUBLIC_CHANNEL_KINDS` in `src/types/server/channels.ts`.
 4. Add the kind to the settings UI's `CHANNEL_KINDS` and `CONFIG_FIELDS` map.
 
 No schema migration is needed — config is opaque JSON the adapter validates.
@@ -291,9 +291,9 @@ Capability flags exposed to procedures: `supportsVoice`, `supportsStreaming`, `s
 
 Adding a new voice provider:
 
-1. Implement `VoiceProviderModule` in `src/channels/voice/providers/<kind>.ts` (`validateConfig`, `verifyEvent`, `parseEvent`, optionally `answerCall` + `handleStream`).
-2. Register it in `src/channels/voice/index.ts`.
-3. Add the provider kind to `VoiceProviderKind` and `VOICE_PROVIDER_KINDS` in `src/types/channels.ts`.
+1. Implement `VoiceProviderModule` in `src/server/inbox/channels/voice/providers/<kind>.ts` (`validateConfig`, `verifyEvent`, `parseEvent`, optionally `answerCall` + `handleStream`).
+2. Register it in `src/server/inbox/channels/voice/index.ts`.
+3. Add the provider kind to `VoiceProviderKind` and `VOICE_PROVIDER_KINDS` in `src/types/server/channels.ts`.
 4. Add a UI option entry to `PublicChannelsSection.tsx` (`KIND_OPTIONS` + `CONFIG_FIELDS`).
 
 No schema migration required.

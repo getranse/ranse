@@ -59,7 +59,7 @@ Inbound email
                                              env.EMAIL.send
 ```
 
-All LLM calls go through a single dispatcher (`src/llm/`) that uses the OpenAI SDK and the Cloudflare AI Gateway `/compat` endpoint, so switching providers is a one-line config change per agent action.
+All LLM calls go through a single dispatcher (`src/lib/llm/`) that uses the OpenAI SDK and the Cloudflare AI Gateway `/compat` endpoint, so switching providers is a one-line config change per agent action.
 
 ## Docs
 
