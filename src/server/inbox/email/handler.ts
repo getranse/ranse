@@ -1,13 +1,18 @@
-import { getAgentByName } from 'agents';
 import type { ForwardableEmailMessage } from '@cloudflare/workers-types';
+import { getAgentByName } from 'agents';
+import { ids } from '../../../lib/ids';
+import { putRaw, r2Keys } from '../../../lib/storage';
+import type { InboundEmailPayload } from '../../../types/shared/supervisor';
+import { processInboundBounce } from '../../actions/suppression';
 import type { Env } from '../../env';
+import { detectBounce } from './bounce';
 import { parseInbound } from './parsing';
 import { resolveMailboxForRecipients } from './routing';
-import { ids } from '../../../lib/ids';
-import { r2Keys, putRaw } from '../../../lib/storage';
-import type { InboundEmailPayload } from '../../../types/shared/supervisor';
 
-export async function handleEmailMessage(message: ForwardableEmailMessage, env: Env): Promise<void> {
+export async function handleEmailMessage(
+  message: ForwardableEmailMessage,
+  env: Env,
+): Promise<void> {
   const rlKey = `ingest:${message.from}`;
   const rl = await env.RATE_LIMIT_INGEST?.limit({ key: rlKey }).catch(() => ({ success: true }));
   if (rl && !rl.success) {
@@ -24,6 +29,18 @@ export async function handleEmailMessage(message: ForwardableEmailMessage, env: 
   const parsed = await parseInbound(message);
   const rawKey = r2Keys.rawEmail(routed.workspaceId, routed.mailboxId, parsed.messageId);
   await putRaw(env, rawKey, parsed.rawBytes, 'message/rfc822');
+
+  // Bounces are suppressed + audited, then ingested with the auto-reply flag
+  // so the thread shows the failure but triage/draft never answers a
+  // mailer-daemon. Suppression failure must not lose the inbound message.
+  const bounce = detectBounce(parsed);
+  if (bounce) {
+    await processInboundBounce(env, {
+      workspaceId: routed.workspaceId,
+      ticketId: routed.ticketId ?? null,
+      bounce,
+    }).catch((err) => console.warn('failed to process bounce', err));
+  }
 
   for (const att of parsed.attachments) {
     const attId = ids.message();
@@ -52,12 +69,15 @@ export async function handleEmailMessage(message: ForwardableEmailMessage, env: 
     messageId: parsed.messageId,
     inReplyTo: parsed.inReplyTo,
     references: parsed.references,
-    isAutoReply: parsed.isAutoReply,
+    isAutoReply: parsed.isAutoReply || bounce !== null,
     rawKey,
     receivedAt: Date.now(),
     attachmentCount: parsed.attachments.length,
   };
 
-  const supervisorStub = await getAgentByName(env.WorkspaceSupervisorAgent as never, routed.workspaceId);
+  const supervisorStub = await getAgentByName(
+    env.WorkspaceSupervisorAgent as never,
+    routed.workspaceId,
+  );
   await (supervisorStub as any).ingestEmail(payload);
 }

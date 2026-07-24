@@ -85,7 +85,7 @@
   "src/server/inbox/agents/WorkspaceSupervisorAgent.ts": 258,
   "src/server/inbox/agents/specialists/assist.ts": 157,
   "src/server/inbox/agents/supervisor/autonomy.ts": 186,
-  "src/server/inbox/agents/supervisor/email-draft.ts": 324,
+  "src/server/inbox/agents/supervisor/email-draft.ts": 269,
   "src/server/inbox/agents/supervisor/email-ingest.ts": 234,
   "src/server/inbox/agents/supervisor/replies.ts": 279,
   "src/server/inbox/agents/supervisor/settings.ts": 141,

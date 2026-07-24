@@ -6,6 +6,15 @@ export interface CfEnvelope<T> {
 
 // Reply/signature interfaces live in ./replies.ts.
 
+export interface BounceInfo {
+  /** hard = permanent failure (5.x.x), soft = transient (4.x.x). */
+  kind: 'hard' | 'soft';
+  /** Failed recipient extracted from the DSN, if present. */
+  recipient: string | null;
+  /** RFC 3463 status code (e.g. 5.1.1), if present. */
+  status: string | null;
+}
+
 /**
  * Build a multipart/alternative raw MIME message. text/plain part comes
  * first (per RFC 2046 — clients that prefer plain text get the simpler

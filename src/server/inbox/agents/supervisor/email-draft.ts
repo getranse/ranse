@@ -1,15 +1,18 @@
-import type { Env } from '../../../env';
-import { buildReplyAddress } from '../../email/reply-security';
-import { captureResolvedTicketEvalCase } from '../../../automation/evals/capture';
+import type { InboundEmailPayload, SendThreadedReply } from '../../../../types/shared/supervisor';
 import { createApproval } from '../../../actions/approvals';
 import { audit } from '../../../actions/audit';
-import { recordOutcome } from '../../../platform/outcomes';
-import { enqueueVerification } from '../../../platform/insights/honest-resolution';
 import { agenticSearchKnowledge, recordKnowledgeUsage } from '../../../automation/knowledge';
-import type { InboundEmailPayload, SendThreadedReply } from '../../../../types/shared/supervisor';
-import { runDraft, type DraftResult } from '../specialists/draft';
+import type { Env } from '../../../env';
+import { buildReplyAddress } from '../../email/reply-security';
+import { type DraftResult, runDraft } from '../specialists/draft';
 import { runTriage, type TriageResult } from '../specialists/triage';
-import { autonomyRollout, decideAutonomy, loadMailboxAutonomy, scoreAutonomousDraft } from './autonomy';
+import { tryAutoSend } from './auto-send';
+import {
+  autonomyRollout,
+  decideAutonomy,
+  loadMailboxAutonomy,
+  scoreAutonomousDraft,
+} from './autonomy';
 import type { workspaceConfig } from './settings';
 
 export async function triageAndDraft(
@@ -23,7 +26,9 @@ export async function triageAndDraft(
   args: { ticketId: string; messageId: string; payload: InboundEmailPayload },
 ) {
   const { ticketId, payload } = args;
-  if (await hasExistingResponseForSourceMessage(ctx.env, ctx.workspaceId, ticketId, args.messageId)) {
+  if (
+    await hasExistingResponseForSourceMessage(ctx.env, ctx.workspaceId, ticketId, args.messageId)
+  ) {
     await audit(ctx.env, {
       workspaceId: ctx.workspaceId,
       ticketId,
@@ -102,7 +107,9 @@ export async function triageAndDraft(
   };
 
   if (decision.action === 'auto_send') {
-    if (await hasExistingResponseForSourceMessage(ctx.env, ctx.workspaceId, ticketId, args.messageId)) {
+    if (
+      await hasExistingResponseForSourceMessage(ctx.env, ctx.workspaceId, ticketId, args.messageId)
+    ) {
       await ctx.refreshCounts();
       return;
     }
@@ -141,7 +148,12 @@ export async function triageAndDraft(
     actorType: 'agent',
     actorId: 'draft',
     action: 'approval.created',
-    payload: { confidence: draft.confidence, tone: draft.tone, autonomyScore: autonomyScore.score, riskReasons: risks },
+    payload: {
+      confidence: draft.confidence,
+      tone: draft.tone,
+      autonomyScore: autonomyScore.score,
+      riskReasons: risks,
+    },
   });
   await ctx.refreshCounts();
 }
@@ -154,7 +166,9 @@ async function startIntentProcedures(
   args: { ticketId: string; messageId: string; payload: InboundEmailPayload },
   triage: TriageResult,
 ) {
-  const { startTriggeredProcedureRuns } = await import('../../../automation/procedures/orchestration');
+  const { startTriggeredProcedureRuns } = await import(
+    '../../../automation/procedures/orchestration'
+  );
   await startTriggeredProcedureRuns(ctx.env, ctx.workspaceId, {
     ticketId: args.ticketId,
     trigger: { type: 'intent', category: triage.category },
@@ -171,7 +185,12 @@ async function startIntentProcedures(
   });
 }
 
-async function persistTriage(env: Env, workspaceId: string, ticketId: string, triage: TriageResult) {
+async function persistTriage(
+  env: Env,
+  workspaceId: string,
+  ticketId: string,
+  triage: TriageResult,
+) {
   await env.DB.prepare(
     `UPDATE ticket SET category = ?, priority = ?, sentiment = ?, updated_at = ?
       WHERE id = ? AND workspace_id = ?`,
@@ -192,80 +211,6 @@ async function markSpam(env: Env, workspaceId: string, ticketId: string) {
   await env.DB.prepare(`UPDATE ticket SET status = 'spam' WHERE id = ? AND workspace_id = ?`)
     .bind(ticketId, workspaceId)
     .run();
-}
-
-async function tryAutoSend(
-  ctx: {
-    env: Env;
-    workspaceId: string;
-    sendThreadedReply: SendThreadedReply;
-  },
-  ticketId: string,
-  sourceMessageId: string,
-  draft: DraftResult,
-  subject: string,
-  autonomy: Awaited<ReturnType<typeof loadMailboxAutonomy>>,
-  score: ReturnType<typeof scoreAutonomousDraft>,
-  reason: string,
-): Promise<boolean> {
-  try {
-    const sent = await ctx.sendThreadedReply({
-      ticketId,
-      body: draft.body_markdown,
-      subject,
-      actorUserId: null,
-      source: 'ai_autonomous',
-    });
-    await recordOutcome(ctx.env, {
-      workspaceId: ctx.workspaceId,
-      ticketId,
-      kind: 'resolved_autonomously',
-      source: 'agent',
-      confidenceScore: score.score,
-      payload: {
-        messageId: sent.messageId,
-        sourceMessageId,
-        policy: autonomy.policy,
-        threshold: autonomy.threshold,
-        rolloutPercent: autonomy.rolloutPercent,
-        reason,
-        components: score.components,
-        citesKnowledgeIds: draft.cites_knowledge_ids,
-      },
-    });
-    // Open the Honest Resolution verification window. The autonomous reply
-    // counts as a verified resolution only if no human takes over, no
-    // escalation fires, and no negative follow-up arrives within 7 days.
-    await enqueueVerification(ctx.env, {
-      workspaceId: ctx.workspaceId,
-      ticketId,
-      aiMessageId: sent.messageId,
-      source: 'autonomous',
-      payload: { confidence: score.score, policy: autonomy.policy },
-    }).catch((err) => console.warn('failed to enqueue verification', err));
-    await captureResolvedTicketEvalCase(ctx.env, ctx.workspaceId, ticketId).catch((err) =>
-      console.warn('failed to capture autonomous eval case', err),
-    );
-    await audit(ctx.env, {
-      workspaceId: ctx.workspaceId,
-      ticketId,
-      actorType: 'agent',
-      actorId: 'autonomy',
-      action: 'reply.auto_sent',
-      payload: { messageId: sent.messageId, score: score.score, reason },
-    });
-    return true;
-  } catch (err) {
-    await audit(ctx.env, {
-      workspaceId: ctx.workspaceId,
-      ticketId,
-      actorType: 'agent',
-      actorId: 'autonomy',
-      action: 'reply.auto_send_failed',
-      payload: { reason, error: err instanceof Error ? err.message : 'send_failed' },
-    });
-    return false;
-  }
 }
 
 export async function hasExistingResponseForSourceMessage(

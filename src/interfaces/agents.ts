@@ -1,5 +1,7 @@
-import type { KnowledgeHit } from '../types/shared/knowledge';
+import type { Env } from '../server/env';
 import type { AutonomyPolicy } from '../types/shared/autonomy';
+import type { KnowledgeHit } from '../types/shared/knowledge';
+import type { SendThreadedReply } from '../types/shared/supervisor';
 
 export interface MailboxState {
   mailboxId: string;
@@ -65,4 +67,10 @@ export interface MailboxAutonomy {
   policy: AutonomyPolicy;
   threshold: number;
   rolloutPercent: number;
+}
+
+export interface AutoSendCtx {
+  env: Env;
+  workspaceId: string;
+  sendThreadedReply: SendThreadedReply;
 }

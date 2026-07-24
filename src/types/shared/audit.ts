@@ -1,8 +1,8 @@
 import type { AuditActionMeta, AuditEventRecord, AuditQuery } from '../../interfaces/audit';
+
 export type { AuditActionMeta, AuditEventRecord, AuditQuery };
-// Central audit-action catalog. Every audited action maps to a category (for
-// filtering) and a severity (for triage). audit() derives these at write time
-// and denormalizes them onto the row. Unknown actions fall back to general/info.
+// Central audit-action catalog: every action maps to a category (filtering) and
+// severity (triage); audit() denormalizes them at write time, unknown → general/info.
 
 export type AuditCategory =
   | 'auth'
@@ -61,17 +61,18 @@ export const AUDIT_ACTIONS = {
   // data / ticket lifecycle
   'reply.sent': { category: 'data', severity: 'notice' },
   'reply.auto_sent': { category: 'data', severity: 'notice' },
+  'email.bounced': { category: 'channel', severity: 'warning' },
   'reply.auto_send_failed': { category: 'data', severity: 'warning' },
-  'auto_send': { category: 'data', severity: 'notice' },
-  'draft': { category: 'data', severity: 'info' },
+  auto_send: { category: 'data', severity: 'notice' },
+  draft: { category: 'data', severity: 'info' },
   'ai_draft.suggested': { category: 'data', severity: 'info' },
-  'summarize': { category: 'data', severity: 'info' },
-  'triage': { category: 'data', severity: 'info' },
+  summarize: { category: 'data', severity: 'info' },
+  triage: { category: 'data', severity: 'info' },
   'ticket.triaged': { category: 'data', severity: 'info' },
   'ticket.internal_note': { category: 'data', severity: 'info' },
   'ticket.feedback_recorded': { category: 'data', severity: 'info' },
   'ticket.ai_drafts_changed': { category: 'admin', severity: 'info' },
-  'escalation': { category: 'procedure', severity: 'notice' },
+  escalation: { category: 'procedure', severity: 'notice' },
   'customer.followed_up': { category: 'data', severity: 'info' },
   'customer_memory.extracted': { category: 'data', severity: 'info' },
   'data.customer_memory_viewed': { category: 'security', severity: 'info' },
@@ -82,13 +83,13 @@ export const AUDIT_ACTIONS = {
   // approvals
   'approval.created': { category: 'admin', severity: 'notice' },
   'approval.rejected': { category: 'admin', severity: 'notice' },
-  'create_approval': { category: 'admin', severity: 'notice' },
+  create_approval: { category: 'admin', severity: 'notice' },
   // knowledge
   'knowledge.source_created': { category: 'knowledge', severity: 'notice' },
   'knowledge.source_reindexed': { category: 'knowledge', severity: 'info' },
-  'knowledge_plan': { category: 'knowledge', severity: 'info' },
-  'knowledge_judge': { category: 'knowledge', severity: 'info' },
-  'knowledge_rewrite': { category: 'knowledge', severity: 'info' },
+  knowledge_plan: { category: 'knowledge', severity: 'info' },
+  knowledge_judge: { category: 'knowledge', severity: 'info' },
+  knowledge_rewrite: { category: 'knowledge', severity: 'info' },
   'insights.kb_suggestion_accepted': { category: 'knowledge', severity: 'notice' },
   'insights.kb_suggestion_status_updated': { category: 'knowledge', severity: 'info' },
   'insights.knowledge_drift_status_updated': { category: 'knowledge', severity: 'info' },
@@ -113,8 +114,10 @@ export type KnownAuditAction = keyof typeof AUDIT_ACTIONS;
 export type AuditAction = KnownAuditAction | (string & {});
 
 export function auditMeta(action: string): AuditActionMeta {
-  return (AUDIT_ACTIONS as Record<string, AuditActionMeta>)[action] ?? {
-    category: 'general',
-    severity: 'info',
-  };
+  return (
+    (AUDIT_ACTIONS as Record<string, AuditActionMeta>)[action] ?? {
+      category: 'general',
+      severity: 'info',
+    }
+  );
 }
