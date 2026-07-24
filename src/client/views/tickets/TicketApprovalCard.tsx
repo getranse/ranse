@@ -1,5 +1,5 @@
 import type { TicketApprovalCardProps } from '../../../interfaces/client';
-import type { ProposedReply, } from '../../../types/shared/ticket';
+import type { ProposedReply } from '../../../types/shared/ticket';
 import { AnswerInspection } from '../knowledge/AnswerInspection';
 
 export function TicketApprovalCard({
@@ -18,7 +18,11 @@ export function TicketApprovalCard({
 
   return (
     <div className="approval">
-      <strong>{isExternalAction ? 'External action needs your approval' : 'Suggested reply — needs your approval'}</strong>
+      <strong>
+        {isExternalAction
+          ? 'External action needs your approval'
+          : 'Suggested reply — needs your approval'}
+      </strong>
       {reasons.length > 0 && <div className="risk">Risks: {reasons.join(', ')}</div>}
       {isExternalAction ? (
         <div style={{ marginTop: 8 }}>
@@ -30,7 +34,14 @@ export function TicketApprovalCard({
               <strong>Name:</strong> {proposed.tool_title}
             </div>
           )}
-          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)', fontSize: 12, marginTop: 8 }}>
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'var(--mono)',
+              fontSize: 12,
+              marginTop: 8,
+            }}
+          >
             {JSON.stringify(proposed.args ?? {}, null, 2)}
           </pre>
         </div>

@@ -1,5 +1,5 @@
-import type { OnboardingBannerProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
+import type { OnboardingBannerProps } from '../../../interfaces/client';
 import { API, type OnboardingStateResponse } from '../../api';
 
 export function OnboardingBanner({ onNavigate }: OnboardingBannerProps) {

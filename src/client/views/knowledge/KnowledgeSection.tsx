@@ -1,9 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { KnowledgeSectionProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
-import { useEffect, useState } from 'react';
 import {
-  API,
   type AnswerInspectionTrace,
+  API,
   type KnowledgeSearchHit,
   type KnowledgeSource,
 } from '../../api';

@@ -1,10 +1,10 @@
-import type { PublicChannelsSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
-import { API, type PublicChannelEntry } from '../../api';
+import type { PublicChannelsSectionProps } from '../../../interfaces/client';
 import type { WorkspaceMailbox } from '../../../types/shared/workspace';
+import { API, type PublicChannelEntry } from '../../api';
 import { ChannelRow } from './PublicChannelRow';
 import { buildConfigPayload, parseMinutes, splitOrigins } from './publicChannelHelpers';
-import { CONFIG_FIELDS, KIND_OPTIONS, emptyDraft } from './publicChannelOptions';
+import { CONFIG_FIELDS, emptyDraft, KIND_OPTIONS } from './publicChannelOptions';
 
 export function PublicChannelsSection({ onSaved }: PublicChannelsSectionProps) {
   const [channels, setChannels] = useState<PublicChannelEntry[]>([]);

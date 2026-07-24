@@ -1,5 +1,5 @@
-import type { CustomerMemoryDrawerProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
+import type { CustomerMemoryDrawerProps } from '../../../interfaces/client';
 import { API, type CustomerMemoryEntry } from '../../api';
 
 const KIND_LABELS: Record<string, string> = {

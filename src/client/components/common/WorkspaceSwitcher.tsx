@@ -1,5 +1,5 @@
-import type { WorkspaceSwitcherProps } from '../../../interfaces/client';
 import { useState } from 'react';
+import type { WorkspaceSwitcherProps } from '../../../interfaces/client';
 import { API } from '../../api';
 
 export function WorkspaceSwitcher({ me, onChanged }: WorkspaceSwitcherProps) {
@@ -29,14 +29,22 @@ export function WorkspaceSwitcher({ me, onChanged }: WorkspaceSwitcherProps) {
       >
         {!me.currentWorkspaceId && <option value="">Select workspace</option>}
         {workspaces.map((w) => (
-          <option key={w.id} value={w.id}>{w.name}</option>
+          <option key={w.id} value={w.id}>
+            {w.name}
+          </option>
         ))}
       </select>
       {creating ? (
         <div className="workspace-create">
-          <input value={name} placeholder="Workspace name" onChange={(e) => setName(e.target.value)} />
+          <input
+            value={name}
+            placeholder="Workspace name"
+            onChange={(e) => setName(e.target.value)}
+          />
           <div className="row">
-            <button className="primary" onClick={createWorkspace}>Create</button>
+            <button className="primary" onClick={createWorkspace}>
+              Create
+            </button>
             <button onClick={() => setCreating(false)}>Cancel</button>
           </div>
         </div>

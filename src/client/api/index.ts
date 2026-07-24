@@ -5,19 +5,19 @@ import { channelApi } from './channels';
 import { evalApi } from './evals';
 import { insightApi } from './insights';
 import { knowledgeApi } from './knowledge';
+import { llmApi } from './llm';
 import { mcpApi } from './mcp';
 import { memoryApi } from './memory';
 import { notificationApi } from './notifications';
 import { onboardingApi } from './onboarding';
 import { procedureApi } from './procedures';
 import { profileApi } from './profile';
-import { llmApi } from './llm';
 import { setupApi } from './setup';
 import { ticketApi } from './tickets';
 import { workspaceApi } from './workspaces';
 
-export { ApiRequestError, api } from './core';
 export type * from '../../types/client';
+export { ApiRequestError, api } from './core';
 
 /**
  * Flat facade over the per-domain API modules. Call sites use `API.<method>()`;

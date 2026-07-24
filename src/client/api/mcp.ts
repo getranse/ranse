@@ -1,4 +1,3 @@
-import type { McpToolCall, McpToolGuardrail } from '../../types/shared/mcp';
 import type {
   McpCatalogTemplate,
   McpGuardrailInput,
@@ -6,6 +5,7 @@ import type {
   McpServerInput,
   McpToolEntry,
 } from '../../types/client/mcp';
+import type { McpToolCall, McpToolGuardrail } from '../../types/shared/mcp';
 import { api } from './core';
 
 export const mcpApi = {

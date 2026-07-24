@@ -1,8 +1,8 @@
-import type { ProceduresSectionProps } from '../../../interfaces/client';
 import { useEffect, useMemo, useState } from 'react';
-import { ProcedureFlowDiagram } from '../../components/procedures/ProcedureFlowDiagram';
-import { API, type ProcedureLibraryListEntry, type ProcedureListEntry } from '../../api';
+import type { ProceduresSectionProps } from '../../../interfaces/client';
 import type { ProcedureSpec } from '../../../types/shared/procedure';
+import { API, type ProcedureLibraryListEntry, type ProcedureListEntry } from '../../api';
+import { ProcedureFlowDiagram } from '../../components/procedures/ProcedureFlowDiagram';
 
 const DEFAULT_SPEC = `{
   "slug": "refund-intake",

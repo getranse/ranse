@@ -1,9 +1,9 @@
+import { formatCents, formatPercent } from '../../../lib/format';
 import type {
   HonestResolutionResponse,
   KnowledgeHealthResponse,
   OutcomeStatementResponse,
 } from '../../api';
-import { formatCents, formatPercent } from '../../../lib/format';
 import { Metric } from './Metric';
 
 export function KnowledgeHealthCard({ data }: { data: KnowledgeHealthResponse }) {
@@ -81,9 +81,7 @@ export function OutcomeStatementCard({ data }: { data: OutcomeStatementResponse 
           marginBottom: 8,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-          Outcome statement
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Outcome statement</div>
         <div className="muted" style={{ fontSize: 11 }}>
           last {data.windowDays} days · {data.currency}
         </div>
@@ -130,9 +128,7 @@ export function HonestResolutionCard({ data }: { data: HonestResolutionResponse 
           marginBottom: 8,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-          Honest Resolution
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Honest Resolution</div>
         <div className="muted" style={{ fontSize: 11 }}>
           customer-confirmed · no human takeover · no follow-up
         </div>
@@ -148,7 +144,11 @@ export function HonestResolutionCard({ data }: { data: HonestResolutionResponse 
           value={formatPercent(data.finStyleRate)}
           sublabel={`${gap > 0 ? `+${formatPercent(gap)} inflated` : 'aligned'}`}
         />
-        <Metric label="Pending" value={String(data.pendingCount)} sublabel="awaiting window close" />
+        <Metric
+          label="Pending"
+          value={String(data.pendingCount)}
+          sublabel="awaiting window close"
+        />
         <Metric label="Rejected" value={String(data.rejectedCount)} sublabel="see breakdown" />
       </div>
       {data.rejectedCount > 0 && (

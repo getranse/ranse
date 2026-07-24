@@ -1,5 +1,5 @@
-import type { ProcedureFlowDiagramProps, ShapeStyle } from '../../../interfaces/client';
 import { useMemo } from 'react';
+import type { ProcedureFlowDiagramProps, ShapeStyle } from '../../../interfaces/client';
 import type { DiagramEdge, DiagramNode } from '../../../server/automation/procedures/diagram';
 import { layoutProcedure } from '../../../server/automation/procedures/diagram';
 

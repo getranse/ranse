@@ -1,19 +1,19 @@
 import type {
-  WorkspaceInvitation,
-  WorkspaceMailbox,
-  WorkspaceMember,
-  WorkspaceSummary,
-  WorkspaceUsage,
-} from '../../types/shared/workspace';
-import type { AuditEventRecord, AuditQuery } from '../../types/shared/audit';
-import type { WorkspaceOutcomeDaily } from '../../types/shared/autonomy';
-import type {
   WorkspaceInviteInput,
   WorkspaceMailboxInput,
   WorkspaceMailboxUpdate,
   WorkspaceSettings,
   WorkspaceSettingsInput,
 } from '../../types/client/workspaces';
+import type { AuditEventRecord, AuditQuery } from '../../types/shared/audit';
+import type { WorkspaceOutcomeDaily } from '../../types/shared/autonomy';
+import type {
+  WorkspaceInvitation,
+  WorkspaceMailbox,
+  WorkspaceMember,
+  WorkspaceSummary,
+  WorkspaceUsage,
+} from '../../types/shared/workspace';
 import { api, uploadFile } from './core';
 
 function auditQueryString(query: AuditQuery): string {

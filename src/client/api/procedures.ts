@@ -1,14 +1,14 @@
 import type {
-  ProcedureRun,
-  ProcedureRunDetail,
-  ProcedureListItem,
-  ProcedureSpec,
-} from '../../types/shared/procedure';
-import type {
   ProcedureLibraryDetail,
   ProcedureLibraryListEntry,
   ProcedureListEntry,
 } from '../../types/client/procedures';
+import type {
+  ProcedureListItem,
+  ProcedureRun,
+  ProcedureRunDetail,
+  ProcedureSpec,
+} from '../../types/shared/procedure';
 import { api } from './core';
 
 export const procedureApi = {

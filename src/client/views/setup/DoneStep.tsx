@@ -19,8 +19,8 @@ export function DoneStep({ checks, onDone }: { checks: SetupChecks; onDone: () =
         </div>
       ))}
       <p className="muted" style={{ marginTop: 16 }}>
-        Next: in Cloudflare → Email Routing, add your support address and set the destination
-        to the <code>ranse</code> Worker. Then send a test email.
+        Next: in Cloudflare → Email Routing, add your support address and set the destination to the{' '}
+        <code>ranse</code> Worker. Then send a test email.
       </p>
       <button className="primary" style={{ width: '100%' }} onClick={onDone}>
         Enter inbox

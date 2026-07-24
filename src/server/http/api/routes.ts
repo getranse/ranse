@@ -14,6 +14,7 @@ import { registerOnboardingRoutes } from './onboarding';
 import { registerProcedureRoutes } from './procedures';
 import { registerSearchRoutes } from './search';
 import { registerSettingsRoutes } from './settings';
+import { registerTagRoutes } from './tags';
 import { registerTicketRoutes } from './tickets';
 import { registerWorkspaceRoutes } from './workspaces';
 
@@ -22,6 +23,7 @@ export const apiApp = new Hono<Ctx>();
 installApiAuth(apiApp);
 registerTicketRoutes(apiApp);
 registerSearchRoutes(apiApp);
+registerTagRoutes(apiApp);
 registerChannelRoutes(apiApp);
 registerSettingsRoutes(apiApp);
 registerNotificationRoutes(apiApp);

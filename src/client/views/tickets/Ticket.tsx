@@ -1,7 +1,7 @@
-import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '../../../lib/format';
 import type { ReplyEdits, TicketViewData } from '../../../types/shared/ticket';
-import { API, type AnswerInspectionHit, type AnswerInspectionTrace } from '../../api';
+import { type AnswerInspectionHit, type AnswerInspectionTrace, API } from '../../api';
 import { DraftAssistPanel } from '../../components/tickets/DraftAssistPanel';
 import { AnswerInspection } from '../knowledge/AnswerInspection';
 import { TicketApprovalCard } from './TicketApprovalCard';

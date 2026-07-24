@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { TicketSidebarProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
-import { useEffect, useState } from 'react';
-import { CustomerMemoryDrawer } from '../../components/tickets/CustomerMemoryDrawer';
 import { API, type ProcedureListEntry } from '../../api';
+import { CustomerMemoryDrawer } from '../../components/tickets/CustomerMemoryDrawer';
+import { TicketTags } from '../../components/tickets/TicketTags';
 
 export function TicketSidebar({
   ticket,
@@ -30,6 +31,10 @@ export function TicketSidebar({
     await onReload();
   }
 
+  function aiDraftsValue(enabled: number | null | undefined): string {
+    return enabled == null ? 'inherit' : enabled === 1 ? 'on' : 'off';
+  }
+
   return (
     <aside className="card">
       <strong>Status</strong>
@@ -47,16 +52,11 @@ export function TicketSidebar({
           </button>
         ))}
       </div>
+      <TicketTags ticketId={ticket.id} />
       <h2 style={{ marginTop: 16 }}>AI auto-drafts</h2>
       <div style={{ fontSize: 12, marginTop: 4 }}>
         <select
-          value={
-            ticket.ai_drafts_enabled === null || ticket.ai_drafts_enabled === undefined
-              ? 'inherit'
-              : ticket.ai_drafts_enabled === 1
-                ? 'on'
-                : 'off'
-          }
+          value={aiDraftsValue(ticket.ai_drafts_enabled)}
           onChange={async (e) => {
             const value = e.target.value;
             const enabled = value === 'inherit' ? null : value === 'on';

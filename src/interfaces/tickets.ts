@@ -83,3 +83,10 @@ export interface TicketSearchHit {
   /** Matched-text excerpt from FTS ([match] markers), null for requester-only hits. */
   snippet: string | null;
 }
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string | null;
+  created_at: number;
+}

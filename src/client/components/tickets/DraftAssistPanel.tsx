@@ -1,6 +1,6 @@
-import type { DraftAssistPanelProps, AssistState } from '../../../interfaces/client';
-import { formatDate } from '../../../lib/format';
 import { useEffect, useRef, useState } from 'react';
+import type { AssistState, DraftAssistPanelProps } from '../../../interfaces/client';
+import { formatDate } from '../../../lib/format';
 import { API } from '../../api';
 
 const INITIAL_STATE: AssistState = {

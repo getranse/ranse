@@ -1,5 +1,5 @@
-import type { InviteAcceptViewProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
+import type { InviteAcceptViewProps } from '../../../interfaces/client';
 import { API } from '../../api';
 
 export function InviteAcceptView({ token, onDone }: InviteAcceptViewProps) {

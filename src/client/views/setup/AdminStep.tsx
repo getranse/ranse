@@ -30,11 +30,7 @@ export function AdminStep(props: {
             required
             style={{ paddingRight: 56 }}
           />
-          <button
-            type="button"
-            onClick={() => setShowToken((v) => !v)}
-            style={secretToggleStyle}
-          >
+          <button type="button" onClick={() => setShowToken((v) => !v)} style={secretToggleStyle}>
             {showToken ? 'Hide' : 'Show'}
           </button>
         </div>
@@ -48,15 +44,27 @@ export function AdminStep(props: {
       </div>
       <div className="field">
         <label>Workspace name</label>
-        <input value={admin.workspace_name} onChange={(e) => setAdmin({ ...admin, workspace_name: e.target.value })} required />
+        <input
+          value={admin.workspace_name}
+          onChange={(e) => setAdmin({ ...admin, workspace_name: e.target.value })}
+          required
+        />
       </div>
       <div className="field">
         <label>Your name</label>
-        <input value={admin.admin_name} onChange={(e) => setAdmin({ ...admin, admin_name: e.target.value })} />
+        <input
+          value={admin.admin_name}
+          onChange={(e) => setAdmin({ ...admin, admin_name: e.target.value })}
+        />
       </div>
       <div className="field">
         <label>Admin email</label>
-        <input type="email" value={admin.admin_email} onChange={(e) => setAdmin({ ...admin, admin_email: e.target.value })} required />
+        <input
+          type="email"
+          value={admin.admin_email}
+          onChange={(e) => setAdmin({ ...admin, admin_email: e.target.value })}
+          required
+        />
       </div>
       <div className="field">
         <label>Password (min 12 chars)</label>

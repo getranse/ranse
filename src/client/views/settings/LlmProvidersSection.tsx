@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { API } from '../../api';
 import { BYOK_PROVIDERS as PROVIDERS } from '../../../config/llm';
+import { API } from '../../api';
 
 export function LlmProvidersSection({ onSaved }: { onSaved: (msg?: string) => void }) {
   const [providers, setProviders] = useState<string[]>([]);

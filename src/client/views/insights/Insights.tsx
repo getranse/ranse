@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { OperationsDashboard } from '../../components/insights/OperationsDashboard';
-import { ProactiveProposalsPanel } from '../../components/insights/ProactiveProposalsPanel';
 import {
   API,
   type ConversationScoreEntry,
@@ -8,6 +6,8 @@ import {
   type KbSuggestionEntry,
   type KnowledgeDriftSignalEntry,
 } from '../../api';
+import { OperationsDashboard } from '../../components/insights/OperationsDashboard';
+import { ProactiveProposalsPanel } from '../../components/insights/ProactiveProposalsPanel';
 
 export function InsightsView() {
   const [summary, setSummary] = useState<InsightSummaryEntry | null>(null);

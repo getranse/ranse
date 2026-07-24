@@ -1,4 +1,12 @@
-export function Metric({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
+export function Metric({
+  label,
+  value,
+  sublabel,
+}: {
+  label: string;
+  value: string;
+  sublabel?: string;
+}) {
   return (
     <div className="card" style={{ padding: 10 }}>
       <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>

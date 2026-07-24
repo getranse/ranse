@@ -1,5 +1,5 @@
-import type { WorkspaceGateProps } from '../../../interfaces/client';
 import { useState } from 'react';
+import type { WorkspaceGateProps } from '../../../interfaces/client';
 import { API } from '../../api';
 
 export function WorkspaceGate({ me, onChanged }: WorkspaceGateProps) {
@@ -38,17 +38,27 @@ export function WorkspaceGate({ me, onChanged }: WorkspaceGateProps) {
             <div className="field">
               <label>Workspace</label>
               <select value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)}>
-                {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                {workspaces.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
               </select>
             </div>
-            <button className="primary" onClick={() => run(() => API.switchWorkspace(workspaceId))}>Continue</button>
+            <button className="primary" onClick={() => run(() => API.switchWorkspace(workspaceId))}>
+              Continue
+            </button>
           </>
         )}
 
         <h2>Create workspace</h2>
         <div className="field">
           <label>Name</label>
-          <input value={name} placeholder="Acme Support" onChange={(e) => setName(e.target.value)} />
+          <input
+            value={name}
+            placeholder="Acme Support"
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <button onClick={() => run(() => API.createWorkspace(name.trim()))} disabled={!name.trim()}>
           Create workspace
@@ -59,7 +69,10 @@ export function WorkspaceGate({ me, onChanged }: WorkspaceGateProps) {
           <label>Invitation token</label>
           <input value={token} onChange={(e) => setToken(e.target.value)} />
         </div>
-        <button onClick={() => run(() => API.acceptInvitation(inviteToken(token)))} disabled={!token.trim()}>
+        <button
+          onClick={() => run(() => API.acceptInvitation(inviteToken(token)))}
+          disabled={!token.trim()}
+        >
           Join workspace
         </button>
 

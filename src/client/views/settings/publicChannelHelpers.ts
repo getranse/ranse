@@ -22,7 +22,10 @@ export function parseMinutes(value: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-export function buildConfigPayload(option: KindOption, draft: ChannelDraft): Record<string, unknown> {
+export function buildConfigPayload(
+  option: KindOption,
+  draft: ChannelDraft,
+): Record<string, unknown> {
   const clean = cleanConfig(draft.config);
   if (option.channelKind === 'voice' && option.voiceProvider) {
     return {
@@ -47,7 +50,10 @@ export function webhookUrl(channel: PublicChannelEntry): string {
   return `${window.location.origin}/public/channels/${channel.public_key}/webhook`;
 }
 
-export function sharingSummary(channel: PublicChannelEntry): { embed: string | null; hint: string } {
+export function sharingSummary(channel: PublicChannelEntry): {
+  embed: string | null;
+  hint: string;
+} {
   if (channel.kind === 'chat') {
     return {
       embed: `<script async src="${widgetUrl(channel)}"></script>`,

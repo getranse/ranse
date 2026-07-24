@@ -104,8 +104,8 @@ export function MyProfileSection({ onSaved }: { onSaved: (msg?: string) => void 
       <h2>Security</h2>
       <div className="card">
         <p className="muted" style={{ marginBottom: 8 }}>
-          Sign out of every other browser and device. Your current session stays active. Use this
-          if you've signed in somewhere you no longer trust.
+          Sign out of every other browser and device. Your current session stays active. Use this if
+          you've signed in somewhere you no longer trust.
         </p>
         <button
           onClick={async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatDuration, formatPercent } from '../../../lib/format';
 import {
   API,
   type HonestResolutionResponse,
@@ -6,7 +7,6 @@ import {
   type OperationsMetricsResponse,
   type OutcomeStatementResponse,
 } from '../../api';
-import { formatDuration, formatPercent } from '../../../lib/format';
 import { Metric } from './Metric';
 import { HonestResolutionCard, KnowledgeHealthCard, OutcomeStatementCard } from './OperationsCards';
 

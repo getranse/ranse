@@ -13,8 +13,15 @@ export const knowledgeApi = {
   // carries bytes to extract); manual/url sources as JSON. Both hit POST /api/knowledge.
   createKnowledge: (input: KnowledgeInput) =>
     input.kind === 'pdf'
-      ? uploadFile<KnowledgeIngestResult>('/api/knowledge', input.file, input.title ? { title: input.title } : undefined)
-      : api<KnowledgeIngestResult>('/api/knowledge', { method: 'POST', body: JSON.stringify(input) }),
+      ? uploadFile<KnowledgeIngestResult>(
+          '/api/knowledge',
+          input.file,
+          input.title ? { title: input.title } : undefined,
+        )
+      : api<KnowledgeIngestResult>('/api/knowledge', {
+          method: 'POST',
+          body: JSON.stringify(input),
+        }),
   reindexKnowledge: (id: string) =>
     api<KnowledgeIngestResult>(`/api/knowledge/${id}/reindex`, { method: 'POST' }),
   searchKnowledge: (query: string, limit = 5) =>

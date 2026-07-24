@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react';
 import type { EvalsSectionProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
-import { useEffect, useState } from 'react';
 import { API, type EvalCaseEntry, type EvalRunEntry } from '../../api';
 
 export function EvalsSection({ onSaved }: EvalsSectionProps) {
@@ -147,8 +147,7 @@ export function EvalsSection({ onSaved }: EvalsSectionProps) {
                   {runItem.status} · {runItem.passed_count}/{runItem.case_count} passed
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  {formatDateTime(runItem.created_at)} · {runItem.regression_count}{' '}
-                  regressions
+                  {formatDateTime(runItem.created_at)} · {runItem.regression_count} regressions
                 </div>
               </div>
               <span className={`pill ${runItem.status === 'passed' ? 'resolved' : ''}`}>
