@@ -1,4 +1,5 @@
 import type { ChannelRow } from '../../../interfaces/notifications';
+import { enqueueWebhookDeliveries } from '../../actions/webhooks';
 import type { Env } from '../../env';
 import type { EventName, EventPayload, NotificationEvent } from './events';
 
@@ -13,6 +14,19 @@ export async function emitEvent<E extends EventName>(
   name: E,
   payload: EventPayload<E>,
 ): Promise<void> {
+  const event: NotificationEvent = {
+    name,
+    payload,
+    workspaceId,
+    emittedAt: Date.now(),
+  } as NotificationEvent;
+
+  // Third-party webhook subscriptions get the same event stream as the
+  // built-in channels; failures are logged, never propagated to the caller.
+  await enqueueWebhookDeliveries(env, event).catch((err) =>
+    console.warn('webhook fan-out failed', err),
+  );
+
   const rows = await env.DB.prepare(
     `SELECT id, kind, target, events FROM notification_channel
       WHERE workspace_id = ? AND enabled = 1`,
@@ -30,13 +44,6 @@ export async function emitEvent<E extends EventName>(
   });
 
   if (subscribers.length === 0) return;
-
-  const event: NotificationEvent = {
-    name,
-    payload,
-    workspaceId,
-    emittedAt: Date.now(),
-  } as NotificationEvent;
 
   // Send all in parallel; if the queue is briefly unavailable we log and
   // move on rather than fail the originating request.

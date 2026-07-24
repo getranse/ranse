@@ -48,7 +48,8 @@ export const AUDIT_ACTIONS = {
   'mcp.server_updated': { category: 'security', severity: 'warning' },
   'mcp.server_deleted': { category: 'security', severity: 'warning' },
   'mcp.guardrail_updated': { category: 'security', severity: 'warning' },
-  // billing
+  'api_token.created': { category: 'security', severity: 'warning' },
+  'api_token.revoked': { category: 'security', severity: 'notice' },
   'billing.pricing_updated': { category: 'billing', severity: 'notice' },
   // channels
   'public_channel.created': { category: 'channel', severity: 'notice' },
@@ -105,7 +106,6 @@ export const AUDIT_ACTIONS = {
   'procedure.trigger_failed': { category: 'procedure', severity: 'warning' },
   'procedure.resume_failed': { category: 'procedure', severity: 'warning' },
   'marketplace.install': { category: 'procedure', severity: 'notice' },
-  // notifications
   'notification.plan_created': { category: 'notification', severity: 'info' },
 } satisfies Record<string, AuditActionMeta>;
 

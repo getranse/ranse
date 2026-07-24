@@ -12,7 +12,7 @@
   "src/client/styles/base.css": 296,
   "src/client/styles/components.css": 464,
   "src/client/styles/layout.css": 146,
-  "src/client/views/insights/EvalsSection.tsx": 165,
+  "src/client/views/insights/EvalsSection.tsx": 164,
   "src/client/views/insights/Insights.tsx": 274,
   "src/client/views/knowledge/KnowledgeSection.tsx": 286,
   "src/client/views/procedures/ProceduresSection.tsx": 214,
