@@ -14,7 +14,7 @@ Ranse turns support email into a real-time, multi-agent support workspace built 
 - **Email-native shared inbox** with ticketing, assignment, and internal notes.
 - **Multi-agent assist** — triage, summarization, knowledge retrieval, reply drafting, escalation, SLA.
 - **Human approval gates** for every outbound reply, with edit-before-send.
-- **Multi-provider LLM** — Workers AI out of the box; drop-in Anthropic, OpenAI, Google, Grok, OpenRouter via AI Gateway.
+- **Multi-provider LLM** — Workers AI out of the box; drop-in Anthropic, OpenAI, Google, Grok, OpenRouter, Cerebras via AI Gateway.
 - **Historical evals** — resolved conversations become anonymized replay cases; `ranse eval` catches prompt/procedure regressions before they ship.
 - **Forkable procedure library** — install vetted support workflows with evals, provenance checksums, and MCP reference contracts, then customize them in your repo.
 - **Insights loop** — score conversations, surface evidence-backed unresolved intents, draft reviewable KB suggestions with lineage, and detect source-specific drift from successful replies.

@@ -7,10 +7,8 @@ export const MODELS_MASTER: Record<string, ModelSpec> = {
     provider: 'workers-ai',
     contextSize: 128_000,
     nonReasoning: true,
-    // directOverride was true here previously but that pointed the OpenAI SDK
-    // at AI Gateway's /workers-ai endpoint, which is Cloudflare's native API
-    // shape — not OpenAI chat.completions. Routing through /compat instead
-    // lets the gateway translate the OpenAI-format request to Workers AI.
+    // Routed through /compat (not /workers-ai) so the gateway translates the
+    // OpenAI-format request; directOverride would point at the native shape.
     supportsTools: true,
     supportsJsonSchema: true,
   },
@@ -78,5 +76,29 @@ export const MODELS_MASTER: Record<string, ModelSpec> = {
     nonReasoning: true,
     supportsTools: true,
     supportsJsonSchema: true,
+  },
+  'grok/grok-4': {
+    provider: 'grok',
+    contextSize: 256_000,
+    supportsTools: true,
+    // Structured output goes through the prompt+repair path rather than native
+    // json_schema — conservative until verified against the gateway compat surface.
+    supportsJsonSchema: false,
+  },
+  'cerebras/llama-3.3-70b': {
+    provider: 'cerebras',
+    contextSize: 128_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: false,
+  },
+  // OpenRouter model ids are `vendor/model`; parseModel's first-slash split keeps
+  // the full `meta-llama/llama-3.3-70b-instruct` as the model id the gateway needs.
+  'openrouter/meta-llama/llama-3.3-70b-instruct': {
+    provider: 'openrouter',
+    contextSize: 128_000,
+    nonReasoning: true,
+    supportsTools: true,
+    supportsJsonSchema: false,
   },
 };

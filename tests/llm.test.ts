@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_AGENT_CONFIG } from '../src/config/llm';
+import { BYOK_PROVIDERS, DEFAULT_AGENT_CONFIG } from '../src/config/llm';
 import { MODELS_MASTER } from '../src/config/models';
 import { parseModel } from '../src/lib/llm/core';
 
@@ -53,6 +53,23 @@ describe('DEFAULT_AGENT_CONFIG', () => {
           `${action}.fallbackModel missing from registry`,
         ).toBeDefined();
       }
+    }
+  });
+});
+
+describe('provider coverage', () => {
+  it('every BYOK provider ships at least one curated model (docs claim 7 providers)', () => {
+    const registered = new Set(Object.values(MODELS_MASTER).map((s) => s.provider));
+    for (const provider of BYOK_PROVIDERS) {
+      expect(registered.has(provider), `${provider} has no model in MODELS_MASTER`).toBe(true);
+    }
+    // workers-ai is the zero-key default and is registered too.
+    expect(registered.has('workers-ai')).toBe(true);
+  });
+
+  it('every registered model resolves through parseModel', () => {
+    for (const key of Object.keys(MODELS_MASTER)) {
+      expect(() => parseModel(key), key).not.toThrow();
     }
   });
 });

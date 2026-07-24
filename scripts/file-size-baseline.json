@@ -30,6 +30,7 @@
   "src/client/views/workspace/WorkspaceMailboxesSection.tsx": 108,
   "src/client/views/workspace/WorkspaceMembersSection.tsx": 179,
   "src/client/views/workspace/WorkspacePlatformSection.tsx": 207,
+  "src/config/models.ts": 105,
   "src/interfaces/channels.ts": 858,
   "src/interfaces/client.ts": 148,
   "src/interfaces/evals.ts": 171,

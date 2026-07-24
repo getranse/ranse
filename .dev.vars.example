@@ -14,9 +14,10 @@ ADMIN_SETUP_TOKEN=
 
 # ────────────────────────────────────────────────────────────────────────
 # NOT prompted during deploy:
-#   • Provider API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.) — add
-#     them in-app at Settings → LLM providers, or `wrangler secret put`
-#     post-deploy if you prefer Worker-wide scope. Workers AI is the
-#     default and requires no keys.
+#   • Provider API keys — add them in-app at Settings → LLM providers,
+#     or `wrangler secret put` post-deploy for Worker-wide scope. Workers
+#     AI is the default and needs no keys. BYOK var names, one per provider:
+#       OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_AI_STUDIO_API_KEY,
+#       GROK_API_KEY, OPENROUTER_API_KEY, CEREBRAS_API_KEY
 #   • CLOUDFLARE_AI_GATEWAY_TOKEN — only needed if you manually enable
 #     gateway authentication.
