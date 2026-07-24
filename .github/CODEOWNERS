@@ -1,0 +1,8 @@
+# Default owners for everything in the repo.
+* @getranse/maintainers
+
+# Security-sensitive areas warrant extra eyes.
+/src/auth/ @getranse/security @getranse/maintainers
+/src/server/inbox/channels/ @getranse/security @getranse/maintainers
+/src/server/automation/mcp/ @getranse/security @getranse/maintainers
+/docs/security.md @getranse/security @getranse/maintainers
