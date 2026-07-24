@@ -1,11 +1,27 @@
 name: Evals
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "procedures/**"
+      - "src/server/inbox/agents/**"
+      - "src/server/automation/**"
+      - "src/server/actions/**"
+      - "src/server/schemas/**"
+      - "src/config/**"
+      - "src/lib/llm/**"
+      - "scripts/ranse.ts"
+      - "tests/procedure-library.test.ts"
+      - ".github/workflows/evals.yml"
   pull_request:
     paths:
       - "procedures/**"
       - "src/server/inbox/agents/**"
       - "src/server/automation/**"
+      - "src/server/actions/**"
+      - "src/server/schemas/**"
+      - "src/config/**"
       - "src/lib/llm/**"
       - "scripts/ranse.ts"
       - "tests/procedure-library.test.ts"
