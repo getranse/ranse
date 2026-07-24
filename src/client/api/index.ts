@@ -13,6 +13,7 @@ import { onboardingApi } from './onboarding';
 import { procedureApi } from './procedures';
 import { profileApi } from './profile';
 import { setupApi } from './setup';
+import { teamApi } from './teams';
 import { ticketApi } from './tickets';
 import { workspaceApi } from './workspaces';
 
@@ -41,4 +42,5 @@ export const API = {
   ...billingApi,
   ...memoryApi,
   ...llmApi,
+  ...teamApi,
 };

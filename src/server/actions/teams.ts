@@ -72,3 +72,19 @@ export async function removeTeamMember(
     .bind(workspaceId, teamId, userId)
     .run();
 }
+
+export async function listTeamMembers(
+  env: Env,
+  workspaceId: string,
+  teamId: string,
+): Promise<Array<{ user_id: string; email: string; name: string | null }>> {
+  const rows = await env.DB.prepare(
+    `SELECT m.user_id, u.email, u.name
+       FROM team_member m JOIN user u ON u.id = m.user_id
+      WHERE m.workspace_id = ? AND m.team_id = ?
+      ORDER BY u.email`,
+  )
+    .bind(workspaceId, teamId)
+    .all<{ user_id: string; email: string; name: string | null }>();
+  return rows.results ?? [];
+}

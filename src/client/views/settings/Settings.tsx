@@ -6,6 +6,7 @@ import { ProceduresSection } from '../procedures/ProceduresSection';
 import { WorkspaceMailboxesSection } from '../workspace/WorkspaceMailboxesSection';
 import { WorkspaceMembersSection } from '../workspace/WorkspaceMembersSection';
 import { WorkspacePlatformSection } from '../workspace/WorkspacePlatformSection';
+import { WorkspaceTeamsSection } from '../workspace/WorkspaceTeamsSection';
 import { LlmProvidersSection } from './LlmProvidersSection';
 import { McpActionsSection } from './McpActionsSection';
 import { ModelSettingsSection } from './ModelSettingsSection';
@@ -26,9 +27,7 @@ export function SettingsView() {
     setAiDraftsEnabled(!!w.ai_drafts_enabled);
     setAuditReadLogging(!!w.audit_read_logging);
   }
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => void load(), []);
 
   function flashSaved(message = 'Saved') {
     setSaved(message);
@@ -40,6 +39,7 @@ export function SettingsView() {
       <h1>Settings</h1>
 
       <WorkspaceMembersSection onSaved={flashSaved} />
+      <WorkspaceTeamsSection />
       <WorkspaceMailboxesSection onSaved={flashSaved} />
       <PublicChannelsSection onSaved={flashSaved} />
 

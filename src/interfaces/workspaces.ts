@@ -16,15 +16,12 @@ export interface WorkspaceMailboxInput {
   autonomy_policy?: AutonomyPolicy;
   autonomy_threshold?: number;
   autonomy_rollout_percent?: number;
+  default_team_id?: string | null;
 }
 
-export interface WorkspaceMailboxUpdate {
+export type WorkspaceMailboxUpdate = Omit<WorkspaceMailboxInput, 'address' | 'display_name'> & {
   display_name?: string | null;
-  auto_reply_policy?: string;
-  autonomy_policy?: AutonomyPolicy;
-  autonomy_threshold?: number;
-  autonomy_rollout_percent?: number;
-}
+};
 
 export interface WorkspaceInviteInput {
   email: string;
@@ -65,6 +62,7 @@ export interface WorkspaceMailbox {
   autonomy_policy: AutonomyPolicy;
   autonomy_threshold: number;
   autonomy_rollout_percent: number;
+  default_team_id: string | null;
   created_at: number;
 }
 

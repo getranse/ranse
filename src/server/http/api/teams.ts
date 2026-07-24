@@ -5,6 +5,7 @@ import {
   addTeamMember,
   createTeam,
   deleteTeam,
+  listTeamMembers,
   listTeams,
   removeTeamMember,
 } from '../../actions/teams';
@@ -29,6 +30,11 @@ export function registerTeamRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     await deleteTeam(c.env, s.workspaceId, c.req.param('id'));
     return c.json({ ok: true });
+  });
+
+  apiApp.get('/teams/:id/members', async (c) => {
+    const s = c.get('session');
+    return c.json({ members: await listTeamMembers(c.env, s.workspaceId, c.req.param('id')) });
   });
 
   apiApp.post('/teams/:id/members', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {

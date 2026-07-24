@@ -21,7 +21,7 @@ export async function listWorkspaceMailboxes(
 ): Promise<WorkspaceMailbox[]> {
   const rows = await env.DB.prepare(
     `SELECT id, address, display_name, auto_reply_policy, autonomy_policy,
-            autonomy_threshold, autonomy_rollout_percent, created_at
+            autonomy_threshold, autonomy_rollout_percent, default_team_id, created_at
        FROM mailbox
       WHERE workspace_id = ?
       ORDER BY created_at ASC`,
@@ -45,19 +45,20 @@ export async function createWorkspaceMailbox(
   },
 ): Promise<WorkspaceMailbox> {
   const now = Date.now();
+  const addr = input.address.toLowerCase();
   const existing = await env.DB.prepare(`SELECT id FROM mailbox WHERE address = ?`)
-    .bind(input.address.toLowerCase())
-    .first<{ id: string }>();
+    .bind(addr)
+    .first();
   if (existing) throw new Error('mailbox_address_already_exists');
+  const threshold = input.autonomyThreshold ?? DEFAULT_AUTONOMY_THRESHOLD;
   const mailbox = {
     id: ids.mailbox(),
-    address: input.address.toLowerCase(),
+    address: addr,
     display_name: input.displayName ?? null,
     autonomy_policy: normalizeAutonomyPolicy(input.autonomyPolicy ?? input.autoReplyPolicy),
-    autonomy_threshold: normalizeAutonomyThreshold(
-      input.autonomyThreshold ?? DEFAULT_AUTONOMY_THRESHOLD,
-    ),
+    autonomy_threshold: normalizeAutonomyThreshold(threshold),
     autonomy_rollout_percent: normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent),
+    default_team_id: null,
     created_at: now,
   };
   const autoReplyPolicy = input.autoReplyPolicy ?? legacyAutoReplyPolicy(mailbox.autonomy_policy);
@@ -122,11 +123,9 @@ export async function updateWorkspaceMailbox(
   }
   if (input.autonomyThreshold !== undefined)
     fields.push(['autonomy_threshold', normalizeAutonomyThreshold(input.autonomyThreshold)]);
-  if (input.autonomyRolloutPercent !== undefined)
-    fields.push([
-      'autonomy_rollout_percent',
-      normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent),
-    ]);
+  const rollout = input.autonomyRolloutPercent;
+  if (rollout !== undefined)
+    fields.push(['autonomy_rollout_percent', normalizeAutonomyRolloutPercent(rollout)]);
   if (input.defaultTeamId !== undefined) fields.push(['default_team_id', input.defaultTeamId]);
   const updates = fields.map(([column]) => `${column} = ?`);
   const binds = fields.map(([, value]) => value);

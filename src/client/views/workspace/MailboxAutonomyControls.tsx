@@ -71,3 +71,26 @@ export function RolloutInput(props: {
     />
   );
 }
+
+export function TeamSelect(props: {
+  disabled: boolean;
+  value: string | null;
+  teams: Array<{ id: string; name: string }>;
+  onChange: (teamId: string | null) => void;
+}) {
+  return (
+    <select
+      disabled={props.disabled}
+      value={props.value ?? ''}
+      onChange={(e) => props.onChange(e.target.value || null)}
+      title="Default team: new tickets are round-robin assigned to its least-loaded member."
+    >
+      <option value="">No default team</option>
+      {props.teams.map((team) => (
+        <option key={team.id} value={team.id}>
+          {team.name}
+        </option>
+      ))}
+    </select>
+  );
+}
