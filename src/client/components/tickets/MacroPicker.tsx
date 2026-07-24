@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Macro } from '../../../interfaces/tickets';
+import type { Macro } from '../../../interfaces/macros';
 import { API } from '../../api';
 
 /**

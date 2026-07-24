@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { verifyFeedbackToken } from '../../lib/feedback-links';
+import { recordFeedbackSurvey } from '../actions/feedback';
 import type { Env } from '../env';
 import { recordCustomerFeedback } from '../platform/outcomes';
-import { recordFeedbackSurvey } from '../platform/outcomes/survey';
 import { surveyBody } from '../schemas/feedback';
 
 export const feedbackApp = new Hono<{ Bindings: Env }>();

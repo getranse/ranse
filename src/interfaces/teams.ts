@@ -4,3 +4,9 @@ export interface Team {
   created_at: number;
   member_count: number;
 }
+
+export interface TeamMemberRow {
+  user_id: string;
+  email: string;
+  name: string | null;
+}

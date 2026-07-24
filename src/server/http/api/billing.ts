@@ -1,33 +1,13 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
+import { DEFAULT_PRICE_BOOK } from '../../../types/shared/billing';
 import {
   computeOutcomeStatement,
   loadPricing,
   priceBookFromRow,
   savePricing,
 } from '../../platform/billing/outcomes';
-import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
-import { DEFAULT_PRICE_BOOK } from '../../../types/shared/billing';
-
-const priceBookSchema = z
-  .object({
-    verified_resolution: z.number().int().optional(),
-    autonomous_resolution: z.number().int().optional(),
-    procedure_resolution: z.number().int().optional(),
-    escalation: z.number().int().optional(),
-    follow_up_cost: z.number().int().optional(),
-    human_takeover_cost: z.number().int().optional(),
-    inference_cost: z.number().int().optional(),
-  })
-  .strict();
-
-const pricingUpdateSchema = z
-  .object({
-    priceBook: priceBookSchema.optional(),
-    inferenceCostCentsPer1kTokens: z.number().int().min(0).optional(),
-    currency: z.string().length(3).optional(),
-  })
-  .strict();
+import { pricingUpdateBody } from '../../schemas/billing';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
 
 export function registerBillingRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/billing/pricing', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
@@ -46,7 +26,7 @@ export function registerBillingRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.put('/billing/pricing', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = pricingUpdateSchema.parse(await c.req.json());
+    const body = pricingUpdateBody.parse(await c.req.json());
     const saved = await savePricing(c.env, s.workspaceId, {
       priceBook: body.priceBook,
       inferenceCostCentsPer1kTokens: body.inferenceCostCentsPer1kTokens,

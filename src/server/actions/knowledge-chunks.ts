@@ -1,40 +1,6 @@
-import type { Env } from '../../env';
-import type { buildChunkRows } from './source-ingest';
-import type { KnowledgeIngestInput } from './sources';
-
-export async function insertSourceShell(
-  env: Env,
-  workspaceId: string,
-  sourceId: string,
-  input: KnowledgeIngestInput,
-  title: string,
-  sourceHash: string,
-  lastCrawledAt: number | null,
-  now: number,
-) {
-  await env.DB.prepare(
-    `INSERT INTO knowledge_source (
-       id, workspace_id, kind, title, url, r2_key, ticket_id, message_id, content_hash,
-       status, chunk_count, last_crawled_at, created_at, updated_at
-     )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'indexing', 0, ?, ?, ?)`,
-  )
-    .bind(
-      sourceId,
-      workspaceId,
-      input.kind,
-      title,
-      input.url ?? null,
-      input.r2Key ?? null,
-      input.ticketId ?? null,
-      input.messageId ?? null,
-      sourceHash,
-      lastCrawledAt,
-      now,
-      now,
-    )
-    .run();
-}
+import type { buildChunkRows } from '../automation/knowledge/source-ingest';
+import type { KnowledgeIngestInput } from '../automation/knowledge/sources';
+import type { Env } from '../env';
 
 export async function replaceSourceChunks(
   env: Env,

@@ -1,4 +1,4 @@
-import type { Macro } from '../../interfaces/tickets';
+import type { Macro } from '../../interfaces/macros';
 import { ids } from '../../lib/ids';
 import type { Env } from '../env';
 

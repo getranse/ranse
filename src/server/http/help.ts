@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
+import { escapeHtml } from '../../lib/html-escape';
 import { listPublicArticles, loadPublicArticle, workspaceIdBySlug } from '../actions/help-center';
 import type { Env } from '../env';
-import { escapeHtml } from '../inbox/email/footers';
 import { markdownToHtml } from '../inbox/email/html';
 
 export const helpApp = new Hono<{ Bindings: Env }>();

@@ -1,15 +1,17 @@
+import { DISPATCH_BACKOFF_MS, DISPATCH_MAX_ATTEMPTS } from '../../../config/channels';
 import type { DispatchInput, DispatchOutcome } from '../../../interfaces/channels';
-export type { DispatchInput, DispatchOutcome };
-import type { Env } from '../../env';
 import { ids } from '../../../lib/ids';
-import { canDeliverTo } from '../notifications/preferences';
 import type {
   ChannelKind,
   EgressMessage,
   EgressResult,
   PublicChannel,
 } from '../../../types/shared/channels';
+import type { Env } from '../../env';
+import { canDeliverTo } from '../notifications/preferences';
 import { getAdapter } from './registry';
+
+export type { DispatchInput, DispatchOutcome };
 
 export async function dispatchOutbound(env: Env, input: DispatchInput): Promise<DispatchOutcome> {
   const target = await resolveDispatchTarget(env, input);
@@ -26,12 +28,7 @@ export async function dispatchOutbound(env: Env, input: DispatchInput): Promise<
     // Email outbound is handled by the legacy reply pipeline directly; the
     // dispatcher only records the email send result when the email adapter
     // is invoked explicitly.
-    return {
-      status: 'skipped',
-      channelKind: 'email',
-      channelId: null,
-      externalId: null,
-    };
+    return { status: 'skipped', channelKind: 'email', channelId: null, externalId: null };
   }
   const adapter = getAdapter(target.kind);
   if (!adapter.capabilities.supportsOutbound || !target.channel) {
@@ -176,7 +173,7 @@ async function persistDispatch(
        (id, workspace_id, ticket_id, message_id, channel_kind, channel_id,
         status, attempts, last_error, external_id, next_attempt_at,
         max_attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 5, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       ids.channelDispatch(),
@@ -189,6 +186,7 @@ async function persistDispatch(
       error,
       result?.externalId ?? null,
       nextAttemptAt,
+      DISPATCH_MAX_ATTEMPTS,
       now,
       now,
     )
@@ -319,11 +317,10 @@ async function loadOutboundMessageText(
 }
 
 export function retryBackoffMs(attempt: number): number {
-  // 60s, 5m, 30m, 2h, 8h with ±10% jitter.
-  const base = [60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_000, 8 * 60 * 60_000];
-  const idx = Math.min(Math.max(attempt - 1, 0), base.length - 1);
+  // Schedule from config, ±10% jitter so retries don't thundering-herd.
+  const idx = Math.min(Math.max(attempt - 1, 0), DISPATCH_BACKOFF_MS.length - 1);
   const jitter = 1 + (Math.random() - 0.5) * 0.2;
-  return Math.round(base[idx] * jitter);
+  return Math.round(DISPATCH_BACKOFF_MS[idx] * jitter);
 }
 
 function isPreferenceError(error: string | null): boolean {

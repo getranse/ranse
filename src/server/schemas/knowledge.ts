@@ -10,10 +10,18 @@ export const createSourceBody = z
   })
   .superRefine((value, ctx) => {
     if (value.kind === 'manual' && !value.body) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['body'], message: 'Manual sources need a body.' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['body'],
+        message: 'Manual sources need a body.',
+      });
     }
     if (value.kind === 'url' && !value.url) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['url'], message: 'URL sources need a URL.' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['url'],
+        message: 'URL sources need a URL.',
+      });
     }
   });
 
@@ -25,3 +33,5 @@ export const searchBody = z.object({
 });
 
 export const importResolvedBody = z.object({ limit: z.number().int().min(1).max(200).optional() });
+
+export const setPublicBody = z.object({ public: z.boolean() });

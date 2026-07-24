@@ -16,7 +16,7 @@ export async function handleScheduled(
     case '*/5 * * * *':
       ctx.waitUntil(
         runSLASweep(env)
-          .then((r) => console.log('sla-sweep', r))
+          .then((r) => console.info('sla-sweep', r))
           .catch((e) => console.error('sla-sweep failed', e)),
       );
       // Cascade + retry sweeps share the same 5-minute cadence so an
@@ -24,29 +24,29 @@ export async function handleScheduled(
       // the same heartbeat.
       ctx.waitUntil(
         runCascadeSweep(env)
-          .then((r) => console.log('cascade-sweep', r))
+          .then((r) => console.info('cascade-sweep', r))
           .catch((e) => console.error('cascade-sweep failed', e)),
       );
       ctx.waitUntil(
         runDispatchRetrySweep(env)
-          .then((r) => console.log('dispatch-retry-sweep', r))
+          .then((r) => console.info('dispatch-retry-sweep', r))
           .catch((e) => console.error('dispatch-retry-sweep failed', e)),
       );
       ctx.waitUntil(
         runHonestResolutionSweep(env)
-          .then((r) => console.log('honest-resolution-sweep', r))
+          .then((r) => console.info('honest-resolution-sweep', r))
           .catch((e) => console.error('honest-resolution-sweep failed', e)),
       );
       break;
     case '17 3 * * 1':
       ctx.waitUntil(
         runAllWorkspaceInsightsMaintenance(env)
-          .then((r) => console.log('insights-maintenance', r))
+          .then((r) => console.info('insights-maintenance', r))
           .catch((e) => console.error('insights-maintenance failed', e)),
       );
       ctx.waitUntil(
         runAuditRetentionSweep(env)
-          .then((r) => console.log('audit-retention-sweep', r))
+          .then((r) => console.info('audit-retention-sweep', r))
           .catch((e) => console.error('audit-retention-sweep failed', e)),
       );
       break;

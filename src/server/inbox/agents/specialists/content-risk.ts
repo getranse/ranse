@@ -1,3 +1,4 @@
+import { INJECTION_PATTERNS, RESTRICTED_TOPICS } from '../../../../config/autonomy';
 import type { DraftResult } from '../../../schemas/draft';
 import type { TriageResult } from '../../../schemas/triage';
 
@@ -6,31 +7,6 @@ import type { TriageResult } from '../../../schemas/triage';
 // human-approval path regardless of how confident the draft looks (the same
 // policy Fin applies). Heuristic on purpose: it costs nothing per message,
 // cannot itself be prompt-injected, and errs toward escalation.
-const INJECTION_PATTERNS: RegExp[] = [
-  /ignore\s+(all\s+|any\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)/i,
-  /disregard\s+(your|all|the)\s+(instructions?|rules?|guidelines?|system\s+prompt)/i,
-  /(reveal|show|print|repeat)\s+(your|the)\s+(system\s+prompt|instructions?|hidden\s+rules?)/i,
-  /you\s+are\s+now\s+(a|an|in)\b/i,
-  /\b(jailbreak|dan\s+mode|developer\s+mode)\b/i,
-  /<\/?\s*(system|assistant|instructions?)\s*>/i,
-  /\bas\s+an?\s+ai\b.{0,40}\b(pretend|roleplay|act\s+as)\b/i,
-];
-
-const RESTRICTED_TOPICS: Array<[string, RegExp]> = [
-  [
-    'restricted_topic_self_harm',
-    /\b(suicid\w*|self.?harm|(kill|hurt|harm)(ing)?\s+(myself|himself|herself|themselves)|end(ing)?\s+my\s+life)\b/i,
-  ],
-  [
-    'restricted_topic_legal',
-    /\b(lawsuit|attorney|lawyer|legal\s+action|small\s+claims|subpoena|su(e|ing)\s+(you|your))\b/i,
-  ],
-  [
-    'restricted_topic_medical',
-    /\b(diagnos\w*|prescri\w*|medical\s+advice|overdose|dosage|allergic\s+reaction)\b/i,
-  ],
-];
-
 /** Hard-block reasons derived from raw customer text. Empty = no concern. */
 export function assessContentRisk(customerText: string): string[] {
   const reasons: string[] = [];

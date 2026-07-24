@@ -56,23 +56,3 @@ export async function upsertVectors(
   );
   return true;
 }
-
-export async function mirrorLegacyDoc(
-  env: Env,
-  workspaceId: string,
-  sourceId: string,
-  kind: KnowledgeSourceKind,
-  title: string,
-  body: string,
-  url: string | undefined,
-  now: number,
-) {
-  if (kind !== 'manual' && kind !== 'url') return;
-  await env.DB.prepare(
-    `INSERT INTO knowledge_doc (id, workspace_id, title, body, url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET title = excluded.title, body = excluded.body, url = excluded.url, updated_at = excluded.updated_at`,
-  )
-    .bind(sourceId, workspaceId, title, body, url ?? null, now, now)
-    .run();
-}

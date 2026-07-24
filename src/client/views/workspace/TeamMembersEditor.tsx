@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { TeamMemberRow } from '../../../interfaces/teams';
 import type { WorkspaceMember } from '../../../types/shared/workspace';
 import { API } from '../../api';
-
-interface TeamMemberRow {
-  user_id: string;
-  email: string;
-  name: string | null;
-}
 
 export function TeamMembersEditor({
   teamId,

@@ -1,6 +1,7 @@
+import { VOICE_TURN_BUFFER_MS } from '../../../../../config/channels';
 import type { StreamSession, TwilioFrame } from '../../../../../interfaces/channels';
-import type { Env } from '../../../../env';
 import type { PublicChannel } from '../../../../../types/shared/channels';
+import type { Env } from '../../../../env';
 import { voiceProviderConfigFor } from '../adapter';
 import { applyVoiceEvents } from '../ingest';
 import { decodeMuLawToPcm16, encodePcm16ToMuLaw } from './mulaw';
@@ -20,7 +21,6 @@ import { runVoiceTurn } from './turn-orchestrator';
 // synthesize via Workers AI MeloTTS, and stream μ-law back. Turn-level
 // rows are persisted as we go via `runVoiceTurn`.
 
-const TURN_BUFFER_MS = 1500;
 const SAMPLE_RATE = 8000;
 
 export async function handleTwilioMediaStream(
@@ -97,7 +97,7 @@ async function handleFrame(
     const pcm = decodeMuLawToPcm16(mulaw);
     session.pcmBuffer.push(pcm);
     session.pcmSamples += pcm.length;
-    if (session.pcmSamples >= (SAMPLE_RATE * TURN_BUFFER_MS) / 1000 && !session.flushing) {
+    if (session.pcmSamples >= (SAMPLE_RATE * VOICE_TURN_BUFFER_MS) / 1000 && !session.flushing) {
       session.flushing = true;
       flushTurn(socket, session)
         .catch((err) => console.error('twilio flush error', err))

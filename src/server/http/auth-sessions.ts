@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { apiError } from '../../lib/errors';
-import { getSession } from '../actions/auth';
+import { getSession, revokeOtherSessions } from '../actions/auth';
 import type { Env } from '../env';
 import { auditUserEvent } from './auth-guards';
 
@@ -12,10 +12,7 @@ export function registerSessionRoutes(authApp: Hono<{ Bindings: Env }>) {
   authApp.post('/sessions/revoke-others', async (c) => {
     const s = await getSession(c);
     if (!s) return apiError(c, 'unauthorized', 'Sign in required.');
-    const result = await c.env.DB.prepare(`DELETE FROM session WHERE user_id = ? AND id != ?`)
-      .bind(s.userId, s.sessionId)
-      .run();
-    const revoked = Number(result.meta?.changes ?? 0);
+    const revoked = await revokeOtherSessions(c.env, s.userId, s.sessionId);
     await auditUserEvent(c, s.userId, undefined, 'auth.session_revoked', {
       scope: 'others',
       revoked,

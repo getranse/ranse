@@ -1,5 +1,13 @@
-import type { ProcedureStep, ProcedureEventType, ProcedureTriggerType, ProcedureSourceKind, ProcedureLibraryCategory, ProcedureRunStatus, ProcedureStepRunStatus } from '../types/shared/procedure';
-import type { DiagramNodeShape } from '../server/automation/procedures/diagram';
+import type { DiagramNodeShape } from '../lib/procedure-diagram';
+import type {
+  ProcedureEventType,
+  ProcedureLibraryCategory,
+  ProcedureRunStatus,
+  ProcedureSourceKind,
+  ProcedureStep,
+  ProcedureStepRunStatus,
+  ProcedureTriggerType,
+} from '../types/shared/procedure';
 import type { SendThreadedReply } from '../types/shared/supervisor';
 
 export interface DiagramNode {

@@ -1,17 +1,17 @@
+import type {
+  KnowledgeSourceListItem,
+  ResolvedTicketImportResult,
+} from '../../../interfaces/knowledge-sources';
 import { sha256Hex } from '../../../lib/crypto';
 import { ids } from '../../../lib/ids';
 import { getText } from '../../../lib/storage';
-import type {
-  KnowledgeIngestResult,
-  KnowledgeSourceKind,
-  KnowledgeSourceListItem,
-  ResolvedTicketImportResult,
-} from '../../../types/shared/knowledge';
+import type { KnowledgeIngestResult, KnowledgeSourceKind } from '../../../types/shared/knowledge';
+import { replaceSourceChunks } from '../../actions/knowledge-chunks';
+import { insertSourceShell, mirrorLegacyDoc } from '../../actions/knowledge-sources';
 import type { Env } from '../../env';
 import { SOURCE_STALE_AFTER_MS } from './constants';
 import { fetchUrlDocument } from './crawl';
-import { buildChunkRows, mirrorLegacyDoc, upsertVectors } from './source-ingest';
-import { insertSourceShell, replaceSourceChunks } from './source-persist';
+import { buildChunkRows, upsertVectors } from './source-ingest';
 import { normalizeWhitespace } from './text';
 import { deleteVectors } from './vector';
 

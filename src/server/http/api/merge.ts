@@ -1,10 +1,8 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
 import { apiError } from '../../../lib/errors';
 import { mergeTickets } from '../../actions/merge';
+import { mergeBody } from '../../schemas/tickets';
 import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from './context';
-
-const mergeBody = z.object({ sourceTicketId: z.string().min(1) });
 
 export function registerMergeRoutes(apiApp: Hono<Ctx>) {
   // Merges the source ticket INTO :id — the open conversation continues on :id.

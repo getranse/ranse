@@ -27,3 +27,5 @@ export const feedbackBody = z.object({
   message_id: z.string().nullable().optional(),
   comment: z.string().max(2000).nullable().optional(),
 });
+
+export const mergeBody = z.object({ sourceTicketId: z.string().min(1) });

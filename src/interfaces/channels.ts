@@ -1,5 +1,5 @@
-import type { ChannelKind, VoiceProviderKind, PublicChannelKind } from '../types/shared/channels';
 import type { Env } from '../server/env';
+import type { ChannelKind, PublicChannelKind, VoiceProviderKind } from '../types/shared/channels';
 
 export // Apple Messages for Business (the brand previously called Apple Business
 // Chat). Once a business is approved in Apple Business Register, Apple's
@@ -583,12 +583,11 @@ export interface ServerFrame {
   };
 }
 
-export // Single transcribe → think → speak loop for one customer utterance.
+// Single transcribe → think → speak loop for one customer utterance.
 // Called by the streaming relay every time it has buffered enough audio
 // to be worth transcribing. Persists the turn (both caller + agent reply)
 // through the shared voice ingest path.
-
-interface TurnInput {
+export interface TurnInput {
   callSid: string;
   sequence: number;
   pcm: Int16Array;

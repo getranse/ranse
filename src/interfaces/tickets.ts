@@ -1,6 +1,9 @@
-import type { AnswerInspectionHit, AnswerInspectionTrace } from '../types/client/knowledge';
 import type { TicketFeedback, TicketOutcomeEvent } from '../types/shared/autonomy';
-import type { AgenticRetrievalTrace, KnowledgeHit } from '../types/shared/knowledge';
+import type {
+  AgenticRetrievalTrace,
+  KnowledgeHit,
+  KnowledgeInspectionHit,
+} from '../types/shared/knowledge';
 import type { McpToolCall } from '../types/shared/mcp';
 import type { ProcedureRun } from '../types/shared/procedure';
 
@@ -8,8 +11,8 @@ export interface TicketDraft {
   ok: boolean;
   subject?: string;
   body?: string;
-  knowledge?: AnswerInspectionHit[];
-  knowledgeTrace?: AnswerInspectionTrace;
+  knowledge?: KnowledgeInspectionHit[];
+  knowledgeTrace?: AgenticRetrievalTrace;
   error?: string;
 }
 
@@ -88,12 +91,5 @@ export interface Tag {
   id: string;
   name: string;
   color: string | null;
-  created_at: number;
-}
-
-export interface Macro {
-  id: string;
-  name: string;
-  body: string;
   created_at: number;
 }

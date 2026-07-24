@@ -1,36 +1,22 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
 import { apiError } from '../../lib/errors';
 import { hashPassword, needsRehash } from '../../lib/password';
 import { verifyTotp } from '../../lib/totp';
 import { createSession, setSessionCookie, verifyPassword } from '../actions/auth';
+import { findLoginUser, touchLastLogin, updatePasswordHash } from '../actions/users';
 import type { Env } from '../env';
 import { listUserWorkspaces } from '../platform/workspaces';
+import { loginBody } from '../schemas/auth';
 import { auditUserEvent, checkLoginRateLimit } from './auth-guards';
 
 export function registerLoginRoute(authApp: Hono<{ Bindings: Env }>) {
   authApp.post('/login', async (c) => {
-    const body = z
-      .object({
-        email: z.string().email(),
-        password: z.string().min(1),
-        totpCode: z.string().optional(),
-      })
-      .parse(await c.req.json());
+    const body = loginBody.parse(await c.req.json());
 
     const limited = await checkLoginRateLimit(c, body.email);
     if (limited) return limited;
 
-    const user = await c.env.DB.prepare(
-      `SELECT id, password_hash, totp_secret, totp_enabled FROM user WHERE email = ?`,
-    )
-      .bind(body.email.toLowerCase())
-      .first<{
-        id: string;
-        password_hash: string | null;
-        totp_secret: string | null;
-        totp_enabled: number;
-      }>();
+    const user = await findLoginUser(c.env, body.email);
     if (!user?.password_hash) {
       if (user)
         await auditUserEvent(c, user.id, body.email, 'auth.login_failed', {
@@ -54,19 +40,14 @@ export function registerLoginRoute(authApp: Hono<{ Bindings: Env }>) {
     }
 
     if (needsRehash(user.password_hash)) {
-      const fresh = await hashPassword(body.password);
-      await c.env.DB.prepare(`UPDATE user SET password_hash = ? WHERE id = ?`)
-        .bind(fresh, user.id)
-        .run();
+      await updatePasswordHash(c.env, user.id, await hashPassword(body.password));
     }
 
     const workspaces = await listUserWorkspaces(c.env, user.id);
     const currentWorkspaceId = workspaces.length === 1 ? workspaces[0].id : undefined;
     const sessionId = await createSession(c.env, user.id, currentWorkspaceId);
     await setSessionCookie(c, sessionId);
-    await c.env.DB.prepare(`UPDATE user SET last_login_at = ? WHERE id = ?`)
-      .bind(Date.now(), user.id)
-      .run();
+    await touchLastLogin(c.env, user.id);
 
     await auditUserEvent(c, user.id, body.email, 'auth.login');
     return c.json({ ok: true, userId: user.id, workspaceId: currentWorkspaceId });

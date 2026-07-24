@@ -1,5 +1,5 @@
 import type { PublicChannelEntry } from '../../api';
-import type { ChannelDraft, DraftConfig, KindOption } from './publicChannelOptions';
+import type { ChannelDraft, DraftConfig, KindOption } from './public-channel-options';
 
 export function splitOrigins(value: string): string[] {
   return value

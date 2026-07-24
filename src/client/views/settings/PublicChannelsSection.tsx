@@ -3,8 +3,8 @@ import type { PublicChannelsSectionProps } from '../../../interfaces/client';
 import type { WorkspaceMailbox } from '../../../types/shared/workspace';
 import { API, type PublicChannelEntry } from '../../api';
 import { ChannelRow } from './PublicChannelRow';
-import { buildConfigPayload, parseMinutes, splitOrigins } from './publicChannelHelpers';
-import { CONFIG_FIELDS, emptyDraft, KIND_OPTIONS } from './publicChannelOptions';
+import { buildConfigPayload, parseMinutes, splitOrigins } from './public-channel-helpers';
+import { CONFIG_FIELDS, emptyDraft, KIND_OPTIONS } from './public-channel-options';
 
 export function PublicChannelsSection({ onSaved }: PublicChannelsSectionProps) {
   const [channels, setChannels] = useState<PublicChannelEntry[]>([]);

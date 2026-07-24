@@ -1,4 +1,5 @@
 import type { KindOption } from '../../../interfaces/client';
+
 export type { KindOption };
 
 export type DraftConfig = Record<string, string>;
@@ -17,12 +18,30 @@ export const KIND_OPTIONS: KindOption[] = [
   { value: 'rcs', label: 'Google Business Messages (RCS)', channelKind: 'rcs' },
   { value: 'apple_business', label: 'Apple Messages for Business', channelKind: 'apple_business' },
   { value: 'webhook', label: 'Generic outbound webhook', channelKind: 'webhook' },
-  { value: 'voice_elevenlabs', label: 'Voice — ElevenLabs', channelKind: 'voice', voiceProvider: 'elevenlabs' },
-  { value: 'voice_twilio', label: 'Voice — Twilio + Workers AI', channelKind: 'voice', voiceProvider: 'twilio_realtime' },
-  { value: 'voice_gemini', label: 'Voice — Gemini Live', channelKind: 'voice', voiceProvider: 'gemini_live' },
+  {
+    value: 'voice_elevenlabs',
+    label: 'Voice — ElevenLabs',
+    channelKind: 'voice',
+    voiceProvider: 'elevenlabs',
+  },
+  {
+    value: 'voice_twilio',
+    label: 'Voice — Twilio + Workers AI',
+    channelKind: 'voice',
+    voiceProvider: 'twilio_realtime',
+  },
+  {
+    value: 'voice_gemini',
+    label: 'Voice — Gemini Live',
+    channelKind: 'voice',
+    voiceProvider: 'gemini_live',
+  },
 ];
 
-export const CONFIG_FIELDS: Record<string, { name: string; label: string; placeholder?: string }[]> = {
+export const CONFIG_FIELDS: Record<
+  string,
+  { name: string; label: string; placeholder?: string }[]
+> = {
   chat: [],
   form: [],
   email: [],
@@ -36,7 +55,11 @@ export const CONFIG_FIELDS: Record<string, { name: string; label: string; placeh
     { name: 'auth_token', label: 'Twilio Auth Token' },
     { name: 'from_number', label: 'From number (E.164)', placeholder: '+15551234567' },
     { name: 'messaging_service_sid', label: 'Messaging Service SID (optional)' },
-    { name: 'webhook_url', label: 'Public webhook URL', placeholder: 'https://support.example.com/public/channels/<key>/webhook' },
+    {
+      name: 'webhook_url',
+      label: 'Public webhook URL',
+      placeholder: 'https://support.example.com/public/channels/<key>/webhook',
+    },
   ],
   discord: [
     { name: 'application_id', label: 'Application id' },

@@ -1,12 +1,14 @@
 import type { SessionData } from '../../interfaces/lib';
+
 export type { SessionData };
+
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
-import type { Env } from '../env';
-import { hashPassword as hashPw, verifyPassword as verifyPw } from '../../lib/password';
+import { SESSION_MAX_AGE_SECONDS as MAX_AGE } from '../../config/auth';
 import { hmacSign, hmacVerify } from '../../lib/crypto';
 import { ids } from '../../lib/ids';
-import { SESSION_MAX_AGE_SECONDS as MAX_AGE } from '../../config/auth';
+import { hashPassword as hashPw, verifyPassword as verifyPw } from '../../lib/password';
+import type { Env } from '../env';
 
 const COOKIE_NAME = 'ranse_session';
 
@@ -75,3 +77,19 @@ export async function requireUser<E extends { Bindings: Env }>(
 
 export const hashPassword = hashPw;
 export const verifyPassword = verifyPw;
+
+export async function deleteSession(env: Env, sessionId: string): Promise<void> {
+  await env.DB.prepare(`DELETE FROM session WHERE id = ?`).bind(sessionId).run();
+}
+
+/** Revoke every session for the user except the calling one; returns the count. */
+export async function revokeOtherSessions(
+  env: Env,
+  userId: string,
+  keepSessionId: string,
+): Promise<number> {
+  const result = await env.DB.prepare(`DELETE FROM session WHERE user_id = ? AND id != ?`)
+    .bind(userId, keepSessionId)
+    .run();
+  return Number(result.meta?.changes ?? 0);
+}

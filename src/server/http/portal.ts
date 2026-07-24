@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
+import { escapeHtml } from '../../lib/html-escape';
 import { verifyPortalToken } from '../../lib/portal-links';
 import { loadPortalTicket } from '../actions/portal';
 import type { Env } from '../env';
-import { escapeHtml } from '../inbox/email/footers';
 
 export const portalApp = new Hono<{ Bindings: Env }>();
 

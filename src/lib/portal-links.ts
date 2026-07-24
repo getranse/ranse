@@ -1,8 +1,7 @@
+import { PORTAL_LINK_TTL_MS } from '../config/channels';
 import type { PortalTokenPayload } from '../interfaces/portal';
 import type { Env } from '../server/env';
 import { hmacSign, hmacVerify } from './crypto';
-
-const PORTAL_LINK_TTL_MS = 1000 * 60 * 60 * 24 * 90;
 
 /** Signed, expiring customer link to view one ticket's thread and status. */
 export async function buildPortalLink(

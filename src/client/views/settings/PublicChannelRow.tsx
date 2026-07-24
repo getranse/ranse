@@ -1,5 +1,5 @@
 import type { PublicChannelEntry } from '../../api';
-import { sharingSummary } from './publicChannelHelpers';
+import { sharingSummary } from './public-channel-helpers';
 
 export function ChannelRow({
   channel,

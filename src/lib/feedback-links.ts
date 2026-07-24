@@ -2,6 +2,7 @@ import type { FeedbackLinks, FeedbackTokenPayload } from '../interfaces/lib';
 
 export type { FeedbackLinks, FeedbackTokenPayload };
 
+import { FEEDBACK_LINK_TTL_MS } from '../config/channels';
 import type { Env } from '../server/env';
 import { hmacSign, hmacVerify } from './crypto';
 import { buildPortalLink } from './portal-links';
@@ -49,7 +50,7 @@ async function signedFeedbackUrl(
 ): Promise<string> {
   const payload = encodePayload({
     ...input,
-    expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 90,
+    expiresAt: Date.now() + FEEDBACK_LINK_TTL_MS,
   });
   const sig = await hmacSign(env.COOKIE_SIGNING_KEY ?? '', payload);
   const url = new URL('/feedback', base);

@@ -1,6 +1,14 @@
-import type { DiagramNode, DiagramEdge, ProcedureDiagram, LayoutCtx, PushNodeInput } from '../../../interfaces/procedures';
-export type { DiagramNode, DiagramEdge, ProcedureDiagram };
-import type { ProcedureSpec, ProcedureStep } from '../../../types/shared/procedure';
+import type {
+  DiagramEdge,
+  DiagramNode,
+  LayoutCtx,
+  ProcedureDiagram,
+  PushNodeInput,
+} from '../interfaces/procedures';
+
+export type { DiagramEdge, DiagramNode, ProcedureDiagram };
+
+import type { ProcedureSpec, ProcedureStep } from '../types/shared/procedure';
 
 // Pure procedure-flow layout. Converts a `ProcedureSpec` into a list of
 // nodes + edges with absolute pixel positions, ready for an SVG renderer.

@@ -1,5 +1,5 @@
-import { audit } from '../../actions/audit';
-import type { Env } from '../../env';
+import type { Env } from '../env';
+import { audit } from './audit';
 
 /**
  * Attach a 1–5 survey score (and optional comment) to the customer's latest

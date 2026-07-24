@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
-import { z } from 'zod';
-import { r2Keys, putRaw } from '../../../lib/storage';
-import { OWNER_OR_ADMIN, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
 import { readUploadedImage } from '../../../lib/files';
+import { putRaw, r2Keys } from '../../../lib/storage';
+import { agentProfileBody, workspaceSettingsBody } from '../../schemas/settings';
+import { type Ctx, getSupervisor, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
 
 export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/settings/workspace', async (c) => {
@@ -13,14 +13,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/settings/workspace', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        ai_drafts_enabled: z.boolean().optional(),
-        audit_read_logging: z.boolean().optional(),
-        from_name: z.string().max(100).optional(),
-        logo_url: z.union([z.string().url().max(500), z.literal('')]).optional(),
-      })
-      .parse(await c.req.json());
+    const body = workspaceSettingsBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).setWorkspaceSettings({ actorUserId: s.userId, ...body });
     return c.json({ ok: true });
@@ -60,13 +53,7 @@ export function registerSettingsRoutes(apiApp: Hono<Ctx>) {
 
   apiApp.post('/me/profile', async (c) => {
     const s = c.get('session');
-    const body = z
-      .object({
-        name: z.string().max(100).optional(),
-        signature_markdown: z.string().max(5000).optional(),
-        avatar_url: z.union([z.string().url().max(500), z.literal('')]).optional(),
-      })
-      .parse(await c.req.json());
+    const body = agentProfileBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
     await (stub as any).setAgentProfile({ userId: s.userId, ...body });
     return c.json({ ok: true });
