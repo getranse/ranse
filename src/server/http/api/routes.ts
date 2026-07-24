@@ -17,6 +17,7 @@ import { registerProcedureRoutes } from './procedures';
 import { registerSearchRoutes } from './search';
 import { registerSettingsRoutes } from './settings';
 import { registerTagRoutes } from './tags';
+import { registerTeamRoutes } from './teams';
 import { registerTicketRoutes } from './tickets';
 import { registerWorkspaceRoutes } from './workspaces';
 
@@ -28,6 +29,7 @@ registerSearchRoutes(apiApp);
 registerTagRoutes(apiApp);
 registerIntegrationRoutes(apiApp);
 registerMacroRoutes(apiApp);
+registerTeamRoutes(apiApp);
 registerChannelRoutes(apiApp);
 registerSettingsRoutes(apiApp);
 registerNotificationRoutes(apiApp);

@@ -1,10 +1,5 @@
-import type { Env } from '../../env';
-import { listPublicChannels } from '../../inbox/channels';
-import { audit, diffChanges } from '../../actions/audit';
 import { randomToken } from '../../../lib/crypto';
 import { ids } from '../../../lib/ids';
-import { listWorkspaceOutcomeRollups } from '../outcomes';
-import type { WorkspaceMailbox, WorkspaceUsage } from '../../../types/shared/workspace';
 import type { AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
 import {
   type AutonomyPolicy,
@@ -14,6 +9,11 @@ import {
   normalizeAutonomyRolloutPercent,
   normalizeAutonomyThreshold,
 } from '../../../types/shared/autonomy';
+import type { WorkspaceMailbox, WorkspaceUsage } from '../../../types/shared/workspace';
+import { audit, diffChanges } from '../../actions/audit';
+import type { Env } from '../../env';
+import { listPublicChannels } from '../../inbox/channels';
+import { listWorkspaceOutcomeRollups } from '../outcomes';
 
 export async function listWorkspaceMailboxes(
   env: Env,
@@ -102,38 +102,34 @@ export async function updateWorkspaceMailbox(
     autonomyPolicy?: AutonomyPolicy;
     autonomyThreshold?: number;
     autonomyRolloutPercent?: number;
+    defaultTeamId?: string | null;
   },
 ): Promise<'ok' | 'not_found'> {
-  const mailboxFields = `display_name, auto_reply_policy, autonomy_policy, autonomy_threshold, autonomy_rollout_percent`;
+  const mailboxFields = `display_name, auto_reply_policy, autonomy_policy, autonomy_threshold, autonomy_rollout_percent, default_team_id`;
   const before = await env.DB.prepare(
     `SELECT ${mailboxFields} FROM mailbox WHERE id = ? AND workspace_id = ?`,
   )
     .bind(mailboxId, workspaceId)
     .first<Record<string, unknown>>();
   if (!before) return 'not_found';
-  const updates: string[] = [];
-  const binds: unknown[] = [];
-  if (input.displayName !== undefined) {
-    updates.push('display_name = ?');
-    binds.push(input.displayName);
-  }
-  if (input.autoReplyPolicy !== undefined) {
-    updates.push('auto_reply_policy = ?');
-    binds.push(input.autoReplyPolicy);
-  }
+  const fields: Array<[string, unknown]> = [];
+  if (input.displayName !== undefined) fields.push(['display_name', input.displayName]);
+  if (input.autoReplyPolicy !== undefined)
+    fields.push(['auto_reply_policy', input.autoReplyPolicy]);
   if (input.autonomyPolicy !== undefined) {
-    updates.push('autonomy_policy = ?');
-    updates.push('auto_reply_policy = ?');
-    binds.push(input.autonomyPolicy, legacyAutoReplyPolicy(input.autonomyPolicy));
+    fields.push(['autonomy_policy', input.autonomyPolicy]);
+    fields.push(['auto_reply_policy', legacyAutoReplyPolicy(input.autonomyPolicy)]);
   }
-  if (input.autonomyThreshold !== undefined) {
-    updates.push('autonomy_threshold = ?');
-    binds.push(normalizeAutonomyThreshold(input.autonomyThreshold));
-  }
-  if (input.autonomyRolloutPercent !== undefined) {
-    updates.push('autonomy_rollout_percent = ?');
-    binds.push(normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent));
-  }
+  if (input.autonomyThreshold !== undefined)
+    fields.push(['autonomy_threshold', normalizeAutonomyThreshold(input.autonomyThreshold)]);
+  if (input.autonomyRolloutPercent !== undefined)
+    fields.push([
+      'autonomy_rollout_percent',
+      normalizeAutonomyRolloutPercent(input.autonomyRolloutPercent),
+    ]);
+  if (input.defaultTeamId !== undefined) fields.push(['default_team_id', input.defaultTeamId]);
+  const updates = fields.map(([column]) => `${column} = ?`);
+  const binds = fields.map(([, value]) => value);
   if (updates.length > 0) {
     await env.DB.prepare(
       `UPDATE mailbox SET ${updates.join(', ')} WHERE id = ? AND workspace_id = ?`,
@@ -142,9 +138,7 @@ export async function updateWorkspaceMailbox(
       .run();
   }
   const after = updates.length
-    ? await env.DB.prepare(
-        `SELECT ${mailboxFields} FROM mailbox WHERE id = ? AND workspace_id = ?`,
-      )
+    ? await env.DB.prepare(`SELECT ${mailboxFields} FROM mailbox WHERE id = ? AND workspace_id = ?`)
         .bind(mailboxId, workspaceId)
         .first<Record<string, unknown>>()
     : before;

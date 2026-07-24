@@ -4,6 +4,7 @@ import { audit } from '../../../actions/audit';
 import type { Env } from '../../../env';
 import { recordOutcome } from '../../../platform/outcomes';
 import { emitEvent } from '../../notifications/dispatch';
+import { createTicket } from './ticket-create';
 
 export async function ingestEmail(
   ctx: {
@@ -80,35 +81,6 @@ async function loadTicketStatus(env: Env, workspaceId: string, ticketId: string)
   return env.DB.prepare(`SELECT status FROM ticket WHERE id = ? AND workspace_id = ?`)
     .bind(ticketId, workspaceId)
     .first<{ status: string }>();
-}
-
-async function createTicket(
-  env: Env,
-  workspaceId: string,
-  payload: InboundEmailPayload,
-  now: number,
-): Promise<string> {
-  const ticketId = ids.ticket();
-  await env.DB.prepare(
-    `INSERT INTO ticket (
-       id, workspace_id, mailbox_id, subject, status, priority, requester_email,
-       requester_name, last_message_at, thread_token, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, 'open', 'normal', ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      ticketId,
-      workspaceId,
-      payload.mailboxId,
-      payload.subject,
-      payload.from.address.toLowerCase(),
-      payload.from.name ?? null,
-      payload.receivedAt,
-      ids.ticket().slice(4),
-      now,
-      now,
-    )
-    .run();
-  return ticketId;
 }
 
 async function insertInboundMessage(

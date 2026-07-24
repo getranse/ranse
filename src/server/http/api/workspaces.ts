@@ -1,14 +1,9 @@
-import type { Context, Hono } from 'hono';
-import {
-  createWorkspaceMailbox,
-  listWorkspaceMailboxes,
-  updateWorkspaceMailbox,
-  workspaceAuditLog,
-  workspaceExportManifest,
-  workspaceUsage,
-} from '../../platform/workspaces/admin';
-import { listWorkspaceOutcomeRollups } from '../../platform/outcomes';
+import type { Hono } from 'hono';
+import { apiError } from '../../../lib/errors';
+import type { WorkspaceInvitation } from '../../../types/shared/workspace';
+import { audit, auditContext } from '../../actions/audit';
 import { sendWorkspaceInvitationEmail } from '../../inbox/email/invitations';
+import { listWorkspaceOutcomeRollups } from '../../platform/outcomes';
 import {
   archiveWorkspace,
   createWorkspaceInvitation,
@@ -22,23 +17,22 @@ import {
   updateWorkspaceMemberRole,
   updateWorkspaceName,
 } from '../../platform/workspaces';
-import type { WorkspaceInvitation } from '../../../types/shared/workspace';
-import { OWNER_OR_ADMIN, requireWorkspaceRole, type Ctx } from './context';
-import { apiError } from '../../../lib/errors';
-import { audit, auditContext, verifyAuditChain } from '../../actions/audit';
-import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
+import { workspaceExportManifest, workspaceUsage } from '../../platform/workspaces/admin';
 import {
   archiveConfirm,
-  createMailboxBody,
   deleteConfirm,
   inviteBody,
   roleBody,
   transferOwnershipBody,
-  updateMailboxBody,
   updateNameBody,
 } from '../../schemas/workspaces';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+import { registerWorkspaceAuditRoutes } from './workspaces-audit';
+import { registerWorkspaceMailboxRoutes } from './workspaces-mailboxes';
 
 export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
+  registerWorkspaceAuditRoutes(apiApp);
+  registerWorkspaceMailboxRoutes(apiApp);
   apiApp.get('/workspaces/current/members', async (c) => {
     const s = c.get('session');
     return c.json({ members: await listWorkspaceMembers(c.env, s.workspaceId) });
@@ -55,69 +49,49 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     archiveConfirm.parse(await c.req.json().catch(() => ({})));
     await archiveWorkspace(c.env, s.workspaceId, s.userId);
-    return c.json({ ok: true, currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId) });
+    return c.json({
+      ok: true,
+      currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId),
+    });
   });
 
   apiApp.delete('/workspaces/current', requireWorkspaceRole(['owner']), async (c) => {
     const s = c.get('session');
     deleteConfirm.parse(await c.req.json().catch(() => ({})));
     await deleteWorkspace(c.env, s.workspaceId, s.userId);
-    return c.json({ ok: true, currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId) });
+    return c.json({
+      ok: true,
+      currentWorkspaceId: await setSessionWorkspaceFallback(c.env, s.sessionId, s.userId),
+    });
   });
 
-  apiApp.post('/workspaces/current/transfer-ownership', requireWorkspaceRole(['owner']), async (c) => {
-    const s = c.get('session');
-    const body = transferOwnershipBody.parse(await c.req.json());
-    const result = await transferWorkspaceOwnership(c.env, s.workspaceId, s.userId, body.user_id);
-    if (result === 'not_found') return apiError(c, 'not_found', 'Target user is not a workspace member.');
-    return c.json({ ok: true });
-  });
+  apiApp.post(
+    '/workspaces/current/transfer-ownership',
+    requireWorkspaceRole(['owner']),
+    async (c) => {
+      const s = c.get('session');
+      const body = transferOwnershipBody.parse(await c.req.json());
+      const result = await transferWorkspaceOwnership(c.env, s.workspaceId, s.userId, body.user_id);
+      if (result === 'not_found')
+        return apiError(c, 'not_found', 'Target user is not a workspace member.');
+      return c.json({ ok: true });
+    },
+  );
 
   apiApp.get('/workspaces/current/usage', async (c) => {
     const s = c.get('session');
     return c.json({ usage: await workspaceUsage(c.env, s.workspaceId) });
   });
 
-  apiApp.get('/workspaces/current/audit', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    return c.json({ events: await workspaceAuditLog(c.env, s.workspaceId, auditQueryFromRequest(c)) });
-  });
-
-  apiApp.get('/workspaces/current/audit/export', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const events = await workspaceAuditLog(c.env, s.workspaceId, {
-      ...auditQueryFromRequest(c),
-      limit: 1000,
-    });
-    await audit(c.env, {
-      workspaceId: s.workspaceId,
-      actorType: 'user',
-      actorId: s.userId,
-      action: 'workspace.exported',
-      payload: { kind: 'audit_log', count: events.length },
-      context: auditContext(c),
-    });
-    if (c.req.query('format') === 'csv') {
-      return new Response(auditEventsToCsv(events), {
-        headers: {
-          'content-type': 'text/csv; charset=utf-8',
-          'content-disposition': `attachment; filename="audit-${s.workspaceId}-${Date.now()}.csv"`,
-        },
-      });
-    }
-    return c.json({ events });
-  });
-
-  apiApp.get('/workspaces/current/audit/verify', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    return c.json(await verifyAuditChain(c.env, s.workspaceId));
-  });
-
-  apiApp.get('/workspaces/current/outcomes/rollup', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365);
-    return c.json({ days: await listWorkspaceOutcomeRollups(c.env, s.workspaceId, days) });
-  });
+  apiApp.get(
+    '/workspaces/current/outcomes/rollup',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365);
+      return c.json({ days: await listWorkspaceOutcomeRollups(c.env, s.workspaceId, days) });
+    },
+  );
 
   apiApp.get('/workspaces/current/export', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
@@ -133,88 +107,85 @@ export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
     return c.json(manifest);
   });
 
-  apiApp.get('/workspaces/current/mailboxes', async (c) => {
-    const s = c.get('session');
-    return c.json({ mailboxes: await listWorkspaceMailboxes(c.env, s.workspaceId) });
-  });
-
-  apiApp.post('/workspaces/current/mailboxes', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const body = createMailboxBody.parse(await c.req.json());
-    try {
-      const mailbox = await createWorkspaceMailbox(c.env, s.workspaceId, s.userId, {
-        address: body.address,
-        displayName: body.display_name,
-        autoReplyPolicy: body.auto_reply_policy,
-        autonomyPolicy: body.autonomy_policy,
-        autonomyThreshold: body.autonomy_threshold,
-        autonomyRolloutPercent: body.autonomy_rollout_percent,
-      });
-      return c.json({ ok: true, mailbox });
-    } catch (err) {
-      if (err instanceof Error && err.message === 'mailbox_address_already_exists') {
-        return apiError(c, 'conflict', 'That mailbox address is already in use.');
-      }
-      throw err;
-    }
-  });
-
-  apiApp.patch('/workspaces/current/mailboxes/:id', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const body = updateMailboxBody.parse(await c.req.json());
-    const result = await updateWorkspaceMailbox(c.env, s.workspaceId, s.userId, c.req.param('id'), {
-      displayName: body.display_name,
-      autoReplyPolicy: body.auto_reply_policy,
-      autonomyPolicy: body.autonomy_policy,
-      autonomyThreshold: body.autonomy_threshold,
-      autonomyRolloutPercent: body.autonomy_rollout_percent,
-    });
-    if (result === 'not_found') return apiError(c, 'not_found', 'Mailbox not found.');
-    return c.json({ ok: true });
-  });
-
   apiApp.get('/workspaces/current/invitations', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
     const s = c.get('session');
     const invitations = await listWorkspaceInvitations(c.env, s.workspaceId);
     return c.json({ invitations: invitations.map((item) => withAcceptUrl(c.req.url, item)) });
   });
 
-  apiApp.post('/workspaces/current/invitations', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const body = inviteBody.parse(await c.req.json());
-    if (body.role === 'owner' && s.role !== 'owner') {
-      return apiError(c, 'forbidden', 'Only owners can invite owners.');
-    }
-    const invitation = await createWorkspaceInvitation(c.env, s.workspaceId, s.userId, body.email, body.role);
-    const withUrl = withAcceptUrl(c.req.url, invitation);
-    const emailDelivery = await sendWorkspaceInvitationEmail(c.env, s.workspaceId, body.email, withUrl.accept_url ?? '')
-      .catch(() => 'failed' as const);
-    return c.json({ ok: true, invitation: withUrl, emailDelivery });
-  });
+  apiApp.post(
+    '/workspaces/current/invitations',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      const body = inviteBody.parse(await c.req.json());
+      if (body.role === 'owner' && s.role !== 'owner') {
+        return apiError(c, 'forbidden', 'Only owners can invite owners.');
+      }
+      const invitation = await createWorkspaceInvitation(
+        c.env,
+        s.workspaceId,
+        s.userId,
+        body.email,
+        body.role,
+      );
+      const withUrl = withAcceptUrl(c.req.url, invitation);
+      const emailDelivery = await sendWorkspaceInvitationEmail(
+        c.env,
+        s.workspaceId,
+        body.email,
+        withUrl.accept_url ?? '',
+      ).catch(() => 'failed' as const);
+      return c.json({ ok: true, invitation: withUrl, emailDelivery });
+    },
+  );
 
-  apiApp.patch('/workspaces/current/members/:userId', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    const body = roleBody.parse(await c.req.json());
-    const targetRole = await getMembershipRole(c.env, c.req.param('userId'), s.workspaceId);
-    if (s.role !== 'owner' && (body.role === 'owner' || targetRole === 'owner')) {
-      return apiError(c, 'forbidden', 'Only owners can change owner access.');
-    }
-    const result = await updateWorkspaceMemberRole(c.env, s.workspaceId, s.userId, c.req.param('userId'), body.role);
-    if (result === 'not_found') return apiError(c, 'not_found', 'Workspace member not found.');
-    if (result === 'last_owner') return apiError(c, 'conflict', 'A workspace must keep at least one owner.');
-    return c.json({ ok: true });
-  });
+  apiApp.patch(
+    '/workspaces/current/members/:userId',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      const body = roleBody.parse(await c.req.json());
+      const targetRole = await getMembershipRole(c.env, c.req.param('userId'), s.workspaceId);
+      if (s.role !== 'owner' && (body.role === 'owner' || targetRole === 'owner')) {
+        return apiError(c, 'forbidden', 'Only owners can change owner access.');
+      }
+      const result = await updateWorkspaceMemberRole(
+        c.env,
+        s.workspaceId,
+        s.userId,
+        c.req.param('userId'),
+        body.role,
+      );
+      if (result === 'not_found') return apiError(c, 'not_found', 'Workspace member not found.');
+      if (result === 'last_owner')
+        return apiError(c, 'conflict', 'A workspace must keep at least one owner.');
+      return c.json({ ok: true });
+    },
+  );
 
-  apiApp.delete('/workspaces/current/members/:userId', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {
-    const s = c.get('session');
-    if (c.req.param('userId') === s.userId) return apiError(c, 'conflict', 'Use ownership transfer before removing yourself.');
-    const targetRole = await getMembershipRole(c.env, c.req.param('userId'), s.workspaceId);
-    if (s.role !== 'owner' && targetRole === 'owner') return apiError(c, 'forbidden', 'Only owners can remove owners.');
-    const result = await removeWorkspaceMember(c.env, s.workspaceId, s.userId, c.req.param('userId'));
-    if (result === 'not_found') return apiError(c, 'not_found', 'Workspace member not found.');
-    if (result === 'last_owner') return apiError(c, 'conflict', 'A workspace must keep at least one owner.');
-    return c.json({ ok: true });
-  });
+  apiApp.delete(
+    '/workspaces/current/members/:userId',
+    requireWorkspaceRole(OWNER_OR_ADMIN),
+    async (c) => {
+      const s = c.get('session');
+      if (c.req.param('userId') === s.userId)
+        return apiError(c, 'conflict', 'Use ownership transfer before removing yourself.');
+      const targetRole = await getMembershipRole(c.env, c.req.param('userId'), s.workspaceId);
+      if (s.role !== 'owner' && targetRole === 'owner')
+        return apiError(c, 'forbidden', 'Only owners can remove owners.');
+      const result = await removeWorkspaceMember(
+        c.env,
+        s.workspaceId,
+        s.userId,
+        c.req.param('userId'),
+      );
+      if (result === 'not_found') return apiError(c, 'not_found', 'Workspace member not found.');
+      if (result === 'last_owner')
+        return apiError(c, 'conflict', 'A workspace must keep at least one owner.');
+      return c.json({ ok: true });
+    },
+  );
 }
 
 function withAcceptUrl(requestUrl: string, invitation: WorkspaceInvitation): WorkspaceInvitation {
@@ -223,44 +194,4 @@ function withAcceptUrl(requestUrl: string, invitation: WorkspaceInvitation): Wor
   url.search = '';
   url.hash = '';
   return { ...invitation, accept_url: url.toString() };
-}
-
-function auditQueryFromRequest(c: Context<Ctx>): AuditQuery {
-  const num = (v: string | undefined) => (v ? Number(v) : undefined);
-  return {
-    action: c.req.query('action') || undefined,
-    category: (c.req.query('category') as AuditCategory) || undefined,
-    actorId: c.req.query('actor_id') || undefined,
-    ticketId: c.req.query('ticket_id') || undefined,
-    from: num(c.req.query('from')),
-    to: num(c.req.query('to')),
-    limit: num(c.req.query('limit')),
-  };
-}
-
-const AUDIT_CSV_COLUMNS: (keyof AuditEventRecord)[] = [
-  'created_at',
-  'action',
-  'category',
-  'severity',
-  'actor_type',
-  'actor_id',
-  'actor_email',
-  'ip',
-  'ticket_id',
-  'request_id',
-  'hash',
-  'payload_json',
-];
-
-function auditEventsToCsv(events: AuditEventRecord[]): string {
-  const escapeCsv = (value: unknown) => {
-    const str = value == null ? '' : String(value);
-    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-  };
-  const lines = [AUDIT_CSV_COLUMNS.join(',')];
-  for (const event of events) {
-    lines.push(AUDIT_CSV_COLUMNS.map((col) => escapeCsv(event[col])).join(','));
-  }
-  return lines.join('\n');
 }

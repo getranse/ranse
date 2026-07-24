@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { WORKSPACE_ROLES } from '../../types/shared/workspace';
 import { AUTONOMY_POLICIES } from '../../types/shared/autonomy';
+import { WORKSPACE_ROLES } from '../../types/shared/workspace';
 
 export const mailboxBody = z.object({
   address: z.string().email().optional(),
@@ -9,6 +9,7 @@ export const mailboxBody = z.object({
   autonomy_policy: z.enum(AUTONOMY_POLICIES).optional(),
   autonomy_threshold: z.number().min(0.5).max(0.99).optional(),
   autonomy_rollout_percent: z.number().min(0).max(100).optional(),
+  default_team_id: z.string().nullable().optional(),
 });
 
 export const createMailboxBody = mailboxBody.extend({ address: z.string().email() });

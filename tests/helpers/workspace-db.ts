@@ -77,7 +77,7 @@ export function createWorkspaceTestDb() {
       autonomy_policy TEXT NOT NULL DEFAULT 'draft_only',
       autonomy_threshold REAL NOT NULL DEFAULT 0.85,
       autonomy_rollout_percent INTEGER NOT NULL DEFAULT 100,
-      created_at INTEGER NOT NULL
+      default_team_id TEXT, created_at INTEGER NOT NULL
     );
     CREATE TABLE ticket (
       id TEXT PRIMARY KEY,
