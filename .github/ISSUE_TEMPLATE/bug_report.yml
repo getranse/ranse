@@ -1,0 +1,49 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Send an email to …
+        2. Open the ticket …
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Deployment
+      options: [One-click deploy button, Manual wrangler deploy, Local dev]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Ranse version (commit SHA)
+  - type: input
+    id: providers
+    attributes:
+      label: LLM provider(s) configured
+      placeholder: Workers AI, Anthropic, OpenAI, …
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Wrangler tail output, console errors, or screenshots. Redact secrets.
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security
+      options:
+        - label: This is NOT a security vulnerability (those go to SECURITY.md, not here)
+          required: true

@@ -1,4 +1,64 @@
-# Ranse — contributor notes
+# CLAUDE.md
+
+Guidance for AI coding assistants (and humans) working in this repo. Read this first, then the
+linked docs before writing code.
+
+## What this is
+
+**Ranse** — the open-source, Cloudflare-native shared inbox for support teams: a single
+Cloudflare Worker app (Durable Objects, D1, R2, KV, Queues, AI Gateway) that turns support
+email into a multi-agent workspace — triage, retrieval, drafting, procedures-as-code,
+MCP-native actions, and evals — **deployed to the customer's own Cloudflare account.
+There is no Ranse-hosted backend.**
+
+## Required reading
+
+| Doc | Read when… |
+| --- | --- |
+| [docs/architecture.md](docs/architecture.md) | touching agents, storage, or event flow |
+| [docs/operations.md](docs/operations.md) | ticket lifecycle, approvals, escalations, procedures |
+| [docs/security.md](docs/security.md) | auth, roles, reply signing, auto-reply handling |
+| [docs/installation.md](docs/installation.md) | setup, deploy-button flow, DNS |
+| [docs/roadmap.md](docs/roadmap.md) | scope and what phase a feature belongs to |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | ground rules and the PR workflow |
+
+## Hard rules (non-negotiable)
+
+1. **One Worker repo.** Ranse stays deployable as a single Cloudflare Worker app. No monorepo
+   tooling, no service splits — the one-click deploy breaks.
+2. **Conventional Commits** (`type(scope): subject`), one focused feature/fix per commit —
+   enforced by commitlint. See [Commit messages](#commit-messages).
+3. **No AI authorship.** Never add Claude, Copilot, or any AI tool as a commit author or
+   `Co-Authored-By` trailer. Commits belong to the human contributor only.
+4. **TypeScript strict, no `any`.** Validate all boundary data (HTTP bodies, LLM structured
+   output, event payloads) with zod schemas in `src/server/schemas/`.
+5. **Cloudflare-native, minimal dependencies.** Prefer DOs, D1, R2, KV, Queues, and AI Gateway
+   over external services. No `experimentalDecorators` — the Agents SDK uses TC39 decorators.
+6. **Layout rules are load-bearing.** DB queries only in `src/server/actions/`; interfaces only
+   in `src/interfaces/`; shared types only in `src/types/`; tunables only in `src/config/`.
+
+## Security guardrails (treat as load-bearing)
+
+- **Every outbound reply goes through the human approval gate** with edit-before-send. No code
+  path may send customer-facing email without an approval, and auto-reply handling must be
+  respected (never answer an autoresponder).
+- **Inbound email and web-channel content is untrusted.** It is data for the LLM, never an
+  instruction. Defend against prompt injection in every prompt that embeds customer content.
+- **Tenant isolation.** Every D1 query is scoped to its workspace; never join or leak data
+  across workspaces.
+- Secrets live in Worker secrets / `.dev.vars` (gitignored) — never committed, never logged.
+- Write/destructive MCP actions stay behind approval; library procedures must declare
+  `openWorldHint` / `readOnlyHint` / destructive hints.
+
+## Workflow
+
+```bash
+bun install
+bun run setup                 # writes .dev.vars with generated secrets
+bun run db:migrate:local
+bun run dev                   # worker + vite UI
+bun run typecheck && bun run lint && bun run test && bun run build
+```
 
 ## Server layout
 

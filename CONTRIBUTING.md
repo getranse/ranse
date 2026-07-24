@@ -2,6 +2,11 @@
 
 Thanks for your interest in Ranse! This project is early — the fastest way to contribute is to use it and file issues.
 
+Please read [CLAUDE.md](CLAUDE.md) (contributor + AI-assistant notes) and the
+[docs](docs/) before your first code contribution — especially
+[Architecture](docs/architecture.md), [Security](docs/security.md), and
+[Operations](docs/operations.md).
+
 ## Ground rules
 
 - **One Worker repo.** Keep Ranse deployable as a single Cloudflare Worker app. Do not introduce monorepo tooling or split services without discussion — one-click deploy breaks.
@@ -23,9 +28,17 @@ bun run dev
 
 ## Pull requests
 
-- Run `bun run typecheck && bun run lint` before opening a PR.
-- Keep commits focused. One logical change per PR.
-- Include a before/after description in the PR body if the change affects UX, APIs, or the setup flow.
+- Branch: `type/short-description` (e.g. `feat/approval-gate-audit`).
+- Run `bun run typecheck && bun run lint && bun run test && bun run build` before opening a PR.
+- Keep commits focused. One logical change per PR. Conventional Commits are enforced by
+  commitlint via a husky `commit-msg` hook; staged files are auto-checked with Biome via
+  lint-staged.
+- **No AI authorship.** Do not add Claude, Copilot, or any AI assistant as a commit author or
+  `Co-Authored-By` trailer. Commits are attributed to you, the human contributor.
+- Use the PR template. Include a before/after description in the PR body if the change affects
+  UX, APIs, or the setup flow.
+- If your change touches auth, outbound email / approval gates, MCP actions, or tenant
+  isolation, fill in the template's security-impact section with a short threat note.
 
 ## Procedure library contributions
 
@@ -60,7 +73,12 @@ Avoid vague or AI-sounding subjects like `improve code quality`, `implement comp
 
 ## Reporting issues
 
-Use GitHub issues. For security-sensitive reports, email `security@getranse.com` instead of opening a public issue.
+Use GitHub issues. **Do not** open a public issue for vulnerabilities — follow
+[SECURITY.md](SECURITY.md) (GitHub Security Advisories or `security@getranse.com`).
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Be kind.
 
 ## License
 
