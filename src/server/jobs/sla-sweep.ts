@@ -1,7 +1,8 @@
 import type { SLABreachAuditPayload } from '../../interfaces/jobs';
-import { DEFAULT_SLA, findBreachingTickets } from '../inbox/agents/specialists/sla';
-import type { Env } from '../env';
 import { audit } from '../actions/audit';
+import type { Env } from '../env';
+import { parseWorkspaceSLAPolicy } from '../inbox/agents/specialists/business-hours';
+import { findBreachingTickets } from '../inbox/agents/specialists/sla';
 
 /**
  * Iterates every workspace and emits audit events for any ticket whose SLA
@@ -11,12 +12,19 @@ import { audit } from '../actions/audit';
 export async function runSLASweep(
   env: Env,
 ): Promise<{ workspacesScanned: number; breaches: number }> {
-  const rows = await env.DB.prepare(`SELECT id FROM workspace`).all<{ id: string }>();
+  const rows = await env.DB.prepare(`SELECT id, settings_json FROM workspace`).all<{
+    id: string;
+    settings_json: string | null;
+  }>();
   const workspaces = rows.results ?? [];
   let totalBreaches = 0;
 
   for (const ws of workspaces) {
-    const breaches = await findBreachingTickets(env, ws.id, DEFAULT_SLA);
+    const breaches = await findBreachingTickets(
+      env,
+      ws.id,
+      parseWorkspaceSLAPolicy(ws.settings_json),
+    );
     for (const b of breaches) {
       for (const kind of ['first_response', 'resolution'] as const) {
         const breached =

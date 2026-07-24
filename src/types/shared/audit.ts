@@ -114,10 +114,6 @@ export type KnownAuditAction = keyof typeof AUDIT_ACTIONS;
 export type AuditAction = KnownAuditAction | (string & {});
 
 export function auditMeta(action: string): AuditActionMeta {
-  return (
-    (AUDIT_ACTIONS as Record<string, AuditActionMeta>)[action] ?? {
-      category: 'general',
-      severity: 'info',
-    }
-  );
+  const known = (AUDIT_ACTIONS as Record<string, AuditActionMeta>)[action];
+  return known ?? { category: 'general', severity: 'info' };
 }

@@ -1,7 +1,11 @@
 import type { SLAPolicy, SLAStatus } from '../../../../interfaces/agents';
+
 export type { SLAPolicy, SLAStatus };
-import type { Env } from '../../../env';
+
 import { DEFAULT_SLA } from '../../../../config/sla';
+import type { Env } from '../../../env';
+import { applyChannelOverrides, slaDeadline } from './business-hours';
+
 export { DEFAULT_SLA };
 
 export function computeSLA(params: {
@@ -13,8 +17,16 @@ export function computeSLA(params: {
   now?: number;
 }): SLAStatus {
   const p = params.priority === 'low' ? 'normal' : params.priority;
-  const frDue = params.firstMessageAt + params.policy.first_response_minutes[p] * 60_000;
-  const resDue = params.firstMessageAt + params.policy.resolution_hours[p] * 3_600_000;
+  const frDue = slaDeadline(
+    params.policy,
+    params.firstMessageAt,
+    params.policy.first_response_minutes[p],
+  );
+  const resDue = slaDeadline(
+    params.policy,
+    params.firstMessageAt,
+    params.policy.resolution_hours[p] * 60,
+  );
   const now = params.now ?? Date.now();
   return {
     first_response_due_at: frDue,
@@ -53,7 +65,11 @@ export async function findBreachingTickets(
 
   const out: Array<{ id: string; subject: string; priority: string; breach: SLAStatus }> = [];
   for (const r of rows.results ?? []) {
-    const effectivePolicy = applyChannelOverrides(policy, r.channel_fr_minutes, r.channel_res_minutes);
+    const effectivePolicy = applyChannelOverrides(
+      policy,
+      r.channel_fr_minutes,
+      r.channel_res_minutes,
+    );
     const breach = computeSLA({
       policy: effectivePolicy,
       priority: r.priority,
@@ -66,30 +82,4 @@ export async function findBreachingTickets(
     }
   }
   return out;
-}
-
-function applyChannelOverrides(
-  policy: SLAPolicy,
-  channelFirstResponseMinutes: number | null,
-  channelResolutionMinutes: number | null,
-): SLAPolicy {
-  if (channelFirstResponseMinutes === null && channelResolutionMinutes === null) return policy;
-  // A channel-specific SLA overrides the priority curve uniformly. This is
-  // intentional: a customer reaching out over SMS expects the same response
-  // regardless of how the operator triaged the priority.
-  const fr = channelFirstResponseMinutes;
-  const res = channelResolutionMinutes;
-  return {
-    first_response_minutes: {
-      normal: fr ?? policy.first_response_minutes.normal,
-      high: fr ?? policy.first_response_minutes.high,
-      urgent: fr ?? policy.first_response_minutes.urgent,
-    },
-    resolution_hours: {
-      normal: res ? Math.max(1, Math.round(res / 60)) : policy.resolution_hours.normal,
-      high: res ? Math.max(1, Math.round(res / 60)) : policy.resolution_hours.high,
-      urgent: res ? Math.max(1, Math.round(res / 60)) : policy.resolution_hours.urgent,
-    },
-    business_hours_only: policy.business_hours_only,
-  };
 }

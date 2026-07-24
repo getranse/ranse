@@ -50,10 +50,23 @@ export interface DraftAssistResult {
   model: string;
 }
 
+export interface BusinessHours {
+  /** Working days as JS getUTCDay() values (0 = Sunday … 6 = Saturday). */
+  days: number[];
+  /** Opening hour 0–23 in the workspace's local time. */
+  start_hour: number;
+  /** Closing hour 1–24 in the workspace's local time (exclusive). */
+  end_hour: number;
+  /** Workspace UTC offset in minutes (e.g. -300 for New York in winter). */
+  utc_offset_minutes: number;
+}
+
 export interface SLAPolicy {
   first_response_minutes: { normal: number; high: number; urgent: number };
   resolution_hours: { normal: number; high: number; urgent: number };
   business_hours_only: boolean;
+  /** Calendar used when business_hours_only is set; DEFAULT_BUSINESS_HOURS otherwise. */
+  business_hours?: BusinessHours;
 }
 
 export interface SLAStatus {

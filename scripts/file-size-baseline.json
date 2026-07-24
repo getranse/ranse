@@ -135,7 +135,7 @@
   "src/server/platform/workspaces/index.ts": 284,
   "src/server/schemas/procedure-spec.ts": 163,
   "src/types/server/llm.ts": 111,
-  "src/types/shared/audit.ts": 121,
+  "src/types/shared/audit.ts": 120,
   "tests/agentic-knowledge.test.ts": 158,
   "tests/autonomy.test.ts": 124,
   "tests/billing-outcomes.test.ts": 176,
