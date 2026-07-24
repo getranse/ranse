@@ -28,8 +28,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome lint src scripts",
+    "lines": "node scripts/check-file-size.mjs",
+    "lines:update": "node scripts/check-file-size.mjs --update",
     "format": "biome format --write src scripts",
     "cf-typegen": "wrangler types",
+    "changeset": "changeset",
     "prepare": "husky"
   },
   "dependencies": {
@@ -46,6 +49,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@changesets/cli": "^2.31.1",
     "@cloudflare/workers-types": "^4.20260418.0",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",

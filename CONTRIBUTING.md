@@ -15,7 +15,7 @@ Please read [CLAUDE.md](CLAUDE.md) (contributor + AI-assistant notes) and the
 - **Security first.** Any code path touching outbound email must respect approval gates and auto-reply handling.
 - **Production-quality implementation bar.** Every implementation must be reusable, locally consistent, dynamic enough to adapt to real data, and failure-safe: shared logic belongs in focused modules, state transitions must not expose partial/failed work as valid data, user-visible metrics must match what they claim to measure, and tests must cover the important success and failure paths. Avoid brittle hardcoded checks that only prove a string or branch exists; prefer behavior-level tests and explicit domain constants/invariants. A feature is not complete just because the happy path works.
 - **Shared types live in `src/types/`.** Keep local-only helper types beside their implementation, but move cross-module DTOs/contracts into a domain file under `src/types/`.
-- **Keep modules small.** Aim for 100–150 lines on average. Under 300 lines is the normal ceiling; files over 300 lines should be split by responsibility before more behavior is added.
+- **≤ 100 lines per file** for new files, enforced by `bun run lines` in CI. Legacy files listed in `scripts/file-size-baseline.json` may only shrink (run `bun run lines:update` after slimming one). Split by responsibility before you hit the limit. See [docs/coding-standards.md](docs/coding-standards.md).
 
 ## Development
 
@@ -29,7 +29,8 @@ bun run dev
 ## Pull requests
 
 - Branch: `type/short-description` (e.g. `feat/approval-gate-audit`).
-- Run `bun run typecheck && bun run lint && bun run test && bun run build` before opening a PR.
+- Run `bun run typecheck && bun run lint && bun run lines && bun run test && bun run build` before opening a PR.
+- Add a Changeset for user-facing changes: `bun run changeset`.
 - Keep commits focused. One logical change per PR. Conventional Commits are enforced by
   commitlint via a husky `commit-msg` hook; staged files are auto-checked with Biome via
   lint-staged.

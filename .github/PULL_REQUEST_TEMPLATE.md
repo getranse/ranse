@@ -7,7 +7,9 @@
 ## Checklist
 
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-- [ ] `bun run typecheck && bun run lint && bun run test && bun run build` pass locally
+- [ ] `bun run typecheck && bun run lint && bun run lines && bun run test && bun run build` pass locally
+- [ ] No new file exceeds 100 lines; touched baseline files got smaller, not bigger
+- [ ] Added a Changeset (`bun run changeset`) if user-facing
 - [ ] Tests cover the risky success **and** failure paths (behavior-level, not string checks)
 - [ ] DB queries live in `src/server/actions/`, zod schemas in `src/server/schemas/`,
       interfaces in `src/interfaces/`, shared types in `src/types/`

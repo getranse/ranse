@@ -20,21 +20,25 @@ There is no Ranse-hosted backend.**
 | [docs/security.md](docs/security.md) | auth, roles, reply signing, auto-reply handling |
 | [docs/installation.md](docs/installation.md) | setup, deploy-button flow, DNS |
 | [docs/roadmap.md](docs/roadmap.md) | scope and what phase a feature belongs to |
+| [docs/coding-standards.md](docs/coding-standards.md) | always |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | ground rules and the PR workflow |
 
 ## Hard rules (non-negotiable)
 
 1. **One Worker repo.** Ranse stays deployable as a single Cloudflare Worker app. No monorepo
    tooling, no service splits — the one-click deploy breaks.
-2. **Conventional Commits** (`type(scope): subject`), one focused feature/fix per commit —
+2. **≤ 100 lines per file** for new files, enforced by `bun run lines` in CI. Legacy files in
+   [scripts/file-size-baseline.json](scripts/file-size-baseline.json) may only shrink — leave
+   them smaller than you found them. Split by responsibility before hitting the limit.
+3. **Conventional Commits** (`type(scope): subject`), one focused feature/fix per commit —
    enforced by commitlint. See [Commit messages](#commit-messages).
-3. **No AI authorship.** Never add Claude, Copilot, or any AI tool as a commit author or
+4. **No AI authorship.** Never add Claude, Copilot, or any AI tool as a commit author or
    `Co-Authored-By` trailer. Commits belong to the human contributor only.
-4. **TypeScript strict, no `any`.** Validate all boundary data (HTTP bodies, LLM structured
+5. **TypeScript strict, no `any`.** Validate all boundary data (HTTP bodies, LLM structured
    output, event payloads) with zod schemas in `src/server/schemas/`.
-5. **Cloudflare-native, minimal dependencies.** Prefer DOs, D1, R2, KV, Queues, and AI Gateway
+6. **Cloudflare-native, minimal dependencies.** Prefer DOs, D1, R2, KV, Queues, and AI Gateway
    over external services. No `experimentalDecorators` — the Agents SDK uses TC39 decorators.
-6. **Layout rules are load-bearing.** DB queries only in `src/server/actions/`; interfaces only
+7. **Layout rules are load-bearing.** DB queries only in `src/server/actions/`; interfaces only
    in `src/interfaces/`; shared types only in `src/types/`; tunables only in `src/config/`.
 
 ## Security guardrails (treat as load-bearing)
@@ -57,7 +61,7 @@ bun install
 bun run setup                 # writes .dev.vars with generated secrets
 bun run db:migrate:local
 bun run dev                   # worker + vite UI
-bun run typecheck && bun run lint && bun run test && bun run build
+bun run typecheck && bun run lint && bun run lines && bun run test && bun run build
 ```
 
 ## Server layout
@@ -86,7 +90,7 @@ All shared/cross-module types live under a single root, **`src/types/`**, split 
 - **`src/types/server/`** — server-only contracts (anything taking `Env`, `Request`, `Response`). May import from `src/types/shared/` and from server runtime (e.g. `Env`).
 - **`src/types/client/`** — client-only view models / API-response shapes. May import from `src/types/shared/`.
 
-Domain files are named consistently across the three (e.g. `channels.ts` exists in each: shared DTOs, the server `ChannelAdapter` contract, the client view models). Imports flow *downward only* — `client` and `server` may import `shared`, never the reverse or sideways. A type used within a single module stays colocated next to that implementation (e.g. `notifications/channels/types.ts`); promote it to `src/types/<audience>/` once a second module needs it. Keep modules focused: 100–150 lines is the target average, under 300 lines is the normal ceiling. If a file grows past 300 lines, split it by responsibility before adding more behavior.
+Domain files are named consistently across the three (e.g. `channels.ts` exists in each: shared DTOs, the server `ChannelAdapter` contract, the client view models). Imports flow *downward only* — `client` and `server` may import `shared`, never the reverse or sideways. A type used within a single module stays colocated next to that implementation (e.g. `notifications/channels/types.ts`); promote it to `src/types/<audience>/` once a second module needs it. Keep modules focused: **new files stay ≤ 100 lines** (enforced by `bun run lines`), and legacy files in the size baseline may only shrink — split by responsibility before adding more behavior.
 
 ### Interfaces
 
