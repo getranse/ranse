@@ -118,7 +118,7 @@ export function createWorkspaceTestDb() {
       message_id TEXT,
       rating TEXT NOT NULL,
       source TEXT NOT NULL DEFAULT 'agent',
-      comment TEXT,
+      comment TEXT, score INTEGER,
       created_at INTEGER NOT NULL
     );
     CREATE TABLE approval_request (

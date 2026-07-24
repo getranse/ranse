@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
-import type { Env } from '../env';
 import { verifyFeedbackToken } from '../../lib/feedback-links';
+import type { Env } from '../env';
 import { recordCustomerFeedback } from '../platform/outcomes';
+import { recordFeedbackSurvey } from '../platform/outcomes/survey';
+import { surveyBody } from '../schemas/feedback';
 
 export const feedbackApp = new Hono<{ Bindings: Env }>();
 
@@ -27,8 +29,44 @@ feedbackApp.get('/', async (c) => {
     rating: payload.rating,
   });
 
-  return feedbackPage('Thanks. Your feedback was recorded.', 200);
+  return feedbackPage(`Thanks. Your feedback was recorded.${surveyFormHtml(token)}`, 200);
 });
+
+feedbackApp.post('/survey', async (c) => {
+  const form = surveyBody.safeParse(Object.fromEntries((await c.req.formData()).entries()));
+  if (!form.success) return feedbackPage('That survey response looks invalid.', 400);
+
+  const payload = await verifyFeedbackToken(c.env, form.data.token);
+  if (!payload) return feedbackPage('Feedback link is invalid or expired.', 400);
+
+  const recorded = await recordFeedbackSurvey(c.env, {
+    workspaceId: payload.workspaceId,
+    ticketId: payload.ticketId,
+    messageId: payload.messageId,
+    score: form.data.score,
+    comment: form.data.comment,
+  });
+  if (!recorded) return feedbackPage('Feedback link is no longer valid.', 404);
+  return feedbackPage('Thanks — your rating was recorded.', 200);
+});
+
+// The survey renders after the thumbs click so a plain link-click still
+// records something even when the customer never fills the form.
+function surveyFormHtml(token: string): string {
+  const scores = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<label style="margin-right:10px;"><input type="radio" name="score" value="${n}" required> ${n}</label>`,
+    )
+    .join('');
+  return `<form method="post" action="/feedback/survey" style="margin-top:20px;">
+    <input type="hidden" name="token" value="${token.replace(/"/g, '&quot;')}">
+    <p style="font-size:14px;margin:0 0 8px;">How would you rate this support experience? (1 = poor, 5 = great)</p>
+    <div style="font-size:14px;margin-bottom:10px;">${scores}</div>
+    <textarea name="comment" rows="3" maxlength="2000" placeholder="Anything to add? (optional)" style="width:100%;font:inherit;padding:6px;"></textarea>
+    <button type="submit" style="margin-top:10px;padding:6px 14px;font:inherit;">Send rating</button>
+  </form>`;
+}
 
 async function messageBelongsToTicket(
   env: Env,
