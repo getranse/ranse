@@ -6,16 +6,19 @@ export function LoginView({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [needsTotp, setNeedsTotp] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      await API.login(email, password);
+      await API.login(email, password, totpCode || undefined);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Invalid credentials');
+      if (err.code === 'totp_required') setNeedsTotp(true);
+      else setError(err.message || 'Invalid credentials');
     } finally {
       setBusy(false);
     }
@@ -44,6 +47,20 @@ export function LoginView({ onSuccess }: { onSuccess: () => void }) {
             required
           />
         </div>
+        {needsTotp && (
+          <div className="field">
+            <label>Two-factor code</label>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+        )}
         {error && <div className="error">{error}</div>}
         <button className="primary" type="submit" style={{ width: '100%' }} disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}

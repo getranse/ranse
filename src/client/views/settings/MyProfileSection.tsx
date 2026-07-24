@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { API } from '../../api';
+import { TwoFactorSection } from './TwoFactorSection';
+
+const emptyProfile = { name: '', email: '', signature_markdown: '', avatar_url: '' };
 
 export function MyProfileSection({ onSaved }: { onSaved: (msg?: string) => void }) {
-  const [profile, setProfile] = useState({
-    name: '',
-    email: '',
-    signature_markdown: '',
-    avatar_url: '',
-  });
+  const [profile, setProfile] = useState(emptyProfile);
 
   useEffect(() => {
     API.myProfile().then((me) =>
@@ -119,6 +117,7 @@ export function MyProfileSection({ onSaved }: { onSaved: (msg?: string) => void 
         >
           Sign out everywhere else
         </button>
+        <TwoFactorSection onSaved={onSaved} />
       </div>
     </>
   );

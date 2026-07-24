@@ -18,7 +18,7 @@
   "src/client/views/procedures/ProceduresSection.tsx": 214,
   "src/client/views/settings/McpActionsSection.tsx": 251,
   "src/client/views/settings/ModelSettingsSection.tsx": 107,
-  "src/client/views/settings/MyProfileSection.tsx": 126,
+  "src/client/views/settings/MyProfileSection.tsx": 125,
   "src/client/views/settings/NotificationsSection.tsx": 253,
   "src/client/views/settings/PublicChannelsSection.tsx": 212,
   "src/client/views/settings/Settings.tsx": 115,

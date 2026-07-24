@@ -26,6 +26,8 @@ export const AUDIT_ACTIONS = {
   'auth.logout': { category: 'auth', severity: 'info' },
   'auth.password_changed': { category: 'security', severity: 'warning' },
   'auth.session_revoked': { category: 'security', severity: 'notice' },
+  'auth.totp_enabled': { category: 'security', severity: 'notice' },
+  'auth.totp_disabled': { category: 'security', severity: 'warning' },
   // workspace administration
   'workspace.created': { category: 'admin', severity: 'notice' },
   'workspace.updated': { category: 'admin', severity: 'notice' },
@@ -85,7 +87,6 @@ export const AUDIT_ACTIONS = {
   'approval.created': { category: 'admin', severity: 'notice' },
   'approval.rejected': { category: 'admin', severity: 'notice' },
   create_approval: { category: 'admin', severity: 'notice' },
-  // knowledge
   'knowledge.source_created': { category: 'knowledge', severity: 'notice' },
   'knowledge.source_reindexed': { category: 'knowledge', severity: 'info' },
   knowledge_plan: { category: 'knowledge', severity: 'info' },
@@ -98,7 +99,6 @@ export const AUDIT_ACTIONS = {
   'proactive.accepted': { category: 'knowledge', severity: 'notice' },
   'proactive.rejected': { category: 'knowledge', severity: 'info' },
   'eval.case_captured': { category: 'general', severity: 'info' },
-  // procedures
   'procedure.run_started': { category: 'procedure', severity: 'info' },
   'procedure.version_published': { category: 'procedure', severity: 'notice' },
   'procedure.note_added': { category: 'procedure', severity: 'info' },
