@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
+import { apiError } from '../../../../lib/errors';
 import {
   addTeamMember,
   createTeam,
@@ -7,9 +7,9 @@ import {
   listTeamMembers,
   listTeams,
   removeTeamMember,
-} from '../../actions/teams';
-import { createTeamBody, teamMemberBody } from '../../schemas/teams';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+} from '../../../actions/teams';
+import { createTeamBody, teamMemberBody } from '../../../schemas/teams';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from '../context';
 
 export function registerTeamRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/teams', async (c) => {

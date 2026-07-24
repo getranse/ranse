@@ -9,7 +9,7 @@
   "src/server/http/api/knowledge.ts": 5,
   "src/server/http/api/llm.ts": 2,
   "src/server/http/api/notifications.ts": 6,
-  "src/server/http/api/tickets.ts": 3,
+  "src/server/http/api/tickets/index.ts": 3,
   "src/server/http/feedback.ts": 1,
   "src/server/http/setup.ts": 8,
   "src/server/inbox/agents/specialists/assist.ts": 1,

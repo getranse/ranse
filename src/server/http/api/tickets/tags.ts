@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
+import { apiError } from '../../../../lib/errors';
 import {
   createTag,
   deleteTag,
@@ -7,9 +7,9 @@ import {
   listTicketTags,
   tagTicket,
   untagTicket,
-} from '../../actions/tags';
-import { assignTagBody, createTagBody } from '../../schemas/tags';
-import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from './context';
+} from '../../../actions/tags';
+import { assignTagBody, createTagBody } from '../../../schemas/tags';
+import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from '../context';
 
 export function registerTagRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/tags', async (c) => {

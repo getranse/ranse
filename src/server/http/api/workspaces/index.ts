@@ -1,9 +1,9 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
-import type { WorkspaceInvitation } from '../../../types/shared/workspaces';
-import { audit, auditContext } from '../../actions/audit';
-import { sendWorkspaceInvitationEmail } from '../../inbox/email/invitations';
-import { listWorkspaceOutcomeRollups } from '../../platform/outcomes';
+import { apiError } from '../../../../lib/errors';
+import type { WorkspaceInvitation } from '../../../../types/shared/workspaces';
+import { audit, auditContext } from '../../../actions/audit';
+import { sendWorkspaceInvitationEmail } from '../../../inbox/email/invitations';
+import { listWorkspaceOutcomeRollups } from '../../../platform/outcomes';
 import {
   archiveWorkspace,
   createWorkspaceInvitation,
@@ -16,8 +16,8 @@ import {
   transferWorkspaceOwnership,
   updateWorkspaceMemberRole,
   updateWorkspaceName,
-} from '../../platform/workspaces';
-import { workspaceExportManifest, workspaceUsage } from '../../platform/workspaces/admin';
+} from '../../../platform/workspaces';
+import { workspaceExportManifest, workspaceUsage } from '../../../platform/workspaces/admin';
 import {
   archiveConfirm,
   deleteConfirm,
@@ -25,10 +25,10 @@ import {
   roleBody,
   transferOwnershipBody,
   updateNameBody,
-} from '../../schemas/workspaces';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
-import { registerWorkspaceAuditRoutes } from './workspaces-audit';
-import { registerWorkspaceMailboxRoutes } from './workspaces-mailboxes';
+} from '../../../schemas/workspaces';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from '../context';
+import { registerWorkspaceAuditRoutes } from './audit';
+import { registerWorkspaceMailboxRoutes } from './mailboxes';
 
 export function registerWorkspaceRoutes(apiApp: Hono<Ctx>) {
   registerWorkspaceAuditRoutes(apiApp);

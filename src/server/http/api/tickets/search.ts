@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
-import { searchTickets } from '../../actions/search';
-import type { Ctx } from './context';
+import { searchTickets } from '../../../actions/search';
+import type { Ctx } from '../context';
 
 export function registerSearchRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/search/tickets', async (c) => {

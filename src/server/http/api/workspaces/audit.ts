@@ -1,8 +1,8 @@
 import type { Context, Hono } from 'hono';
-import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
-import { audit, auditContext, verifyAuditChain } from '../../actions/audit';
-import { workspaceAuditLog } from '../../platform/workspaces/admin';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../../types/shared/audit';
+import { audit, auditContext, verifyAuditChain } from '../../../actions/audit';
+import { workspaceAuditLog } from '../../../platform/workspaces/admin';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from '../context';
 
 export function registerWorkspaceAuditRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/workspaces/current/audit', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {

@@ -1,12 +1,12 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
+import { apiError } from '../../../../lib/errors';
 import {
   createWorkspaceMailbox,
   listWorkspaceMailboxes,
   updateWorkspaceMailbox,
-} from '../../platform/workspaces/admin';
-import { createMailboxBody, updateMailboxBody } from '../../schemas/workspaces';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+} from '../../../platform/workspaces/admin';
+import { createMailboxBody, updateMailboxBody } from '../../../schemas/workspaces';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from '../context';
 
 export function registerWorkspaceMailboxRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/workspaces/current/mailboxes', async (c) => {

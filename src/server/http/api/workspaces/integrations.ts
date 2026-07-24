@@ -1,15 +1,15 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
-import { validatePublicHttpUrl } from '../../../lib/url-security';
-import { createApiToken, listApiTokens, revokeApiToken } from '../../actions/api-tokens';
-import { audit } from '../../actions/audit';
+import { apiError } from '../../../../lib/errors';
+import { validatePublicHttpUrl } from '../../../../lib/url-security';
+import { createApiToken, listApiTokens, revokeApiToken } from '../../../actions/api-tokens';
+import { audit } from '../../../actions/audit';
 import {
   createWebhookSubscription,
   deleteWebhookSubscription,
   listWebhookSubscriptions,
-} from '../../actions/webhooks';
-import { createTokenBody, createWebhookBody } from '../../schemas/integrations';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+} from '../../../actions/webhooks';
+import { createTokenBody, createWebhookBody } from '../../../schemas/integrations';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from '../context';
 
 export function registerIntegrationRoutes(apiApp: Hono<Ctx>) {
   apiApp.use('/tokens/*', requireWorkspaceRole(OWNER_OR_ADMIN));

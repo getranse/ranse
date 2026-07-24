@@ -1,11 +1,10 @@
 import type { Hono } from 'hono';
-import type { Env } from '../../env';
-import { apiError } from '../../../lib/errors';
-import { getText } from '../../../lib/storage';
-import { listMemory } from '../../actions/memory';
-import { buildTraceLink } from '../../actions/decision-trace';
-import { audit, auditContext, isReadLoggingEnabled } from '../../actions/audit';
-import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from './context';
+import { apiError } from '../../../../lib/errors';
+import { getText } from '../../../../lib/storage';
+import { audit, auditContext, isReadLoggingEnabled } from '../../../actions/audit';
+import { buildTraceLink } from '../../../actions/decision-trace';
+import { listMemory } from '../../../actions/memory';
+import type { Env } from '../../../env';
 import {
   aiDraftsBody,
   assignBody,
@@ -14,7 +13,8 @@ import {
   noteBody,
   replyBody,
   statusBody,
-} from '../../schemas/tickets';
+} from '../../../schemas/tickets';
+import { CAN_WORK_TICKETS, type Ctx, getSupervisor, requireWorkspaceRole } from '../context';
 
 export function registerTicketRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/tickets', async (c) => {
@@ -28,7 +28,8 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const stub = await getSupervisor(c.env, s.workspaceId);
     const data = await (stub as any).getTicket(c.req.param('id'));
-    if (!data) return apiError(c, 'not_found', 'That ticket doesn\'t exist or is not in your workspace.');
+    if (!data)
+      return apiError(c, 'not_found', "That ticket doesn't exist or is not in your workspace.");
     // PII read-access logging (opt-in per workspace; high-volume so off by
     // default). A ticket thread exposes the customer's email and message
     // bodies, so it's the primary read surface to log. Kept off the critical
@@ -55,7 +56,11 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const body = assignBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
-    await (stub as any).assignTicket({ ticketId: c.req.param('id'), userId: body.userId, actorUserId: s.userId });
+    await (stub as any).assignTicket({
+      ticketId: c.req.param('id'),
+      userId: body.userId,
+      actorUserId: s.userId,
+    });
     return c.json({ ok: true });
   });
 
@@ -63,12 +68,16 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const body = statusBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
-    await (stub as any).setTicketStatus({ ticketId: c.req.param('id'), status: body.status, actorUserId: s.userId });
+    await (stub as any).setTicketStatus({
+      ticketId: c.req.param('id'),
+      status: body.status,
+      actorUserId: s.userId,
+    });
     if (body.status === 'resolved' || body.status === 'closed') {
       // Memory extraction runs after the resolution returns to the
       // operator. waitUntil keeps it off the request critical path; a
       // failure here never blocks the status change.
-      const { extractMemoryFromTicket } = await import('../../automation/memory');
+      const { extractMemoryFromTicket } = await import('../../../automation/memory');
       c.executionCtx.waitUntil(
         extractMemoryFromTicket(c.env, {
           workspaceId: s.workspaceId,
@@ -83,7 +92,11 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const body = noteBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
-    await (stub as any).addInternalNote({ ticketId: c.req.param('id'), body: body.body, actorUserId: s.userId });
+    await (stub as any).addInternalNote({
+      ticketId: c.req.param('id'),
+      body: body.body,
+      actorUserId: s.userId,
+    });
     return c.json({ ok: true });
   });
 
@@ -104,14 +117,17 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
   apiApp.post('/tickets/:id/draft', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
     const stub = await getSupervisor(c.env, s.workspaceId);
-    const result = await (stub as any).draftReply({ ticketId: c.req.param('id'), actorUserId: s.userId });
+    const result = await (stub as any).draftReply({
+      ticketId: c.req.param('id'),
+      actorUserId: s.userId,
+    });
     return c.json(result);
   });
 
   apiApp.post('/tickets/:id/draft-assist', requireWorkspaceRole(CAN_WORK_TICKETS), async (c) => {
     const s = c.get('session');
     const body = draftAssistBody.parse(await c.req.json());
-    const { runDraftAssist } = await import('../../inbox/agents/specialists/assist');
+    const { runDraftAssist } = await import('../../../inbox/agents/specialists/assist');
     const ticketId = c.req.param('id');
     const ctx = await loadAssistContext(c.env, s.workspaceId, ticketId);
     if (!ctx) return apiError(c, 'not_found', 'Ticket not found.');
@@ -131,7 +147,11 @@ export function registerTicketRoutes(apiApp: Hono<Ctx>) {
     const s = c.get('session');
     const body = aiDraftsBody.parse(await c.req.json());
     const stub = await getSupervisor(c.env, s.workspaceId);
-    await (stub as any).setTicketAiDrafts({ ticketId: c.req.param('id'), actorUserId: s.userId, enabled: body.enabled });
+    await (stub as any).setTicketAiDrafts({
+      ticketId: c.req.param('id'),
+      actorUserId: s.userId,
+      enabled: body.enabled,
+    });
     return c.json({ ok: true });
   });
 

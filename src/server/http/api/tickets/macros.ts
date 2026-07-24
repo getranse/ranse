@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
-import { createMacro, deleteMacro, listMacros, updateMacro } from '../../actions/macros';
-import { createMacroBody, updateMacroBody } from '../../schemas/macros';
-import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from './context';
+import { apiError } from '../../../../lib/errors';
+import { createMacro, deleteMacro, listMacros, updateMacro } from '../../../actions/macros';
+import { createMacroBody, updateMacroBody } from '../../../schemas/macros';
+import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from '../context';
 
 export function registerMacroRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/macros', async (c) => {

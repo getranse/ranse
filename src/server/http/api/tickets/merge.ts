@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../../lib/errors';
-import { mergeTickets } from '../../actions/merge';
-import { mergeBody } from '../../schemas/tickets';
-import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from './context';
+import { apiError } from '../../../../lib/errors';
+import { mergeTickets } from '../../../actions/merge';
+import { mergeBody } from '../../../schemas/tickets';
+import { CAN_WORK_TICKETS, type Ctx, requireWorkspaceRole } from '../context';
 
 export function registerMergeRoutes(apiApp: Hono<Ctx>) {
   // Merges the source ticket INTO :id — the open conversation continues on :id.
