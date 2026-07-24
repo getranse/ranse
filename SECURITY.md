@@ -3,7 +3,7 @@
 Ranse handles customer email, LLM provider keys, and can send email on a team's behalf. It is
 deployed to the customer's own Cloudflare account — **there is no Ranse-hosted backend**, so
 your data and secrets never transit our infrastructure. The threat model and controls live in
-[docs/security.md](docs/security.md).
+[docs/05-security.md](docs/05-security.md).
 
 ## Supported versions
 

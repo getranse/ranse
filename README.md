@@ -63,12 +63,12 @@ All LLM calls go through a single dispatcher (`src/llm/`) that uses the OpenAI S
 
 ## Docs
 
-- [Installation](docs/installation.md) — detailed setup, troubleshooting, DNS.
-- [Architecture](docs/architecture.md) — agents, storage model, event flow.
-- [Operations](docs/operations.md) — ticket lifecycle, approvals, escalations.
-- [Security](docs/security.md) — auth, roles, reply signing, auto-reply handling.
-- [Roadmap](docs/roadmap.md) — the planned path from copilot to autonomous agent.
-- [FAQ](docs/faq.md)
+- [Installation](docs/03-installation.md) — detailed setup, troubleshooting, DNS.
+- [Architecture](docs/01-architecture.md) — agents, storage model, event flow.
+- [Operations](docs/04-operations.md) — ticket lifecycle, approvals, escalations.
+- [Security](docs/05-security.md) — auth, roles, reply signing, auto-reply handling.
+- [Roadmap](docs/08-roadmap.md) — the planned path from copilot to autonomous agent.
+- [FAQ](docs/09-faq.md)
 
 ## Local development
 
@@ -89,7 +89,7 @@ Ranse is heading from "AI-assisted shared inbox" to a full autonomous customer-s
 
 The shape, in short: **retrieval → workspace management → agentic retrieval → autonomous resolution → procedures → MCP actions → evals → procedure library → insights → multi-channel.** Phase 0 (bootstrap, inbound email, supervisor DO, draft + approval), Phase 1 (retrieval foundations), Phase 1.5 (workspace management & tenant isolation), Phase 2 (agentic multi-hop retrieval), Phase 3 (autonomous resolution), Phase 4 (procedures as code), Phase 5 (MCP-native actions), Phase 6 (historical evals), Phase 7 (procedure library), Phase 8 (insights & auto-improving KB), and Phase 9 web channels are shipped.
 
-Full pipeline, principles, and how to contribute to a phase: **[docs/roadmap.md](docs/roadmap.md)**. It's directional, not committed — if you want to work on something further down the list, open a discussion and we'll happily reorder.
+Full pipeline, principles, and how to contribute to a phase: **[docs/08-roadmap.md](docs/08-roadmap.md)**. It's directional, not committed — if you want to work on something further down the list, open a discussion and we'll happily reorder.
 
 ## License
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Enforces the ≤100-lines-per-file rule (docs/coding-standards.md) with a
+// Enforces the ≤100-lines-per-file rule (docs/07-coding-standards.md) with a
 // ratcheting baseline: new files must comply; files in the baseline may only
 // shrink, and leave it permanently once they reach the limit.
 //
@@ -60,7 +60,7 @@ for (const [file, lines] of counts) {
 if (errors.length > 0) {
   console.error(`File-size check failed (≤${LIMIT} lines per file):\n${errors.join('\n')}`);
   console.error(
-    '\nSplit by responsibility. The baseline only ratchets down; see docs/coding-standards.md.',
+    '\nSplit by responsibility. The baseline only ratchets down; see docs/07-coding-standards.md.',
   );
   process.exit(1);
 }

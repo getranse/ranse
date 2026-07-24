@@ -4,8 +4,8 @@ Thanks for your interest in Ranse! This project is early — the fastest way to 
 
 Please read [CLAUDE.md](CLAUDE.md) (contributor + AI-assistant notes) and the
 [docs](docs/) before your first code contribution — especially
-[Architecture](docs/architecture.md), [Security](docs/security.md), and
-[Operations](docs/operations.md).
+[Architecture](docs/01-architecture.md), [Security](docs/05-security.md), and
+[Operations](docs/04-operations.md).
 
 ## Ground rules
 
@@ -15,7 +15,7 @@ Please read [CLAUDE.md](CLAUDE.md) (contributor + AI-assistant notes) and the
 - **Security first.** Any code path touching outbound email must respect approval gates and auto-reply handling.
 - **Production-quality implementation bar.** Every implementation must be reusable, locally consistent, dynamic enough to adapt to real data, and failure-safe: shared logic belongs in focused modules, state transitions must not expose partial/failed work as valid data, user-visible metrics must match what they claim to measure, and tests must cover the important success and failure paths. Avoid brittle hardcoded checks that only prove a string or branch exists; prefer behavior-level tests and explicit domain constants/invariants. A feature is not complete just because the happy path works.
 - **Shared types live in `src/types/`.** Keep local-only helper types beside their implementation, but move cross-module DTOs/contracts into a domain file under `src/types/`.
-- **≤ 100 lines per file** for new files, enforced by `bun run lines` in CI. Legacy files listed in `scripts/file-size-baseline.json` may only shrink (run `bun run lines:update` after slimming one). Split by responsibility before you hit the limit. See [docs/coding-standards.md](docs/coding-standards.md).
+- **≤ 100 lines per file** for new files, enforced by `bun run lines` in CI. Legacy files listed in `scripts/file-size-baseline.json` may only shrink (run `bun run lines:update` after slimming one). Split by responsibility before you hit the limit. See [docs/07-coding-standards.md](docs/07-coding-standards.md).
 
 ## Development
 
@@ -43,7 +43,7 @@ bun run dev
 
 ## Procedure library contributions
 
-- Start from `docs/operations.md`, `src/server/automation/procedures/library-data.ts`, and `src/server/automation/procedures/library-mcp-tools.ts`.
+- Start from `docs/04-operations.md`, `src/server/automation/procedures/library-data.ts`, and `src/server/automation/procedures/library-mcp-tools.ts`.
 - Keep procedures generic enough for another company to fork. Do not bake customer-specific policy text, private route names, or proprietary tool names into shared library procedures.
 - Every library procedure must include inline `evals`, a generic owner of `ranse-library`, deterministic provenance, and reference MCP tool specs for external system assumptions. Required MCP references must be exercised by `call_action` steps, and write/destructive actions must stay behind approval.
 - Include MCP `openWorldHint`, `readOnlyHint`, and destructive/idempotent hints where applicable.

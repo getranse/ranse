@@ -5,4 +5,4 @@
 /src/auth/ @getranse/security @getranse/maintainers
 /src/server/inbox/channels/ @getranse/security @getranse/maintainers
 /src/server/automation/mcp/ @getranse/security @getranse/maintainers
-/docs/security.md @getranse/security @getranse/maintainers
+/docs/05-security.md @getranse/security @getranse/maintainers

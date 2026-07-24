@@ -205,7 +205,7 @@ The `customer_data` search scope still fails closed with an explicit trace; proc
 - Each library procedure ships with inline eval cases, deterministic SHA-256 provenance, and reference MCP tool specs written beside the forked procedure as `<slug>.mcp.json` plus `<slug>.provenance.json`.
 - Library procedures now exercise required MCP contracts through `call_action`; read-only lookups can run automatically, while write/destructive actions pause for operator approval.
 - Library validation runs every procedure's inline evals, checksum generation, immutable clone behavior, route permissions, MCP reference matching, and unsafe-action checks in `tests/procedure-library.test.ts`.
-- `docs/operations.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
+- `docs/04-operations.md` and `CONTRIBUTING.md` define the contribution bar for upstreaming generic workflows. A standalone `getranse/procedures-library` repo can now mirror this catalog when community volume warrants it.
 
 ## Phase 8 — Insights & auto-improving KB
 **Status: shipped.**
@@ -435,7 +435,7 @@ Expand `src/mcp/first-party/catalog.ts` from 5 to 20 templates covering the high
 2. Tool-contract JSON (`src/server/automation/procedures/library-mcp-tools.ts` extension)
 3. A reference procedure under `src/server/automation/procedures/library-data.ts` consuming the tools
 4. Inline evals + provenance via the existing pipeline
-5. Documentation in `docs/operations.md` and `CONTRIBUTING.md`
+5. Documentation in `docs/04-operations.md` and `CONTRIBUTING.md`
 
 #### Catalog
 
