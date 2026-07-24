@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AuthMe } from '../types/shared/workspaces';
 import { API } from './api';
 import { ThemeToggle } from './components/common/ThemeToggle';
+import { Toaster } from './components/common/toast';
 import { WorkspaceSwitcher } from './components/common/WorkspaceSwitcher';
 import { InviteAcceptView } from './views/auth/InviteAccept';
 import { LoginView } from './views/auth/Login';
@@ -164,6 +165,7 @@ export function App() {
         {route.name === 'insights' && <InsightsView />}
         {route.name === 'settings' && <SettingsView />}
       </main>
+      <Toaster />
     </div>
   );
 }

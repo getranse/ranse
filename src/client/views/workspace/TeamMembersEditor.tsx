@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { TeamMemberRow } from '../../../interfaces/teams';
 import type { WorkspaceMember } from '../../../types/shared/workspaces';
 import { API } from '../../api';
+import { toast } from '../../components/common/toast';
 
 export function TeamMembersEditor({
   teamId,
@@ -23,7 +24,7 @@ export function TeamMembersEditor({
   }, [teamId]);
 
   useEffect(() => {
-    load().catch(() => undefined);
+    load().catch(() => toast.error("Couldn't load team members."));
   }, [load]);
 
   const inTeam = new Set(members.map((m) => m.user_id));

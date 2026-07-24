@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Team } from '../../../interfaces/teams';
 import type { WorkspaceMember } from '../../../types/shared/workspaces';
 import { API } from '../../api';
+import { toast } from '../../components/common/toast';
 import { TeamMembersEditor } from './TeamMembersEditor';
 
 export function WorkspaceTeamsSection() {
@@ -18,7 +19,7 @@ export function WorkspaceTeamsSection() {
   }, []);
 
   useEffect(() => {
-    load().catch(() => undefined);
+    load().catch(() => toast.error("Couldn't load teams."));
   }, [load]);
 
   async function create() {

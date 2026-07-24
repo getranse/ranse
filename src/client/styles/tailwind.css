@@ -1,0 +1,54 @@
+/* Tailwind v4 entry. Theme + utilities only — NO preflight, so the
+   not-yet-migrated views keep their hand-rolled component styles during the
+   incremental rollout. Tokens map to the live CSS variables in base.css via
+   `@theme inline`, so utilities (bg-surface, text-muted…) follow the
+   data-theme light/dark switch untouched. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--bg-soft);
+  --color-elevated: var(--bg-elevated);
+  --color-canvas: var(--bg-canvas);
+  --color-hover: var(--bg-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+
+  --text-xs: var(--fs-xs);
+  --text-sm: var(--fs-sm);
+  --text-md: var(--fs-md);
+  --text-lg: var(--fs-lg);
+  --text-xl: var(--fs-xl);
+  --text-2xl: var(--fs-2xl);
+
+  --shadow-e1: var(--shadow-sm);
+  --shadow-e2: var(--shadow);
+  --shadow-e3: var(--shadow-lg);
+
+  --ease-brand: var(--ease);
+}

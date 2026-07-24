@@ -38,14 +38,17 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0",
     "agents": "^0.11.4",
     "ai": "^5.0.0",
     "cloudflare": "^5.2.0",
+    "cmdk": "^1.1.1",
     "hono": "^4.12.14",
     "openai": "^6.34.0",
     "postal-mime": "^2.7.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "sonner": "^2.0.7",
     "yaml": "^2.8.1",
     "zod": "^3.25.76"
   },
@@ -55,6 +58,7 @@
     "@cloudflare/workers-types": "^4.20260418.0",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -63,6 +67,7 @@
     "husky": "^9.1.7",
     "jsonc-parser": "^3.3.1",
     "lint-staged": "^17.2.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vitest": "^3.0.0",

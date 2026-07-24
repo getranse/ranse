@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Macro } from '../../../interfaces/macros';
 import { API } from '../../api';
+import { toast } from '../common/toast';
 
 /**
  * Canned-response selector for the reply composer. Placeholders like
@@ -19,7 +20,7 @@ export function MacroPicker({
   useEffect(() => {
     API.macros()
       .then((d) => setMacros(d.macros ?? []))
-      .catch(() => undefined);
+      .catch(() => toast.error("Couldn't load canned responses."));
   }, []);
 
   if (macros.length === 0) return null;

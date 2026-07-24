@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TicketSidebarProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
 import { API, type ProcedureListEntry } from '../../api';
+import { toast } from '../../components/common/toast';
 import { AiDraftsToggle } from '../../components/tickets/AiDraftsToggle';
 import { CustomerMemoryDrawer } from '../../components/tickets/CustomerMemoryDrawer';
 import { MergeControl } from '../../components/tickets/MergeControl';
@@ -25,7 +26,7 @@ export function TicketSidebar({
         setProcedures(res.procedures ?? []);
         setSelectedProcedure(res.procedures?.[0]?.slug ?? '');
       })
-      .catch(() => undefined);
+      .catch(() => toast.error("Couldn't load procedures."));
   }, []);
 
   async function recordFeedback(rating: 'positive' | 'negative') {

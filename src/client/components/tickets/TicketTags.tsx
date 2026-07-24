@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Tag } from '../../../interfaces/tickets';
 import { API } from '../../api';
+import { toast } from '../common/toast';
 
 export function TicketTags({ ticketId }: { ticketId: string }) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -10,10 +11,10 @@ export function TicketTags({ ticketId }: { ticketId: string }) {
   const reload = useCallback(() => {
     API.ticketTags(ticketId)
       .then((d) => setTags(d.tags ?? []))
-      .catch(() => undefined);
+      .catch(() => toast.error("Couldn't load tags."));
     API.tags()
       .then((d) => setAll(d.tags ?? []))
-      .catch(() => undefined);
+      .catch(() => toast.error("Couldn't load tags."));
   }, [ticketId]);
 
   useEffect(reload, [reload]);
