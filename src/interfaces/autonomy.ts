@@ -1,4 +1,9 @@
-import type { OutcomeKind, OutcomeSource, FeedbackRating, FeedbackSource } from '../types/shared/autonomy';
+import type {
+  FeedbackRating,
+  FeedbackSource,
+  OutcomeKind,
+  OutcomeSource,
+} from '../types/shared/autonomy';
 
 export interface AutonomyScoreComponents {
   draftConfidence: number;

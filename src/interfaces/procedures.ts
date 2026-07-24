@@ -7,7 +7,7 @@ import type {
   ProcedureStep,
   ProcedureStepRunStatus,
   ProcedureTriggerType,
-} from '../types/shared/procedure';
+} from '../types/shared/procedures';
 import type { SendThreadedReply } from '../types/shared/supervisor';
 
 export interface DiagramNode {

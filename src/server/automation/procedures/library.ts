@@ -1,21 +1,21 @@
-import type { Env } from '../../env';
 import { sha256Hex } from '../../../lib/crypto';
 import type {
   ProcedureLibraryEntry,
   ProcedureLibraryItem,
-  ProcedureLibraryMcpToolSpec,
   ProcedureLibraryManifest,
+  ProcedureLibraryMcpToolSpec,
   ProcedureLibraryProvenance,
   ProcedureLibraryReadiness,
   ProcedureLibraryReadinessTool,
   ProcedureLibraryStandards,
   ProcedureStep,
-} from '../../../types/shared/procedure';
-import { runProcedureSpecEvals } from '../evals/replay';
+} from '../../../types/shared/procedures';
 import { listMcpServers, listMcpTools, normalizeMcpServerName } from '../../actions/mcp';
-import { PROCEDURE_LIBRARY } from './library-data';
-import { normalizeProcedureSpec, stableStringify } from '../../schemas/procedure-spec';
 import { upsertProcedureVersion } from '../../actions/procedures';
+import type { Env } from '../../env';
+import { normalizeProcedureSpec, stableStringify } from '../../schemas/procedure-spec';
+import { runProcedureSpecEvals } from '../evals/replay';
+import { PROCEDURE_LIBRARY } from './library-data';
 
 export const PROCEDURE_LIBRARY_VERSION = '2026-05-18';
 export const PROCEDURE_LIBRARY_STANDARDS: ProcedureLibraryStandards = {

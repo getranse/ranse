@@ -1,5 +1,3 @@
-
-
 export interface WebhookDeliveryMessage {
   url: string;
   signature: string;

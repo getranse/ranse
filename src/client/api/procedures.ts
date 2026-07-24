@@ -8,7 +8,7 @@ import type {
   ProcedureRun,
   ProcedureRunDetail,
   ProcedureSpec,
-} from '../../types/shared/procedure';
+} from '../../types/shared/procedures';
 import { api } from './core';
 
 export const procedureApi = {

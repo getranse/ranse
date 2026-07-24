@@ -55,7 +55,7 @@ export async function findBreachingTickets(
     .all<{
       id: string;
       subject: string;
-      priority: any;
+      priority: 'low' | 'normal' | 'high' | 'urgent';
       created_at: number;
       first_resp: number | null;
       resolved: number | null;

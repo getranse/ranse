@@ -1,8 +1,10 @@
 import type { ChannelPreference, PreferenceCheck } from '../../../interfaces/notifications';
+
 export type { ChannelPreference, PreferenceCheck };
-import type { Env } from '../../env';
-import { audit } from '../../actions/audit';
+
 import type { ChannelKind } from '../../../types/shared/channels';
+import { audit } from '../../actions/audit';
+import type { Env } from '../../env';
 
 // Per-customer per-channel delivery preferences. Two surfaces both consult
 // this:
@@ -17,7 +19,9 @@ import type { ChannelKind } from '../../../types/shared/channels';
 // from STOP/HELP-style replies (an inbound containing "STOP" sets
 // status='disabled' on the originating channel).
 
-export type ChannelPreferenceStatus = 'enabled' | 'disabled';
+import type { ChannelPreferenceStatus } from '../../../interfaces/notifications';
+
+export type { ChannelPreferenceStatus };
 
 export async function getPreference(
   env: Env,

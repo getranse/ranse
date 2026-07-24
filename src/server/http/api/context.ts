@@ -5,7 +5,7 @@ export type { AuthedSession };
 import { getAgentByName } from 'agents';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { apiError } from '../../../lib/errors';
-import type { WorkspaceRole } from '../../../types/shared/workspace';
+import type { WorkspaceRole } from '../../../types/shared/workspaces';
 import { resolveApiToken } from '../../actions/api-tokens';
 import { getSession } from '../../actions/auth';
 import type { Env } from '../../env';

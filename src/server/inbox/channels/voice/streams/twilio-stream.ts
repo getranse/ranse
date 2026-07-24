@@ -1,5 +1,6 @@
 import { VOICE_TURN_BUFFER_MS } from '../../../../../config/channels';
-import type { StreamSession, TwilioFrame } from '../../../../../interfaces/channels';
+import type { TwilioFrame } from '../../../../../interfaces/channels';
+import type { StreamSession } from '../../../../../interfaces/channels-runtime';
 import type { PublicChannel } from '../../../../../types/shared/channels';
 import type { Env } from '../../../../env';
 import { voiceProviderConfigFor } from '../adapter';

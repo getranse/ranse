@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AUTONOMY_POLICIES } from '../../types/shared/autonomy';
-import { WORKSPACE_ROLES } from '../../types/shared/workspace';
+import { WORKSPACE_ROLES } from '../../types/shared/workspaces';
 
 export const mailboxBody = z.object({
   address: z.string().email().optional(),

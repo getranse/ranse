@@ -1,5 +1,5 @@
 import type { TicketApprovalCardProps } from '../../../interfaces/client';
-import type { ProposedReply } from '../../../types/shared/ticket';
+import type { ProposedReply } from '../../../types/shared/tickets';
 import { AnswerInspection } from '../knowledge/AnswerInspection';
 
 export function TicketApprovalCard({

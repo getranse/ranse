@@ -1,7 +1,7 @@
 import type { ProcedureBundle } from '../../interfaces/procedures';
+
 export type { ProcedureBundle };
-import type { Env } from '../env';
-import { audit } from './audit';
+
 import { sha256Hex } from '../../lib/crypto';
 import { ids } from '../../lib/ids';
 import type {
@@ -14,8 +14,10 @@ import type {
   ProcedureStepRun,
   ProcedureStepRunStatus,
   ProcedureVersion,
-} from '../../types/shared/procedure';
+} from '../../types/shared/procedures';
+import type { Env } from '../env';
 import { normalizeProcedureSpec, stableStringify } from '../schemas/procedure-spec';
+import { audit } from './audit';
 
 export async function listProcedures(env: Env, workspaceId: string): Promise<ProcedureListItem[]> {
   const rows = await env.DB.prepare(

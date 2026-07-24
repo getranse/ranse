@@ -47,7 +47,9 @@ algorithm — those aren't "config," they're protocol.
 - **`actions/`** — the **DB-action layer**: every module that runs D1 queries (`approvals`,
   `audit`, `auth`, `decision-trace`, `evals`, `mcp`, `memory`, `procedures`). New code that
   queries the DB goes here, named by domain. Higher-level orchestration stays in its feature
-  module and calls into `actions/`.
+  module and calls into `actions/`. Enforced by `bun run db-actions` in CI with a shrink-only
+  baseline ([scripts/db-actions-baseline.json](../scripts/db-actions-baseline.json)) covering
+  legacy modules — new files must comply, listed files may only lose queries.
 - **root** — `http`, `jobs`, `schemas`, plus `index.ts`/`env.ts` (worker entry).
 
 A bucket must earn its keep: group features only when it shortens a genuinely long flat list.

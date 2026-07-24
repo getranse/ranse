@@ -1,17 +1,26 @@
-import type { WorkspaceMembersSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
+import type { WorkspaceMembersSectionProps } from '../../../interfaces/client';
+import {
+  WORKSPACE_ROLES,
+  type WorkspaceInvitation,
+  type WorkspaceMember,
+  type WorkspaceRole,
+} from '../../../types/shared/workspaces';
 import { API } from '../../api';
-import { WORKSPACE_ROLES, type WorkspaceInvitation, type WorkspaceMember, type WorkspaceRole } from '../../../types/shared/workspace';
 
 export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProps) {
   const [workspaceName, setWorkspaceName] = useState('');
   const [role, setRole] = useState<WorkspaceRole>('viewer');
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]);
-  const [invite, setInvite] = useState<{ email: string; role: WorkspaceRole }>({ email: '', role: 'agent' });
+  const [invite, setInvite] = useState<{ email: string; role: WorkspaceRole }>({
+    email: '',
+    role: 'agent',
+  });
   const [currentUserId, setCurrentUserId] = useState('');
   const canManage = role === 'owner' || role === 'admin';
-  const assignableRoleOptions = role === 'owner' ? WORKSPACE_ROLES : WORKSPACE_ROLES.filter((r) => r !== 'owner');
+  const assignableRoleOptions =
+    role === 'owner' ? WORKSPACE_ROLES : WORKSPACE_ROLES.filter((r) => r !== 'owner');
 
   async function load() {
     const [me, memberRes] = await Promise.all([API.me(), API.workspaceMembers()]);
@@ -28,7 +37,9 @@ export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProp
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function saveInvite() {
     if (!invite.email.trim()) return;
@@ -62,37 +73,51 @@ export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProp
             <div className="source-row" key={member.user_id}>
               <div>
                 <div style={{ fontWeight: 500 }}>{member.name || member.email}</div>
-                <div className="muted" style={{ fontSize: 12 }}>{member.email}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {member.email}
+                </div>
               </div>
               <div className="source-actions">
                 <select
                   value={member.role}
                   disabled={!canManage || (role !== 'owner' && member.role === 'owner')}
                   onChange={async (e) => {
-                    await API.updateWorkspaceMember(member.user_id, e.target.value as WorkspaceRole);
+                    await API.updateWorkspaceMember(
+                      member.user_id,
+                      e.target.value as WorkspaceRole,
+                    );
                     onSaved('Role updated');
                     await load();
                   }}
                 >
-                  {WORKSPACE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {WORKSPACE_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
                 </select>
                 {canManage && role === 'owner' && (
                   <>
                     {member.user_id !== currentUserId && (
-                      <button onClick={async () => {
-                        await API.transferWorkspaceOwnership(member.user_id);
-                        onSaved('Ownership transferred');
-                        await load();
-                      }}>
+                      <button
+                        onClick={async () => {
+                          await API.transferWorkspaceOwnership(member.user_id);
+                          onSaved('Ownership transferred');
+                          await load();
+                        }}
+                      >
                         Transfer owner
                       </button>
                     )}
                     {member.user_id !== currentUserId && (
-                      <button className="danger" onClick={async () => {
-                        await API.removeWorkspaceMember(member.user_id);
-                        onSaved('Member removed');
-                        await load();
-                      }}>
+                      <button
+                        className="danger"
+                        onClick={async () => {
+                          await API.removeWorkspaceMember(member.user_id);
+                          onSaved('Member removed');
+                          await load();
+                        }}
+                      >
                         Remove
                       </button>
                     )}
@@ -107,11 +132,24 @@ export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProp
           <>
             <h2>Invite member</h2>
             <div className="row">
-              <input value={invite.email} placeholder="agent@example.com" onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
-              <select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value as WorkspaceRole })}>
-                {assignableRoleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              <input
+                value={invite.email}
+                placeholder="agent@example.com"
+                onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+              />
+              <select
+                value={invite.role}
+                onChange={(e) => setInvite({ ...invite, role: e.target.value as WorkspaceRole })}
+              >
+                {assignableRoleOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
-              <button className="primary" onClick={saveInvite}>Invite</button>
+              <button className="primary" onClick={saveInvite}>
+                Invite
+              </button>
             </div>
             {invitations.length > 0 && (
               <div className="source-list">
@@ -123,7 +161,11 @@ export function WorkspaceMembersSection({ onSaved }: WorkspaceMembersSectionProp
                         {item.accepted_at ? 'Accepted' : 'Pending'} · {item.role}
                       </div>
                     </div>
-                    <input readOnly value={item.accept_url ?? item.token} onFocus={(e) => e.currentTarget.select()} />
+                    <input
+                      readOnly
+                      value={item.accept_url ?? item.token}
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
                   </div>
                 ))}
               </div>

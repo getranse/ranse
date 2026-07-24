@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { apiError } from '../../../lib/errors';
-import type { WorkspaceInvitation } from '../../../types/shared/workspace';
+import type { WorkspaceInvitation } from '../../../types/shared/workspaces';
 import { audit, auditContext } from '../../actions/audit';
 import { sendWorkspaceInvitationEmail } from '../../inbox/email/invitations';
 import { listWorkspaceOutcomeRollups } from '../../platform/outcomes';

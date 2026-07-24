@@ -21,6 +21,8 @@ jobs:
         run: bun run lint
       - name: File-size rule (≤100 lines, ratcheting)
         run: bun run lines
+      - name: DB-actions rule (queries only in actions/, ratcheting)
+        run: bun run db-actions
       - name: Unit tests
         run: bun run test
       - name: Build

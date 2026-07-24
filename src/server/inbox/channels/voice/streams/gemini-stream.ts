@@ -1,8 +1,13 @@
-import type { GeminiLiveConfig, SessionState, ClientFrame, ServerFrame } from '../../../../../interfaces/channels';
-import type { Env } from '../../../../env';
+import type {
+  ClientFrame,
+  GeminiLiveConfig,
+  ServerFrame,
+} from '../../../../../interfaces/channels';
+import type { SessionState } from '../../../../../interfaces/channels-runtime';
 import { ids } from '../../../../../lib/ids';
 import { putRaw, r2Keys } from '../../../../../lib/storage';
 import type { PublicChannel } from '../../../../../types/shared/channels';
+import type { Env } from '../../../../env';
 import { parseChannelConfig } from '../../utils';
 import { voiceProviderConfigFor } from '../adapter';
 import { applyVoiceEvents } from '../ingest';

@@ -7,7 +7,7 @@ import {
   DEFAULT_AUTONOMY_THRESHOLD,
   normalizeAutonomyPolicy,
 } from '../../../types/shared/autonomy';
-import type { WorkspaceMailbox } from '../../../types/shared/workspace';
+import type { WorkspaceMailbox } from '../../../types/shared/workspaces';
 import { API } from '../../api';
 import { PolicySelect, RolloutInput, TeamSelect, ThresholdInput } from './MailboxAutonomyControls';
 import { NewMailboxForm } from './NewMailboxForm';

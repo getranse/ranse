@@ -3,6 +3,7 @@ import { escapeHtml } from '../../lib/html-escape';
 import { listPublicArticles, loadPublicArticle, workspaceIdBySlug } from '../actions/help-center';
 import type { Env } from '../env';
 import { markdownToHtml } from '../inbox/email/html';
+import { HELP_COPY } from './customer-copy';
 
 export const helpApp = new Hono<{ Bindings: Env }>();
 
@@ -15,9 +16,9 @@ async function rateLimited(c: { req: { header(n: string): string | undefined }; 
 }
 
 helpApp.get('/:slug', async (c) => {
-  if (await rateLimited(c)) return page('Slow down.', 429);
+  if (await rateLimited(c)) return page(HELP_COPY.rateLimited, 429);
   const workspaceId = await workspaceIdBySlug(c.env, c.req.param('slug'));
-  if (!workspaceId) return page('This help center does not exist.', 404);
+  if (!workspaceId) return page(HELP_COPY.centerMissing, 404);
   const articles = await listPublicArticles(c.env, workspaceId);
   const list = articles
     .map(
@@ -26,18 +27,18 @@ helpApp.get('/:slug', async (c) => {
     )
     .join('');
   return page(
-    `<h1 style="font-size:20px;margin:0 0 16px;">Help center</h1>
-     ${articles.length ? `<ul style="padding-left:20px;">${list}</ul>` : '<p>No articles published yet.</p>'}`,
+    `<h1 style="font-size:20px;margin:0 0 16px;">${HELP_COPY.title}</h1>
+     ${articles.length ? `<ul style="padding-left:20px;">${list}</ul>` : `<p>${HELP_COPY.empty}</p>`}`,
     200,
   );
 });
 
 helpApp.get('/:slug/:id', async (c) => {
-  if (await rateLimited(c)) return page('Slow down.', 429);
+  if (await rateLimited(c)) return page(HELP_COPY.rateLimited, 429);
   const workspaceId = await workspaceIdBySlug(c.env, c.req.param('slug'));
-  if (!workspaceId) return page('This help center does not exist.', 404);
+  if (!workspaceId) return page(HELP_COPY.centerMissing, 404);
   const article = await loadPublicArticle(c.env, workspaceId, c.req.param('id'));
-  if (!article) return page('This article does not exist.', 404);
+  if (!article) return page(HELP_COPY.articleMissing, 404);
   const sections = article.sections
     .map(
       (s) =>
@@ -49,7 +50,7 @@ helpApp.get('/:slug/:id', async (c) => {
     )
     .join('');
   return page(
-    `<p style="margin:0 0 12px;"><a href="/help/${encodeURIComponent(c.req.param('slug'))}">← All articles</a></p>
+    `<p style="margin:0 0 12px;"><a href="/help/${encodeURIComponent(c.req.param('slug'))}">${HELP_COPY.backToList}</a></p>
      <h1 style="font-size:20px;margin:0 0 16px;">${escapeHtml(article.title)}</h1>
      ${sections}`,
     200,

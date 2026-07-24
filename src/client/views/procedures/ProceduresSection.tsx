@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ProceduresSectionProps } from '../../../interfaces/client';
-import type { ProcedureSpec } from '../../../types/shared/procedure';
+import type { ProcedureSpec } from '../../../types/shared/procedures';
 import { API, type ProcedureLibraryListEntry, type ProcedureListEntry } from '../../api';
 import { ProcedureFlowDiagram } from '../../components/procedures/ProcedureFlowDiagram';
 

@@ -1,5 +1,10 @@
-import type { ProcedureLibraryCategory, ProcedureLibraryReadiness, ProcedureLibraryMcpToolSpec, ProcedureSpec } from '../types/shared/procedure';
 import type { MARKETPLACE_MANIFEST_SCHEMA } from '../types/shared/marketplace';
+import type {
+  ProcedureLibraryCategory,
+  ProcedureLibraryMcpToolSpec,
+  ProcedureLibraryReadiness,
+  ProcedureSpec,
+} from '../types/shared/procedures';
 
 export interface MarketplaceManifest {
   manifest_version: typeof MARKETPLACE_MANIFEST_SCHEMA;

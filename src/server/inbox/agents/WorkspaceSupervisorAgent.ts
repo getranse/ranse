@@ -1,10 +1,8 @@
 import { Agent, callable } from 'agents';
-import type { Env } from '../../env';
-import {
-  resumeWaitingProcedureRuns,
-  startTriggeredProcedureRuns,
-} from '../../automation/procedures/orchestration';
-import type { AgenticRetrievalTrace, KnowledgeInspectionHit } from '../../../types/shared/knowledge';
+import type {
+  AgenticRetrievalTrace,
+  KnowledgeInspectionHit,
+} from '../../../types/shared/knowledge';
 import {
   DEFAULT_SUPERVISOR_STATE,
   type InboundEmailPayload,
@@ -13,19 +11,23 @@ import {
   type TicketListItem,
 } from '../../../types/shared/supervisor';
 import {
+  resumeWaitingProcedureRuns,
+  startTriggeredProcedureRuns,
+} from '../../automation/procedures/orchestration';
+import type { Env } from '../../env';
+import {
   ingestEmail as ingestInboundEmail,
   triageAndDraft as runTriageAndDraft,
 } from './supervisor/email-flow';
+import { workspaceConfig } from './supervisor/llm-config';
+import { getAgentProfile, setAgentProfile } from './supervisor/profile';
 import { makeSendThreadedReply } from './supervisor/replies';
 import {
   aiDraftsEnabled,
-  getAgentProfile,
   getWorkspaceSettings,
   loadWorkspaceByDOName,
   refreshCounts,
-  setAgentProfile,
   setWorkspaceSettings,
-  workspaceConfig,
 } from './supervisor/settings';
 import {
   addInternalNote,
@@ -41,7 +43,11 @@ import {
   setTicketStatus,
 } from './supervisor/ticket-actions';
 
-export type { InboundEmailPayload, SupervisorState, TicketListItem } from '../../../types/shared/supervisor';
+export type {
+  InboundEmailPayload,
+  SupervisorState,
+  TicketListItem,
+} from '../../../types/shared/supervisor';
 
 export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   initialState: SupervisorState = DEFAULT_SUPERVISOR_STATE;
@@ -76,7 +82,9 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
         env: this.env,
         workspaceId: this.state.workspaceId,
         schedule: async (delay, name, scheduledPayload) => {
-          await this.schedule(delay, name as any, scheduledPayload as any);
+          // The ingest context passes method names as plain strings; narrow to
+          // this class's keys for the SDK's typed scheduler.
+          await this.schedule(delay, name as keyof WorkspaceSupervisorAgent, scheduledPayload);
         },
         refreshCounts: () => this.refreshCounts(),
         aiDraftsEnabled: (ticketId) => this.aiDraftsEnabled(ticketId),
@@ -139,9 +147,7 @@ export class WorkspaceSupervisorAgent extends Agent<Env, SupervisorState> {
   }
 
   @callable()
-  async getTicket(
-    ticketId: string,
-  ): Promise<{ ticket: any; messages: any[]; audit: any[]; approvals: any[] } | null> {
+  async getTicket(ticketId: string): ReturnType<typeof getTicket> {
     return getTicket(this.env, this.state.workspaceId, ticketId);
   }
 

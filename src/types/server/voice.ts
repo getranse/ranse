@@ -1,2 +1,3 @@
-import type { VoiceProviderModule } from '../../interfaces/voice';
+import type { VoiceProviderModule } from '../../interfaces/voice-runtime';
+
 export type { VoiceProviderModule };

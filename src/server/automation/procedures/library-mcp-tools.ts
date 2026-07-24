@@ -1,4 +1,4 @@
-import type { ProcedureLibraryMcpToolSpec } from '../../../types/shared/procedure';
+import type { ProcedureLibraryMcpToolSpec } from '../../../types/shared/procedures';
 
 export const stripeRefundTools: ProcedureLibraryMcpToolSpec[] = [
   {
@@ -190,7 +190,12 @@ export const shopifyAddressTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['order_id', 'address1', 'city', 'country'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
 ];
 
@@ -219,7 +224,12 @@ export const rechargeSubscriptionTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['subscription_id', 'pause_until'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
 ];
 
@@ -251,7 +261,12 @@ export const salesforceCaseTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['subject'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -299,7 +314,12 @@ export const pagerDutyTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['service_id', 'title'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
 ];
 
@@ -331,7 +351,12 @@ export const jiraTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['project_key', 'summary'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -372,7 +397,12 @@ export const klaviyoTools: ProcedureLibraryMcpToolSpec[] = [
       properties: { profile_id: { type: 'string' }, reason: { type: 'string' } },
       required: ['profile_id'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
   },
 ];
 
@@ -399,7 +429,12 @@ export const auth0Tools: ProcedureLibraryMcpToolSpec[] = [
       properties: { user_id: { type: 'string' } },
       required: ['user_id'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -423,10 +458,19 @@ export const notionTools: ProcedureLibraryMcpToolSpec[] = [
     description: 'Hand a structured summary off to the docs team as a Notion page.',
     input_schema: {
       type: 'object',
-      properties: { parent_id: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' } },
+      properties: {
+        parent_id: { type: 'string' },
+        title: { type: 'string' },
+        body: { type: 'string' },
+      },
       required: ['parent_id', 'title'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -445,7 +489,12 @@ export const datadogTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['title', 'text'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -503,7 +552,12 @@ export const slackTools: ProcedureLibraryMcpToolSpec[] = [
       properties: { channel_id: { type: 'string' }, text: { type: 'string' } },
       required: ['channel_id', 'text'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -533,7 +587,12 @@ export const twilioVerifyTools: ProcedureLibraryMcpToolSpec[] = [
       properties: { to: { type: 'string' }, channel: { type: 'string', enum: ['sms', 'call'] } },
       required: ['to', 'channel'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -542,7 +601,8 @@ export const linearTools: ProcedureLibraryMcpToolSpec[] = [
     server: 'linear',
     tool: 'issues.create',
     title: 'Create Linear issue',
-    description: 'Escalate a customer-reported bug as a Linear issue tagged with the support ticket.',
+    description:
+      'Escalate a customer-reported bug as a Linear issue tagged with the support ticket.',
     input_schema: {
       type: 'object',
       properties: {
@@ -553,7 +613,12 @@ export const linearTools: ProcedureLibraryMcpToolSpec[] = [
       },
       required: ['team_id', 'title'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -565,10 +630,20 @@ export const githubTools: ProcedureLibraryMcpToolSpec[] = [
     description: 'Open a GitHub issue in the relevant repository for engineering follow-up.',
     input_schema: {
       type: 'object',
-      properties: { owner: { type: 'string' }, repo: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' } },
+      properties: {
+        owner: { type: 'string' },
+        repo: { type: 'string' },
+        title: { type: 'string' },
+        body: { type: 'string' },
+      },
       required: ['owner', 'repo', 'title'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   },
 ];
 
@@ -584,6 +659,11 @@ export const webhookTools: ProcedureLibraryMcpToolSpec[] = [
       properties: { name: { type: 'string' }, payload: { type: 'object' } },
       required: ['name'],
     },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
 ];

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import type { ProcedureSpec, ProcedureStep } from '../../types/shared/procedure';
-import { PROCEDURE_TRIGGER_TYPES } from '../../types/shared/procedure';
 import { KNOWLEDGE_SEARCH_SCOPES } from '../../types/shared/knowledge';
+import type { ProcedureSpec, ProcedureStep } from '../../types/shared/procedures';
+import { PROCEDURE_TRIGGER_TYPES } from '../../types/shared/procedures';
 
 const slugSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{1,80}$/);
 const stepIdSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,80}$/);

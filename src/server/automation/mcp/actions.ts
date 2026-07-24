@@ -1,9 +1,6 @@
-import type { Env } from '../../env';
+import type { ProcedureRun, ProcedureStep } from '../../../types/shared/procedures';
 import { createApproval } from '../../actions/approvals';
 import { audit } from '../../actions/audit';
-import type { ProcedureRun, ProcedureStep } from '../../../types/shared/procedure';
-import { callRemoteMcpTool } from './client';
-import { evaluateMcpGuardrails } from './guardrails';
 import {
   createMcpToolCall,
   getMcpServer,
@@ -13,6 +10,9 @@ import {
   resolveMcpToolReference,
   updateMcpToolCall,
 } from '../../actions/mcp';
+import type { Env } from '../../env';
+import { callRemoteMcpTool } from './client';
+import { evaluateMcpGuardrails } from './guardrails';
 import { getMcpAuthSecret } from './secrets';
 
 type CallActionStep = Extract<ProcedureStep, { type: 'call_action' }>;
@@ -50,7 +50,11 @@ export async function startMcpProcedureAction(
 
   const { server, tool } = await resolveMcpToolReference(env, workspaceId, input.step.tool);
   if (server.enabled !== 1) {
-    return { status: 'failed', error: 'mcp_server_disabled', output: { server: server.name, tool: tool.name } };
+    return {
+      status: 'failed',
+      error: 'mcp_server_disabled',
+      output: { server: server.name, tool: tool.name },
+    };
   }
 
   const decision = await evaluateMcpGuardrails(env, workspaceId, {
@@ -207,7 +211,10 @@ async function continueRecordedMcpProcedureAction(
     };
   }
   if (call.status === 'running') {
-    return executeRecordedMcpToolCall(env, workspaceId, { callId: call.id, ticketId: input.run.ticket_id });
+    return executeRecordedMcpToolCall(env, workspaceId, {
+      callId: call.id,
+      ticketId: input.run.ticket_id,
+    });
   }
   return {
     status: 'failed',
@@ -271,14 +278,17 @@ export async function resumeApprovedMcpProcedureAction(
     return { status: 'waiting', output: input.waitingOutput, currentStep: input.currentStep };
   }
   const expectedApprovalId = String(input.waitingOutput.approval_id ?? '');
-  const eventApprovalId = String(input.event.payload?.approvalId ?? input.event.payload?.approval_id ?? '');
+  const eventApprovalId = String(
+    input.event.payload?.approvalId ?? input.event.payload?.approval_id ?? '',
+  );
   if (!expectedApprovalId || eventApprovalId !== expectedApprovalId) {
     return { status: 'waiting', output: input.waitingOutput, currentStep: input.currentStep };
   }
 
   const callId = String(input.waitingOutput.tool_call_id ?? '');
   const call = callId ? await getMcpToolCall(env, workspaceId, callId) : null;
-  if (!call) return { status: 'failed', error: 'mcp_tool_call_not_found', output: input.waitingOutput };
+  if (!call)
+    return { status: 'failed', error: 'mcp_tool_call_not_found', output: input.waitingOutput };
 
   const approved = input.event.payload?.approved === true;
   if (!approved) {
@@ -290,7 +300,11 @@ export async function resumeApprovedMcpProcedureAction(
       toolCallId: call.id,
       approvalId: expectedApprovalId,
     });
-    return { status: 'failed', error: 'mcp_action_rejected', output: { ...input.waitingOutput, rejected: true } };
+    return {
+      status: 'failed',
+      error: 'mcp_action_rejected',
+      output: { ...input.waitingOutput, rejected: true },
+    };
   }
 
   const approval = await env.DB.prepare(

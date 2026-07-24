@@ -1,5 +1,3 @@
-
-
 export interface SupervisorState {
   workspaceId: string;
   workspaceName: string;

@@ -1,7 +1,7 @@
 import type { PublicChannelKind } from '../types/shared/channels';
-import type { ProcedureSpec } from '../types/shared/procedure';
-import type { ProposedReply, ReplyEdits, TicketViewData } from '../types/shared/ticket';
-import type { AuthMe } from '../types/shared/workspace';
+import type { ProcedureSpec } from '../types/shared/procedures';
+import type { ProposedReply, ReplyEdits, TicketViewData } from '../types/shared/tickets';
+import type { AuthMe } from '../types/shared/workspaces';
 
 export interface WorkspaceSwitcherProps {
   me: AuthMe;

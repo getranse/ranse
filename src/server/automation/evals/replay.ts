@@ -1,4 +1,4 @@
-import type { RunEvalSuiteOptions } from '../../../interfaces/evals';
+import type { RunEvalSuiteOptions } from '../../../interfaces/evals-runtime';
 
 export type { RunEvalSuiteOptions };
 
@@ -19,7 +19,7 @@ import type {
   ResolvedTicketEvalInput,
 } from '../../../types/shared/evals';
 import type { AgenticKnowledgeResult, KnowledgeHit } from '../../../types/shared/knowledge';
-import type { ProcedureSpec } from '../../../types/shared/procedure';
+import type { ProcedureSpec } from '../../../types/shared/procedures';
 import {
   completeEvalRun,
   createEvalRun,

@@ -1,8 +1,12 @@
-import type { NotificationStepTrigger, NotificationUrgency, NotificationPlanStatus, NotificationStepStatus, NotificationDeliveryEventKind } from '../types/shared/notifications';
-import type { Env } from '../server/env';
-import type { NotificationEvent } from '../server/inbox/notifications/events';
 import type { ChannelKind } from '../types/shared/channels';
-import type { ChannelPreferenceStatus } from '../server/inbox/notifications/preferences';
+import type {
+  NotificationDeliveryEventKind,
+  NotificationPlanStatus,
+  NotificationStepStatus,
+  NotificationStepTrigger,
+  NotificationUrgency,
+} from '../types/shared/notifications';
+export type ChannelPreferenceStatus = 'enabled' | 'disabled';
 
 export interface InsertPlanInput {
   workspaceId: string;
@@ -34,26 +38,6 @@ export interface RenderedMessage {
   subject: string;
   text: string;
   html: string;
-}
-
-// All channel handlers implement this. Adding a new channel kind = drop
-// a new file + register it in ./index.ts. The dispatcher and queue
-// consumer don't know anything about kinds beyond the registry.
-export interface ChannelHandler {
-  kind: string;
-
-  // UI metadata — Settings reads these directly so adding a channel kind
-  // doesn't require UI changes.
-  label: string;
-  description: string;
-  targetLabel: string;
-  targetPlaceholder: string;
-
-  validateTarget(target: string): string | null;
-
-  // Throw on permanent failure (the queue retries automatically; throw
-  // only when retry won't help — e.g. 4xx). Resolve on success.
-  deliver(env: Env, target: string, event: NotificationEvent): Promise<void>;
 }
 
 export interface ChannelRow {

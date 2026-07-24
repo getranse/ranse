@@ -14,7 +14,7 @@ import {
   loadMailboxAutonomy,
   scoreAutonomousDraft,
 } from './autonomy';
-import type { workspaceConfig } from './settings';
+import type { workspaceConfig } from './llm-config';
 import { markSpam, persistTriage } from './triage-persist';
 
 export async function triageAndDraft(

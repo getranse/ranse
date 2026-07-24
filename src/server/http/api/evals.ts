@@ -1,16 +1,16 @@
 import type { Hono } from 'hono';
-import { workspaceConfig } from '../../inbox/agents/supervisor/settings';
-import { captureResolvedTicketEvalCases } from '../../automation/evals/capture';
-import { runEvalSuite } from '../../automation/evals/replay';
+import { apiError } from '../../../lib/errors';
 import {
   getEvalRunDetail,
   listEvalCases,
   listEvalRuns,
   updateEvalCaseStatus,
 } from '../../actions/evals';
-import { apiError } from '../../../lib/errors';
-import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
+import { captureResolvedTicketEvalCases } from '../../automation/evals/capture';
+import { runEvalSuite } from '../../automation/evals/replay';
+import { workspaceConfig } from '../../inbox/agents/supervisor/llm-config';
 import { captureResolvedBody, caseStatusPatch, runEvalBody } from '../../schemas/evals';
+import { type Ctx, OWNER_OR_ADMIN, requireWorkspaceRole } from './context';
 
 export function registerEvalRoutes(apiApp: Hono<Ctx>) {
   apiApp.get('/evals/cases', requireWorkspaceRole(OWNER_OR_ADMIN), async (c) => {

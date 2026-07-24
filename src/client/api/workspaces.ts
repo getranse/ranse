@@ -13,7 +13,7 @@ import type {
   WorkspaceMember,
   WorkspaceSummary,
   WorkspaceUsage,
-} from '../../types/shared/workspace';
+} from '../../types/shared/workspaces';
 import { api, uploadFile } from './core';
 
 function auditQueryString(query: AuditQuery): string {

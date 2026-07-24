@@ -1,9 +1,9 @@
-import type { WorkspacePlatformSectionProps } from '../../../interfaces/client';
 import { useEffect, useState } from 'react';
-import { API } from '../../api';
+import type { WorkspacePlatformSectionProps } from '../../../interfaces/client';
 import { formatDateTime } from '../../../lib/format';
-import type { WorkspaceUsage } from '../../../types/shared/workspace';
 import type { AuditCategory, AuditEventRecord, AuditQuery } from '../../../types/shared/audit';
+import type { WorkspaceUsage } from '../../../types/shared/workspaces';
+import { API } from '../../api';
 
 const CATEGORIES: (AuditCategory | '')[] = [
   '',
@@ -77,7 +77,9 @@ export function WorkspacePlatformSection({ onSaved }: WorkspacePlatformSectionPr
         <div className="knowledge-grid">
           {metrics.map(([key, value]) => (
             <div key={key}>
-              <div className="muted" style={{ fontSize: 12 }}>{key}</div>
+              <div className="muted" style={{ fontSize: 12 }}>
+                {key}
+              </div>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
             </div>
           ))}
@@ -106,7 +108,9 @@ export function WorkspacePlatformSection({ onSaved }: WorkspacePlatformSectionPr
             <button
               className="danger"
               onClick={async () => {
-                if (!window.confirm('Soft-delete this workspace? Active sessions will be moved away.'))
+                if (
+                  !window.confirm('Soft-delete this workspace? Active sessions will be moved away.')
+                )
                   return;
                 await API.deleteWorkspace();
                 window.location.assign('/');

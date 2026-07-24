@@ -5,7 +5,7 @@ import type {
   KnowledgeInspectionHit,
 } from '../types/shared/knowledge';
 import type { McpToolCall } from '../types/shared/mcp';
-import type { ProcedureRun } from '../types/shared/procedure';
+import type { ProcedureRun } from '../types/shared/procedures';
 
 export interface TicketDraft {
   ok: boolean;

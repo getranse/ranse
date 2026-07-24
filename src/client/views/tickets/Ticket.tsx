@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ReplyEdits, TicketViewData } from '../../../types/shared/ticket';
+import type { ReplyEdits, TicketViewData } from '../../../types/shared/tickets';
 import { type AnswerInspectionHit, type AnswerInspectionTrace, API } from '../../api';
 import { DraftAssistPanel } from '../../components/tickets/DraftAssistPanel';
 import { MacroPicker } from '../../components/tickets/MacroPicker';

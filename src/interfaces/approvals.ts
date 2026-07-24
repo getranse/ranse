@@ -1,5 +1,3 @@
-
-
 export interface ApprovalInput {
   workspaceId: string;
   ticketId: string;

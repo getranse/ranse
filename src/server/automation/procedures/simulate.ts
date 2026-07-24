@@ -3,7 +3,7 @@ import type {
   ProcedureSimulationStep,
   ProcedureSpec,
   ProcedureStep,
-} from '../../../types/shared/procedure';
+} from '../../../types/shared/procedures';
 import { normalizeProcedureSpec } from '../../schemas/procedure-spec';
 import {
   deletePath,

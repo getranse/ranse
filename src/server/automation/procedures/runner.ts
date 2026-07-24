@@ -1,27 +1,31 @@
 import type { ProcedureRunEvent, ProcedureRunnerOptions } from '../../../interfaces/procedures';
+
 export type { ProcedureRunEvent, ProcedureRunnerOptions };
-import type { Env } from '../../env';
-import { audit } from '../../actions/audit';
+
 import { ids } from '../../../lib/ids';
-import { recordOutcome } from '../../platform/outcomes';
-import { enqueueVerification, rejectVerification } from '../../platform/insights/honest-resolution';
 import { putRaw, r2Keys } from '../../../lib/storage';
-import { searchProcedurePrimitive } from '../knowledge';
-import {
-  resumeApprovedMcpProcedureAction,
-  startMcpProcedureAction,
-} from '../mcp/actions';
 import type {
   ProcedureRun,
   ProcedureStep,
   ProcedureStepRun,
-} from '../../../types/shared/procedure';
+} from '../../../types/shared/procedures';
 import type { SendThreadedReply } from '../../../types/shared/supervisor';
-import { makeSendThreadedReply } from '../../inbox/agents/supervisor/replies';
-import { workspaceConfig } from '../../inbox/agents/supervisor/settings';
-import { captureResolvedTicketEvalCase } from '../evals/capture';
+import { audit } from '../../actions/audit';
 import { listMemory } from '../../actions/memory';
-import { getRunBundle, getStepRunByIndex, recordStepRun, updateRun } from '../../actions/procedures';
+import {
+  getRunBundle,
+  getStepRunByIndex,
+  recordStepRun,
+  updateRun,
+} from '../../actions/procedures';
+import type { Env } from '../../env';
+import { workspaceConfig } from '../../inbox/agents/supervisor/llm-config';
+import { makeSendThreadedReply } from '../../inbox/agents/supervisor/replies';
+import { enqueueVerification, rejectVerification } from '../../platform/insights/honest-resolution';
+import { recordOutcome } from '../../platform/outcomes';
+import { captureResolvedTicketEvalCase } from '../evals/capture';
+import { searchProcedurePrimitive } from '../knowledge';
+import { resumeApprovedMcpProcedureAction, startMcpProcedureAction } from '../mcp/actions';
 import {
   deletePath,
   evaluateCondition,
@@ -46,6 +50,7 @@ type StepExecutionResult =
   | { status: 'failed'; error: string; output?: unknown; currentStep?: number };
 
 import { LOOP_SNAPSHOT_MAX_BYTES } from '../../../config/procedures';
+
 const TICKET_STATUSES = new Set(['open', 'pending', 'resolved', 'closed', 'spam']);
 const TICKET_PRIORITIES = new Set(['low', 'normal', 'high', 'urgent']);
 
@@ -117,9 +122,10 @@ async function executeSteps(
     const skippedByCursor = stepIndex < state.run.current_step;
 
     if (step.type === 'if') {
-      let branch = existing?.status === 'completed'
-        ? asObject(safeJson(existing.output_json)).branch
-        : undefined;
+      let branch =
+        existing?.status === 'completed'
+          ? asObject(safeJson(existing.output_json)).branch
+          : undefined;
       if (branch !== 'then' && branch !== 'else') {
         branch = evaluateCondition(step.condition, state.context) ? 'then' : 'else';
       }
@@ -136,14 +142,18 @@ async function executeSteps(
           },
         );
       }
-      await executeSteps(env, workspaceId, branch === 'then' ? step.then : (step.else ?? []), state);
+      await executeSteps(
+        env,
+        workspaceId,
+        branch === 'then' ? step.then : (step.else ?? []),
+        state,
+      );
       continue;
     }
 
     if (step.type === 'loop') {
-      const priorOutput = existing?.status === 'completed'
-        ? asObject(safeJson(existing.output_json))
-        : {};
+      const priorOutput =
+        existing?.status === 'completed' ? asObject(safeJson(existing.output_json)) : {};
       const rawItems = Array.isArray(priorOutput.items)
         ? priorOutput.items
         : getPath(state.context, step.each);

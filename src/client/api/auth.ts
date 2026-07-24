@@ -1,4 +1,4 @@
-import type { AuthMe } from '../../types/shared/workspace';
+import type { AuthMe } from '../../types/shared/workspaces';
 import { api } from './core';
 
 export const authApi = {

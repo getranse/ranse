@@ -1,5 +1,5 @@
 import { formatDateTime } from '../../../lib/format';
-import type { TicketViewData } from '../../../types/shared/ticket';
+import type { TicketViewData } from '../../../types/shared/tickets';
 
 export function MessageThread({ messages }: { messages: TicketViewData['messages'] }) {
   return (

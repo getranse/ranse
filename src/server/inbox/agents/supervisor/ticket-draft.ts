@@ -6,7 +6,7 @@ import { audit } from '../../../actions/audit';
 import { agenticSearchKnowledge } from '../../../automation/knowledge';
 import type { Env } from '../../../env';
 import { runDraft } from '../specialists/draft';
-import type { workspaceConfig } from './settings';
+import type { workspaceConfig } from './llm-config';
 
 export async function draftReply(
   env: Env,
@@ -74,7 +74,7 @@ export async function draftReply(
       })),
       knowledgeTrace: retrieval.trace,
     };
-  } catch (err: any) {
-    return { ok: false, error: err?.message ?? 'draft_failed' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'draft_failed' };
   }
 }

@@ -3,7 +3,7 @@ import '../src/server/inbox/channels';
 import { layoutProcedure } from '../src/lib/procedure-diagram';
 import { ingestExtractedFacts, listMemory, redactMemory } from '../src/server/actions/memory';
 import { computeOperationsMetrics } from '../src/server/platform/insights/operations';
-import type { ProcedureSpec } from '../src/types/shared/procedure';
+import type { ProcedureSpec } from '../src/types/shared/procedures';
 import {
   addMember,
   createWorkspaceTestDb,

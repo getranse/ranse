@@ -30,6 +30,8 @@
     "lint": "biome lint src scripts",
     "lines": "node scripts/check-file-size.mjs",
     "lines:update": "node scripts/check-file-size.mjs --update",
+    "db-actions": "node scripts/check-db-actions.mjs",
+    "db-actions:update": "node scripts/check-db-actions.mjs --update",
     "format": "biome format --write src scripts",
     "cf-typegen": "wrangler types",
     "changeset": "changeset",

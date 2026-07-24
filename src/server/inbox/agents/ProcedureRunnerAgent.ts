@@ -1,9 +1,9 @@
-import type { ProcedureRunnerState } from '../../../interfaces/agents';
 import { Agent, callable } from 'agents';
-import type { Env } from '../../env';
-import type { ProcedureEventType } from '../../../types/shared/procedure';
+import type { ProcedureRunnerState } from '../../../interfaces/agents';
+import type { ProcedureEventType } from '../../../types/shared/procedures';
 import { getProcedureRunDetail } from '../../actions/procedures';
 import { runProcedure } from '../../automation/procedures/runner';
+import type { Env } from '../../env';
 
 const INITIAL_STATE: ProcedureRunnerState = {
   runId: '',
@@ -54,8 +54,7 @@ export class ProcedureRunnerAgent extends Agent<Env, ProcedureRunnerState> {
     const context = parseContext(detail.run.context_json);
     const waiting = context.__procedure?.waiting;
     if (!waiting || typeof waiting !== 'object') return;
-    const timeoutMs = (waiting as any).timeout_ms;
-    const stepIndex = (waiting as any).step_index;
+    const { timeout_ms: timeoutMs, step_index: stepIndex } = waiting as Record<string, unknown>;
     if (
       typeof timeoutMs !== 'number' ||
       !Number.isFinite(timeoutMs) ||

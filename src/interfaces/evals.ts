@@ -1,7 +1,10 @@
-import type { DraftResult } from '../server/inbox/agents/specialists/draft';
-import type { AgentConfig } from '../types/server/llm';
-import type { AgenticKnowledgeResult, KnowledgeHit } from '../types/shared/knowledge';
-import type { EvalCaseSource, EvalCaseStatus, EvalRunSource, EvalRunStatus, EvalResultStatus } from '../types/shared/evals';
+import type {
+  EvalCaseSource,
+  EvalCaseStatus,
+  EvalResultStatus,
+  EvalRunSource,
+  EvalRunStatus,
+} from '../types/shared/evals';
 
 export interface AnonymizerState {
   emailMap: Map<string, string>;
@@ -50,17 +53,6 @@ export interface MessageRow {
 
 export interface OutcomeRow {
   kind: string;
-}
-
-export interface RunEvalSuiteOptions {
-  source?: 'api' | 'cli' | 'ci' | 'scheduled';
-  limit?: number;
-  caseIds?: string[];
-  threshold?: number;
-  scoreDropThreshold?: number;
-  workspaceConfig?: Partial<AgentConfig>;
-  retrievalRunner?: (input: ResolvedTicketEvalInput) => Promise<AgenticKnowledgeResult>;
-  draftRunner?: (input: ResolvedTicketEvalInput, knowledge: KnowledgeHit[]) => Promise<DraftResult>;
 }
 
 export interface EvalAnonymizationConfig {

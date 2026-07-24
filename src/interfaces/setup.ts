@@ -1,5 +1,3 @@
-
-
 export interface ProvisionInput {
   api_token: string;
   account_id: string;

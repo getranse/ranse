@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TeamMemberRow } from '../../../interfaces/teams';
-import type { WorkspaceMember } from '../../../types/shared/workspace';
+import type { WorkspaceMember } from '../../../types/shared/workspaces';
 import { API } from '../../api';
 
 export function TeamMembersEditor({

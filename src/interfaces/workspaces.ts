@@ -1,5 +1,5 @@
 import type { AutonomyPolicy } from '../types/shared/autonomy';
-import type { WorkspaceRole } from '../types/shared/workspace';
+import type { WorkspaceRole } from '../types/shared/workspaces';
 
 export interface WorkspaceSettings {
   ai_drafts_enabled: boolean;

@@ -8,7 +8,7 @@ import type {
 
 export type { DiagramEdge, DiagramNode, ProcedureDiagram };
 
-import type { ProcedureSpec, ProcedureStep } from '../types/shared/procedure';
+import type { ProcedureSpec, ProcedureStep } from '../types/shared/procedures';
 
 // Pure procedure-flow layout. Converts a `ProcedureSpec` into a list of
 // nodes + edges with absolute pixel positions, ready for an SVG renderer.

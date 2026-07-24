@@ -1,9 +1,11 @@
-import type { InferParams, InferResult } from '../../interfaces/llm';
+import type { InferResult } from '../../interfaces/llm';
+import type { InferParams } from '../../interfaces/llm-runtime';
 
 export type { InferParams, InferResult };
 
 import type { z } from 'zod';
 import { DEFAULT_AGENT_CONFIG, PROVIDER_ENV_KEY } from '../../config/llm';
+import { MODELS_MASTER } from '../../config/models';
 import type { Env } from '../../server/env';
 import type {
   ActionKey,
@@ -12,7 +14,6 @@ import type {
   ModelConfig,
   RuntimeOverrides,
 } from '../../types/server/llm';
-import { MODELS_MASTER } from '../../types/server/llm';
 import { resolveClient } from './core';
 import { parseJsonWithControlCharRepair } from './json-repair';
 

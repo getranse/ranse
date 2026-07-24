@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
+import type { AuthMe } from '../types/shared/workspaces';
 import { API } from './api';
 import { ThemeToggle } from './components/common/ThemeToggle';
-import { SetupView } from './views/setup/Setup';
+import { WorkspaceSwitcher } from './components/common/WorkspaceSwitcher';
+import { InviteAcceptView } from './views/auth/InviteAccept';
 import { LoginView } from './views/auth/Login';
+import { InsightsView } from './views/insights/Insights';
+import { SettingsView } from './views/settings/Settings';
+import { SetupView } from './views/setup/Setup';
 import { InboxView } from './views/tickets/Inbox';
 import { TicketView } from './views/tickets/Ticket';
-import { SettingsView } from './views/settings/Settings';
-import { InsightsView } from './views/insights/Insights';
-import { InviteAcceptView } from './views/auth/InviteAccept';
 import { WorkspaceGate } from './views/workspace/WorkspaceGate';
-import { WorkspaceSwitcher } from './components/common/WorkspaceSwitcher';
-import type { AuthMe } from '../types/shared/workspace';
 
 type Route =
   | { name: 'inbox' }
@@ -134,7 +134,12 @@ export function App() {
         <div className="sidebar-footer">
           <div style={{ minWidth: 0, flex: 1 }}>
             <div
-              style={{ fontSize: 'var(--fs-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}
+              style={{
+                fontSize: 'var(--fs-sm)',
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
               title={me?.user?.email}
             >
               {me?.user?.email}

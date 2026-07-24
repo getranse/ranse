@@ -1,5 +1,3 @@
-
-
 export interface SendingSubdomain {
   tag: string;
   name: string;

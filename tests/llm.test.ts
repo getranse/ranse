@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { parseModel } from '../src/lib/llm/core';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_AGENT_CONFIG } from '../src/config/llm';
-import { MODELS_MASTER } from '../src/types/server/llm';
+import { MODELS_MASTER } from '../src/config/models';
+import { parseModel } from '../src/lib/llm/core';
 
 describe('parseModel', () => {
   it('splits "provider/model-id" correctly', () => {
@@ -12,9 +12,7 @@ describe('parseModel', () => {
   });
 
   it('handles workers-ai nested paths', () => {
-    const { provider, modelId } = parseModel(
-      'workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-    );
+    const { provider, modelId } = parseModel('workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     expect(provider).toBe('workers-ai');
     expect(modelId).toBe('@cf/meta/llama-3.3-70b-instruct-fp8-fast');
   });

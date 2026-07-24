@@ -1,4 +1,4 @@
-import type { ProactiveProposalStatus, ProactiveProposalKind } from '../types/shared/proactive';
+import type { ProactiveProposalKind, ProactiveProposalStatus } from '../types/shared/proactive';
 
 export interface ProactiveProposal {
   id: string;

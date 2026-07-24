@@ -1,5 +1,3 @@
-
-
 // First-run onboarding state. Derived rather than persisted: the
 // authoritative source is "did the workspace ever have a KB source / a
 // public channel / an outbound message" — querying the underlying tables

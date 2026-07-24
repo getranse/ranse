@@ -1,4 +1,4 @@
-import type { AuditCategory, AuditSeverity, AuditActorType } from '../types/shared/audit';
+import type { AuditActorType, AuditCategory, AuditSeverity } from '../types/shared/audit';
 
 export interface AuditActionMeta {
   category: AuditCategory;

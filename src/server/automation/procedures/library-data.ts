@@ -2,7 +2,8 @@ import type {
   ProcedureLibraryItem,
   ProcedureLibraryMcpToolSpec,
   ProcedureSpec,
-} from '../../../types/shared/procedure';
+} from '../../../types/shared/procedures';
+import { normalizeProcedureSpec } from '../../schemas/procedure-spec';
 import {
   auth0Tools,
   calendlyTools,
@@ -29,7 +30,6 @@ import {
   webhookTools,
   zendeskImportTools,
 } from './library-mcp-tools';
-import { normalizeProcedureSpec } from '../../schemas/procedure-spec';
 
 export type ProcedureLibrarySeedItem = Omit<ProcedureLibraryItem, 'provenance'>;
 
@@ -489,7 +489,10 @@ const subscriptionPause = normalizeProcedureSpec({
       id: 'pause',
       type: 'call_action',
       tool: 'recharge.subscriptions.pause',
-      args: { subscription_id: '{{ subscription.id }}', pause_until: '{{ subscription.pause_until }}' },
+      args: {
+        subscription_id: '{{ subscription.id }}',
+        pause_until: '{{ subscription.pause_until }}',
+      },
       requires_approval: true,
       save_as: 'paused',
     },
@@ -584,7 +587,10 @@ const crmContextSync = normalizeProcedureSpec({
   evals: [
     {
       name: 'attaches_contact_context',
-      input: { customer: { email: 'lead@example.com' }, contact: { id: 'c1', lifecycle_stage: 'lead' } },
+      input: {
+        customer: { email: 'lead@example.com' },
+        contact: { id: 'c1', lifecycle_stage: 'lead' },
+      },
       expect: { status: 'completed', steps: ['lookup_contact', 'note'] },
     },
   ],
@@ -594,7 +600,8 @@ const outageReport = normalizeProcedureSpec({
   slug: 'outage-report',
   name: 'Outage report',
   version: '1.0.0',
-  description: 'Open a PagerDuty incident and a Datadog event when customer reports confirm an outage.',
+  description:
+    'Open a PagerDuty incident and a Datadog event when customer reports confirm an outage.',
   owner: 'ranse-library',
   trigger: { type: 'manual' },
   steps: [
@@ -615,7 +622,11 @@ const outageReport = normalizeProcedureSpec({
       id: 'crosspost',
       type: 'call_action',
       tool: 'datadog.events.create',
-      args: { title: 'Customer-reported outage', text: '{{ ticket.summary }}', tags: ['source:ranse'] },
+      args: {
+        title: 'Customer-reported outage',
+        text: '{{ ticket.summary }}',
+        tags: ['source:ranse'],
+      },
       requires_approval: true,
       save_as: 'datadog_event',
     },
@@ -650,7 +661,9 @@ const jiraBugEscalation = normalizeProcedureSpec({
       type: 'if',
       condition: { var: 'existing.matches', exists: true },
       // biome-ignore lint/suspicious/noThenProperty: Procedure spec key.
-      then: [{ id: 'note_match', type: 'add_note', body: 'Existing Jira: {{ existing.matches.0.key }}' }],
+      then: [
+        { id: 'note_match', type: 'add_note', body: 'Existing Jira: {{ existing.matches.0.key }}' },
+      ],
       else: [
         {
           id: 'create_issue',

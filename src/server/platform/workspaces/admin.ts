@@ -9,7 +9,7 @@ import {
   normalizeAutonomyRolloutPercent,
   normalizeAutonomyThreshold,
 } from '../../../types/shared/autonomy';
-import type { WorkspaceMailbox, WorkspaceUsage } from '../../../types/shared/workspace';
+import type { WorkspaceMailbox, WorkspaceUsage } from '../../../types/shared/workspaces';
 import { audit, diffChanges } from '../../actions/audit';
 import type { Env } from '../../env';
 import { listPublicChannels } from '../../inbox/channels';

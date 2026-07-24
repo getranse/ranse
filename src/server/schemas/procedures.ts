@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PROCEDURE_SOURCE_KINDS } from '../../types/shared/procedure';
+import { PROCEDURE_SOURCE_KINDS } from '../../types/shared/procedures';
 
 export const upsertProcedureBody = z.object({
   spec: z.unknown(),

@@ -1,12 +1,12 @@
 import { getAgentByName } from 'agents';
-import type { Env } from '../../env';
+import type { ProcedureEventType } from '../../../types/shared/procedures';
 import { audit } from '../../actions/audit';
-import type { ProcedureEventType } from '../../../types/shared/procedure';
 import {
   createProcedureRun,
   listTriggeredProcedures,
   listWaitingProcedureRunsForTicket,
 } from '../../actions/procedures';
+import type { Env } from '../../env';
 
 export async function startProcedureRunner(env: Env, workspaceId: string, runId: string) {
   const stub = await getAgentByName(env.ProcedureRunnerAgent as never, runId);

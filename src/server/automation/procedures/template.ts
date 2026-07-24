@@ -1,4 +1,4 @@
-import type { ProcedureCondition } from '../../../types/shared/procedure';
+import type { ProcedureCondition } from '../../../types/shared/procedures';
 
 const TEMPLATE_EXPR = /\{\{\s*([a-zA-Z0-9_.:-]+)\s*\}\}/g;
 const TEMPLATE_VALUE_EXPR = /^\{\{\s*([a-zA-Z0-9_.:-]+)\s*\}\}$/;

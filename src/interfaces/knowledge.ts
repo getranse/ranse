@@ -1,9 +1,9 @@
-import type { AgentConfig } from '../types/server/llm';
 import type {
   AgenticRetrievalStepSource,
   KnowledgeSearchScope,
   KnowledgeSourceKind,
 } from '../types/shared/knowledge';
+import type { AgentConfig } from '../types/shared/llm';
 
 export interface AgenticSearchOptions {
   limit?: number;

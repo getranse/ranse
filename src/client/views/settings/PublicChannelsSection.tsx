@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { PublicChannelsSectionProps } from '../../../interfaces/client';
-import type { WorkspaceMailbox } from '../../../types/shared/workspace';
+import type { WorkspaceMailbox } from '../../../types/shared/workspaces';
 import { API, type PublicChannelEntry } from '../../api';
 import { ChannelRow } from './PublicChannelRow';
 import { buildConfigPayload, parseMinutes, splitOrigins } from './public-channel-helpers';

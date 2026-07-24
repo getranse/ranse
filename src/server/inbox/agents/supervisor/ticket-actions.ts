@@ -1,13 +1,17 @@
-import type { Env } from '../../../env';
-import { captureResolvedTicketEvalCase } from '../../../automation/evals/capture';
-import { audit } from '../../../actions/audit';
 import { ids } from '../../../../lib/ids';
-import { listTicketFeedback, listTicketOutcomes, recordTicketFeedback } from '../../../platform/outcomes';
-import { r2Keys, putRaw } from '../../../../lib/storage';
-import { recordKnowledgeUsage } from '../../../automation/knowledge';
+import { putRaw, r2Keys } from '../../../../lib/storage';
+import type { SendThreadedReply, TicketListItem } from '../../../../types/shared/supervisor';
+import { audit } from '../../../actions/audit';
 import { listTicketMcpToolCalls } from '../../../actions/mcp';
 import { listTicketProcedureRuns } from '../../../actions/procedures';
-import type { SendThreadedReply, TicketListItem } from '../../../../types/shared/supervisor';
+import { captureResolvedTicketEvalCase } from '../../../automation/evals/capture';
+import { recordKnowledgeUsage } from '../../../automation/knowledge';
+import type { Env } from '../../../env';
+import {
+  listTicketFeedback,
+  listTicketOutcomes,
+  recordTicketFeedback,
+} from '../../../platform/outcomes';
 
 export { draftReply } from './ticket-draft';
 
@@ -19,7 +23,7 @@ export async function listTickets(
   const limit = Math.min(params.limit ?? 50, 200);
   const offset = params.offset ?? 0;
   const clause = params.status ? 'AND status = ?' : '';
-  const bindings: any[] = [workspaceId];
+  const bindings: unknown[] = [workspaceId];
   if (params.status) bindings.push(params.status);
   bindings.push(limit, offset);
   const rows = await env.DB.prepare(
@@ -37,27 +41,28 @@ export async function getTicket(env: Env, workspaceId: string, ticketId: string)
     .bind(ticketId, workspaceId)
     .first();
   if (!ticket) return null;
-  const [messages, auditRows, approvals, outcomes, feedback, procedureRuns, mcpToolCalls] = await Promise.all([
-    env.DB.prepare(
-      `SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`,
-    )
-      .bind(ticketId, workspaceId)
-      .all(),
-    env.DB.prepare(
-      `SELECT * FROM audit_event WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT 100`,
-    )
-      .bind(ticketId, workspaceId)
-      .all(),
-    env.DB.prepare(
-      `SELECT * FROM approval_request WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC`,
-    )
-      .bind(ticketId, workspaceId)
-      .all(),
-    listTicketOutcomes(env, workspaceId, ticketId),
-    listTicketFeedback(env, workspaceId, ticketId),
-    listTicketProcedureRuns(env, workspaceId, ticketId),
-    listTicketMcpToolCalls(env, workspaceId, ticketId),
-  ]);
+  const [messages, auditRows, approvals, outcomes, feedback, procedureRuns, mcpToolCalls] =
+    await Promise.all([
+      env.DB.prepare(
+        `SELECT * FROM message_index WHERE ticket_id = ? AND workspace_id = ? ORDER BY sent_at ASC`,
+      )
+        .bind(ticketId, workspaceId)
+        .all(),
+      env.DB.prepare(
+        `SELECT * FROM audit_event WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC LIMIT 100`,
+      )
+        .bind(ticketId, workspaceId)
+        .all(),
+      env.DB.prepare(
+        `SELECT * FROM approval_request WHERE ticket_id = ? AND workspace_id = ? ORDER BY created_at DESC`,
+      )
+        .bind(ticketId, workspaceId)
+        .all(),
+      listTicketOutcomes(env, workspaceId, ticketId),
+      listTicketFeedback(env, workspaceId, ticketId),
+      listTicketProcedureRuns(env, workspaceId, ticketId),
+      listTicketMcpToolCalls(env, workspaceId, ticketId),
+    ]);
   return {
     ticket,
     messages: messages.results ?? [],
@@ -220,8 +225,8 @@ export async function replyDirect(
       console.warn('failed to record knowledge usage', err),
     );
     return { ok: true, messageId: sent.messageId };
-  } catch (err: any) {
-    return { ok: false, error: err?.message ?? 'send_failed' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'send_failed' };
   }
 }
 

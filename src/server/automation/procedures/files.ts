@@ -1,8 +1,8 @@
-import { pathToFileURL } from 'node:url';
-import { extname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { extname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import type { ProcedureSpec } from '../../../types/shared/procedure';
+import type { ProcedureSpec } from '../../../types/shared/procedures';
 import { normalizeProcedureSpec } from '../../schemas/procedure-spec';
 
 export async function loadProcedureFile(path: string): Promise<ProcedureSpec> {

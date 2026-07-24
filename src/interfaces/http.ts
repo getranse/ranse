@@ -1,4 +1,4 @@
-import type { WorkspaceRole } from '../types/shared/workspace';
+import type { WorkspaceRole } from '../types/shared/workspaces';
 
 export interface AuthedSession {
   sessionId: string;

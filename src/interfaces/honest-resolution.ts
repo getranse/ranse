@@ -1,4 +1,8 @@
-import type { VerifiedResolutionStatus, VerifiedResolutionRejectionReason, VerifiedResolutionSource } from '../types/shared/honest-resolution';
+import type {
+  VerifiedResolutionRejectionReason,
+  VerifiedResolutionSource,
+  VerifiedResolutionStatus,
+} from '../types/shared/honest-resolution';
 
 export interface VerifiedResolutionRow {
   id: string;
