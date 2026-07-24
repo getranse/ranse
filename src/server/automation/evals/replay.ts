@@ -1,10 +1,17 @@
 import type { RunEvalSuiteOptions } from '../../../interfaces/evals';
+
 export type { RunEvalSuiteOptions };
-import type { Env } from '../../env';
-import { runDraft, type DraftResult } from '../../inbox/agents/specialists/draft';
-import { agenticSearchKnowledge } from '../knowledge';
+
 import type { AgentConfig } from '../../../types/server/llm';
+import type { Env } from '../../env';
+import { type DraftResult, runDraft } from '../../inbox/agents/specialists/draft';
+import { scoreTone } from '../../platform/insights/tone';
+import { agenticSearchKnowledge } from '../knowledge';
 import { simulateProcedure } from '../procedures/simulate';
+import { scoreTextSimilarity } from './similarity';
+
+export { scoreTextSimilarity };
+
 import type {
   EvalAssertion,
   ProcedureEvalReport,
@@ -183,6 +190,12 @@ export async function replayResolvedTicketCase(
       score: draft.confidence,
       message: 'Low confidence drafts must explicitly ask for review.',
     },
+    {
+      name: 'tone',
+      passed: scoreTone(draft.body_markdown) >= 0.5,
+      score: scoreTone(draft.body_markdown),
+      message: 'Reply tone must not read hostile or dismissive.',
+    },
   ];
   const passed = assertions.every((assertion) => assertion.passed);
   return {
@@ -308,41 +321,6 @@ export function evaluateProcedureExpectations(
     });
   }
   return assertions;
-}
-
-export function scoreTextSimilarity(expected: string, actual: string): number {
-  const expectedTokens = tokenSet(expected);
-  const actualTokens = tokenSet(actual);
-  if (expectedTokens.size === 0 || actualTokens.size === 0) return 0;
-  let overlap = 0;
-  for (const token of expectedTokens) {
-    if (actualTokens.has(token)) overlap += 1;
-  }
-  return Number((overlap / expectedTokens.size).toFixed(4));
-}
-
-function tokenSet(value: string): Set<string> {
-  const stop = new Set([
-    'about',
-    'after',
-    'again',
-    'also',
-    'because',
-    'before',
-    'could',
-    'hello',
-    'please',
-    'thank',
-    'thanks',
-    'there',
-    'these',
-    'those',
-    'would',
-    'your',
-  ]);
-  return new Set(
-    (value.toLowerCase().match(/[a-z][a-z0-9_-]{3,}/g) ?? []).filter((token) => !stop.has(token)),
-  );
 }
 
 function getPath(value: unknown, path: string): unknown {

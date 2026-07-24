@@ -1,11 +1,20 @@
 import type { InferParams, InferResult } from '../../interfaces/llm';
+
 export type { InferParams, InferResult };
+
 import type { z } from 'zod';
-import type { Env } from '../../server/env';
 import { DEFAULT_AGENT_CONFIG, PROVIDER_ENV_KEY } from '../../config/llm';
+import type { Env } from '../../server/env';
+import type {
+  ActionKey,
+  AgentConfig,
+  CallMetadata,
+  ModelConfig,
+  RuntimeOverrides,
+} from '../../types/server/llm';
 import { MODELS_MASTER } from '../../types/server/llm';
-import type { ActionKey, AgentConfig, CallMetadata, ModelConfig, RuntimeOverrides } from '../../types/server/llm';
 import { resolveClient } from './core';
+import { parseJsonWithControlCharRepair } from './json-repair';
 
 const PROVIDERS_NEED_KEY = PROVIDER_ENV_KEY as Record<string, keyof Env>;
 
@@ -17,75 +26,6 @@ function modelHasUsableAuth(modelName: string, env: Env, overrides?: RuntimeOver
   if (overrides?.userApiKeys?.[provider]) return true;
   const envKey = PROVIDERS_NEED_KEY[provider];
   return envKey ? !!env[envKey] : true;
-}
-
-function parseJsonWithControlCharRepair(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch (err) {
-    const repaired = escapeControlCharsInJsonStrings(text);
-    if (repaired === text) throw err;
-    return JSON.parse(repaired);
-  }
-}
-
-function escapeControlCharsInJsonStrings(text: string): string {
-  let result = '';
-  let inString = false;
-  let escaped = false;
-
-  for (const char of text) {
-    if (!inString) {
-      if (char === '"') inString = true;
-      result += char;
-      continue;
-    }
-
-    if (escaped) {
-      result += char;
-      escaped = false;
-      continue;
-    }
-
-    if (char === '\\') {
-      result += char;
-      escaped = true;
-      continue;
-    }
-
-    if (char === '"') {
-      inString = false;
-      result += char;
-      continue;
-    }
-
-    if (char === '\n') {
-      result += '\\n';
-      continue;
-    }
-    if (char === '\r') {
-      result += '\\r';
-      continue;
-    }
-    if (char === '\t') {
-      result += '\\t';
-      continue;
-    }
-
-    const code = char.charCodeAt(0);
-    if (code < 0x20) {
-      result += `\\u${code.toString(16).padStart(4, '0')}`;
-      continue;
-    }
-
-    result += char;
-  }
-
-  return result;
-}
-
-async function resolveModelConfig(action: ActionKey, workspaceConfig?: Partial<AgentConfig>): Promise<ModelConfig> {
-  return { ...DEFAULT_AGENT_CONFIG[action], ...(workspaceConfig?.[action] ?? {}) };
 }
 
 /**
@@ -120,13 +60,16 @@ async function callWorkersAI<T extends z.ZodTypeAny>(
     typeof response === 'string'
       ? response
       : (response?.response ??
-          response?.choices?.[0]?.message?.content ??
-          response?.output_text ??
-          response?.result?.response);
+        response?.choices?.[0]?.message?.content ??
+        response?.output_text ??
+        response?.result?.response);
   const text =
     typeof rawText === 'string'
       ? rawText
-      : rawText && typeof rawText === 'object' && 'content' in rawText && typeof rawText.content === 'string'
+      : rawText &&
+          typeof rawText === 'object' &&
+          'content' in rawText &&
+          typeof rawText.content === 'string'
         ? rawText.content
         : JSON.stringify(rawText ?? response ?? '');
 
@@ -198,9 +141,26 @@ async function callOnce<T extends z.ZodTypeAny>(
   return text;
 }
 
-export async function infer<T extends z.ZodTypeAny>(params: InferParams<T>): Promise<InferResult<z.infer<T>>>;
-export async function infer(params: InferParams<z.ZodTypeAny> & { schema?: undefined }): Promise<InferResult<string>>;
+async function resolveModelConfig(
+  action: ActionKey,
+  workspaceConfig?: Partial<AgentConfig>,
+): Promise<ModelConfig> {
+  return { ...DEFAULT_AGENT_CONFIG[action], ...(workspaceConfig?.[action] ?? {}) };
+}
+
+export async function infer<T extends z.ZodTypeAny>(
+  params: InferParams<T>,
+): Promise<InferResult<z.infer<T>>>;
+export async function infer(
+  params: InferParams<z.ZodTypeAny> & { schema?: undefined },
+): Promise<InferResult<string>>;
 export async function infer(params: InferParams): Promise<InferResult> {
+  // Budget guard before any provider call. The counter lives in the DB-action
+  // layer (src/server/actions) — this module never queries D1 itself.
+  if (params.metadata?.workspaceId) {
+    const { enforceLlmBudget } = await import('../../server/actions/llm-usage');
+    await enforceLlmBudget(params.env, params.metadata.workspaceId);
+  }
   const cfg = await resolveModelConfig(params.action, params.workspaceConfig);
   const maxAttempts = params.maxAttempts ?? 3;
   // Filter candidates whose provider needs an API key we don't have. Avoids

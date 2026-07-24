@@ -1,11 +1,12 @@
-import type { TicketRow, MessageRow, ApprovalRow, OutcomeRow, FeedbackRow } from '../../../interfaces/insights';
-import type { Env } from '../../env';
-import { audit } from '../../actions/audit';
+import type {
+  ApprovalRow,
+  FeedbackRow,
+  MessageRow,
+  OutcomeRow,
+  TicketRow,
+} from '../../../interfaces/insights';
 import { sha256Hex } from '../../../lib/crypto';
 import { ids } from '../../../lib/ids';
-import { ingestKnowledgeSource } from '../../automation/knowledge';
-import { recomputeWorkspaceStaleness } from './staleness';
-import { discoverProposals } from './proactive';
 import type {
   ConversationScore,
   InsightSummary,
@@ -15,6 +16,12 @@ import type {
   KnowledgeDriftStatus,
   WorkspaceInsightsMaintenanceResult,
 } from '../../../types/shared/insights';
+import { audit } from '../../actions/audit';
+import { ingestKnowledgeSource } from '../../automation/knowledge';
+import type { Env } from '../../env';
+import { discoverProposals } from './proactive';
+import { recomputeWorkspaceStaleness } from './staleness';
+import { scoreTone } from './tone';
 
 const STOP_WORDS = new Set([
   'about',
@@ -926,18 +933,6 @@ function scoreGroundedness(input: {
   if (input.risks.some((risk) => /insufficient|uncited|weak_retrieval|stale/i.test(risk))) {
     score -= 0.25;
   }
-  return clamp01(score);
-}
-
-function scoreTone(text: string): number {
-  if (!text.trim()) return 0.5;
-  const lower = text.toLowerCase();
-  let score = 0.82;
-  if (/\b(thank|thanks|please|happy to help|i can help)\b/.test(lower)) score += 0.08;
-  if (/\b(stupid|obvious|not our problem|as stated|you failed|you must)\b/.test(lower))
-    score -= 0.28;
-  if (/[A-Z]{12,}/.test(text)) score -= 0.12;
-  if (lower.length < 40) score -= 0.08;
   return clamp01(score);
 }
 
