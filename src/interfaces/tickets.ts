@@ -1,6 +1,6 @@
 import type { AnswerInspectionHit, AnswerInspectionTrace } from '../types/client/knowledge';
-import type { AgenticRetrievalTrace, KnowledgeHit } from '../types/shared/knowledge';
 import type { TicketFeedback, TicketOutcomeEvent } from '../types/shared/autonomy';
+import type { AgenticRetrievalTrace, KnowledgeHit } from '../types/shared/knowledge';
 import type { McpToolCall } from '../types/shared/mcp';
 import type { ProcedureRun } from '../types/shared/procedure';
 
@@ -71,4 +71,15 @@ export interface ProposedReply {
 export interface ReplyEdits {
   subject: string;
   body_markdown: string;
+}
+
+export interface TicketSearchHit {
+  id: string;
+  subject: string;
+  status: string;
+  priority: string;
+  requester_email: string;
+  last_message_at: number;
+  /** Matched-text excerpt from FTS ([match] markers), null for requester-only hits. */
+  snippet: string | null;
 }

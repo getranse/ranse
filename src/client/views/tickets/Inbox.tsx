@@ -1,7 +1,7 @@
-import { formatDateTime } from '../../../lib/format';
 import { useEffect, useState } from 'react';
-import { OnboardingBanner } from '../../components/onboarding/OnboardingBanner';
+import { formatDateTime } from '../../../lib/format';
 import { API } from '../../api';
+import { OnboardingBanner } from '../../components/onboarding/OnboardingBanner';
 
 const FILTERS = [
   { k: '', label: 'All' },
@@ -13,25 +13,49 @@ const FILTERS = [
 export function InboxView({ onOpen }: { onOpen: (id: string) => void }) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [filter, setFilter] = useState('open');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // A non-empty search replaces the status-filtered list; debounced so we
+  // don't hit the API on every keystroke.
   useEffect(() => {
     setLoading(true);
-    API.tickets(filter || undefined)
-      .then((d) => setTickets(d.tickets ?? []))
-      .finally(() => setLoading(false));
-  }, [filter]);
+    const q = query.trim();
+    if (!q) {
+      API.tickets(filter || undefined)
+        .then((d) => setTickets(d.tickets ?? []))
+        .finally(() => setLoading(false));
+      return;
+    }
+    const handle = setTimeout(() => {
+      API.searchTickets(q)
+        .then((d) => setTickets(d.tickets ?? []))
+        .finally(() => setLoading(false));
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [filter, query]);
 
   return (
     <>
       <h1>Inbox</h1>
       <OnboardingBanner onNavigate={(href) => window.location.assign(href)} />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         {FILTERS.map((f) => (
-          <button key={f.k} className={filter === f.k ? 'primary' : ''} onClick={() => setFilter(f.k)}>
+          <button
+            key={f.k}
+            className={filter === f.k ? 'primary' : ''}
+            onClick={() => setFilter(f.k)}
+          >
             {f.label}
           </button>
         ))}
+        <input
+          type="search"
+          placeholder="Search tickets…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ marginLeft: 'auto', minWidth: 220 }}
+        />
       </div>
       {loading ? (
         <div className="muted">Loading…</div>

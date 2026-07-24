@@ -3,6 +3,7 @@ import { api } from './core';
 
 export const ticketApi = {
   tickets: (status?: string) => api<any>(`/api/tickets${status ? `?status=${status}` : ''}`),
+  searchTickets: (q: string) => api<any>(`/api/search/tickets?q=${encodeURIComponent(q)}`),
   ticket: <T = any>(id: string) => api<T>(`/api/tickets/${id}`),
   setStatus: (id: string, status: string) =>
     api(`/api/tickets/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
