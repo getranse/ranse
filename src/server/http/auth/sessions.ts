@@ -1,8 +1,8 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../lib/errors';
-import { getSession, revokeOtherSessions } from '../actions/auth';
-import type { Env } from '../env';
-import { auditUserEvent } from './auth-guards';
+import { apiError } from '../../../lib/errors';
+import { getSession, revokeOtherSessions } from '../../actions/auth';
+import type { Env } from '../../env';
+import { auditUserEvent } from './guards';
 
 export function registerSessionRoutes(authApp: Hono<{ Bindings: Env }>) {
   // Sign out everywhere else: revoke all of the user's sessions except the one

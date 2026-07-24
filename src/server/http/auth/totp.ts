@@ -1,11 +1,11 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../lib/errors';
-import { generateTotpSecret, totpUri, verifyTotp } from '../../lib/totp';
-import { getSession } from '../actions/auth';
-import { clearTotp, enableTotp, loadUserTotp, saveTotpSecret } from '../actions/users';
-import type { Env } from '../env';
-import { totpCodeBody } from '../schemas/auth';
-import { auditUserEvent } from './auth-guards';
+import { apiError } from '../../../lib/errors';
+import { generateTotpSecret, totpUri, verifyTotp } from '../../../lib/totp';
+import { getSession } from '../../actions/auth';
+import { clearTotp, enableTotp, loadUserTotp, saveTotpSecret } from '../../actions/users';
+import type { Env } from '../../env';
+import { totpCodeBody } from '../../schemas/auth';
+import { auditUserEvent } from './guards';
 
 export function registerTotpRoutes(authApp: Hono<{ Bindings: Env }>) {
   // Step 1: provision a secret. 2FA does not enforce until step 2 confirms

@@ -1,13 +1,13 @@
 import type { Hono } from 'hono';
-import { apiError } from '../../lib/errors';
-import { hashPassword, needsRehash } from '../../lib/password';
-import { verifyTotp } from '../../lib/totp';
-import { createSession, setSessionCookie, verifyPassword } from '../actions/auth';
-import { findLoginUser, touchLastLogin, updatePasswordHash } from '../actions/users';
-import type { Env } from '../env';
-import { listUserWorkspaces } from '../platform/workspaces';
-import { loginBody } from '../schemas/auth';
-import { auditUserEvent, checkLoginRateLimit } from './auth-guards';
+import { apiError } from '../../../lib/errors';
+import { hashPassword, needsRehash } from '../../../lib/password';
+import { verifyTotp } from '../../../lib/totp';
+import { createSession, setSessionCookie, verifyPassword } from '../../actions/auth';
+import { findLoginUser, touchLastLogin, updatePasswordHash } from '../../actions/users';
+import type { Env } from '../../env';
+import { listUserWorkspaces } from '../../platform/workspaces';
+import { loginBody } from '../../schemas/auth';
+import { auditUserEvent, checkLoginRateLimit } from './guards';
 
 export function registerLoginRoute(authApp: Hono<{ Bindings: Env }>) {
   authApp.post('/login', async (c) => {

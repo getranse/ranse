@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { deleteCookie } from 'hono/cookie';
-import { deleteSession, getSession } from '../actions/auth';
-import { getUserBasics } from '../actions/users';
-import type { Env } from '../env';
-import { listUserWorkspaces } from '../platform/workspaces';
-import { auditUserEvent } from './auth-guards';
-import { registerLoginRoute } from './auth-login';
-import { registerSessionRoutes } from './auth-sessions';
-import { registerTotpRoutes } from './auth-totp';
-import { registerAuthWorkspaceRoutes } from './auth-workspaces';
+import { deleteSession, getSession } from '../../actions/auth';
+import { getUserBasics } from '../../actions/users';
+import type { Env } from '../../env';
+import { listUserWorkspaces } from '../../platform/workspaces';
+import { auditUserEvent } from './guards';
+import { registerLoginRoute } from './login';
+import { registerSessionRoutes } from './sessions';
+import { registerTotpRoutes } from './totp';
+import { registerAuthWorkspaceRoutes } from './workspaces';
 
 export const authApp = new Hono<{ Bindings: Env }>();
 

@@ -1,9 +1,9 @@
 import type { Context } from 'hono';
-import { apiError } from '../../lib/errors';
-import type { AuditAction } from '../../types/shared/audit';
-import { audit, auditContext } from '../actions/audit';
-import type { Env } from '../env';
-import { listUserWorkspaces } from '../platform/workspaces';
+import { apiError } from '../../../lib/errors';
+import type { AuditAction } from '../../../types/shared/audit';
+import { audit, auditContext } from '../../actions/audit';
+import type { Env } from '../../env';
+import { listUserWorkspaces } from '../../platform/workspaces';
 
 type AuthCtx = Context<{ Bindings: Env }>;
 
