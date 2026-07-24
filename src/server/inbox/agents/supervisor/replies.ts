@@ -1,19 +1,16 @@
-import type { Env } from '../../../env';
-import { dispatchOutbound } from '../../channels';
-import {
-  buildHtmlWithSignature,
-  buildMultipartReply,
-  buildPlainTextWithSignature,
-} from '../../email/html';
-import { buildReplyAddress } from '../../email/reply-security';
-import { audit } from '../../../actions/audit';
 import { buildFeedbackLinks } from '../../../../lib/feedback-links';
-import { buildTraceLink } from '../../../actions/decision-trace';
 import { ids } from '../../../../lib/ids';
-import { rejectVerification } from '../../../platform/insights/honest-resolution';
-import { recordLedgerEntry } from '../../../platform/billing/outcomes';
-import { r2Keys, putRaw } from '../../../../lib/storage';
+import { putRaw, r2Keys } from '../../../../lib/storage';
 import type { SendThreadedReply } from '../../../../types/shared/supervisor';
+import { audit } from '../../../actions/audit';
+import { buildTraceLink } from '../../../actions/decision-trace';
+import type { Env } from '../../../env';
+import { recordLedgerEntry } from '../../../platform/billing/outcomes';
+import { rejectVerification } from '../../../platform/insights/honest-resolution';
+import { dispatchOutbound } from '../../channels';
+import { buildMultipartReply } from '../../email/html';
+import { buildReplyAddress } from '../../email/reply-security';
+import { buildReplyBodies, parseWorkspaceSettings } from './reply-bodies';
 
 export function makeSendThreadedReply(
   env: Env,
@@ -28,9 +25,8 @@ export function makeSendThreadedReply(
     const messageId = ids.message();
 
     if (ctx.origin_channel_kind && ctx.origin_channel_kind !== 'email') {
-      const text = await persistAndDispatchNonEmail(env, workspaceId, args, ctx, agent, messageId);
+      await persistAndDispatchNonEmail(env, workspaceId, args, ctx, agent, messageId);
       await refreshCounts();
-      void text;
       return { messageId };
     }
 
@@ -44,15 +40,14 @@ export function makeSendThreadedReply(
       ticketId: args.ticketId,
       messageId,
     });
-    // The customer-facing decision trace link is only generated for AI-authored
-    // replies — human-authored replies don't have a meaningful trace, and
-    // surfacing one would be a privacy hazard (it would expose internal-rep
-    // workflow to the customer). The autonomy/procedure path leaves
-    // actorUserId null; that's the gate.
+    // Trace links and the AI-disclosure footer apply only to AI-authored replies —
+    // a human reply has no meaningful trace, and surfacing one would expose
+    // internal-rep workflow. The autonomy/procedure path leaves actorUserId null.
     const traceUrl = args.actorUserId
       ? null
       : await buildTraceLink(env, { workspaceId, ticketId: args.ticketId, messageId });
-    const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks, traceUrl);
+    const aiAuthored = !args.actorUserId;
+    const body = await buildReplyBodies(args.body, ctx, agent, feedbackLinks, traceUrl, aiAuthored);
 
     const rawMimeText = buildMultipartReply(
       {
@@ -110,7 +105,9 @@ async function persistAndDispatchNonEmail(
     fromName,
   });
   if (dispatch.status === 'failed') {
-    throw new Error(`channel_dispatch_failed:${dispatch.channelKind}:${dispatch.error ?? 'unknown'}`);
+    throw new Error(
+      `channel_dispatch_failed:${dispatch.channelKind}:${dispatch.error ?? 'unknown'}`,
+    );
   }
 }
 
@@ -195,37 +192,6 @@ async function buildReplyAddresses(
     replyToAddress,
     fromHeader: `"${displayName.replace(/"/g, '\\"')}" <${fromAddress}>`,
     fromName,
-  };
-}
-
-function parseWorkspaceSettings(settingsJson: string): { from_name?: string } {
-  try {
-    return JSON.parse(settingsJson || '{}');
-  } catch {
-    return {};
-  }
-}
-
-async function buildReplyBodies(
-  body: string,
-  ctx: NonNullable<Awaited<ReturnType<typeof loadReplyContext>>>,
-  agent: Awaited<ReturnType<typeof loadAgent>>,
-  feedbackLinks: Awaited<ReturnType<typeof buildFeedbackLinks>>,
-  traceUrl: string | null = null,
-) {
-  const settings = parseWorkspaceSettings(ctx.workspace_settings);
-  const fromName = settings.from_name || ctx.workspace_name || 'Support';
-  const signatureCtx = {
-    agentName: agent?.name ?? null,
-    agentEmail: agent?.email ?? null,
-    agentSignatureMarkdown: agent?.signature_markdown ?? null,
-    agentAvatarUrl: agent?.avatar_url ?? null,
-    workspaceName: ctx.workspace_name,
-    fromName,
-  };
-  return {
-    text: buildPlainTextWithSignature(body, signatureCtx, feedbackLinks, traceUrl),
-    html: await buildHtmlWithSignature(body, signatureCtx, feedbackLinks, traceUrl),
   };
 }
 

@@ -88,15 +88,8 @@ authApp.get('/me', async (c) => {
     .bind(s.userId)
     .first<{ id: string; email: string; name: string | null }>();
   const workspaces = await listUserWorkspaces(c.env, s.userId);
-  const currentWorkspaceId = workspaces.some((w) => w.id === s.workspaceId)
-    ? s.workspaceId
-    : undefined;
-  return c.json({
-    authenticated: true,
-    user,
-    workspaces,
-    currentWorkspaceId,
-  });
+  const current = workspaces.some((w) => w.id === s.workspaceId) ? s.workspaceId : undefined;
+  return c.json({ authenticated: true, user, workspaces, currentWorkspaceId: current });
 });
 
 registerAuthWorkspaceRoutes(authApp);

@@ -1,5 +1,15 @@
-import type { SignatureCtx, EmailFeedbackLinks, MultipartHeaders } from '../../../interfaces/email';
-export type { SignatureCtx, EmailFeedbackLinks, MultipartHeaders };
+import type { MultipartHeaders } from '../../../interfaces/email';
+import type { EmailFeedbackLinks, SignatureCtx } from '../../../interfaces/replies';
+import {
+  appendPlainTextFeedback,
+  appendPlainTextTrace,
+  escapeHtml,
+  feedbackHtml,
+  traceHtml,
+} from './footers';
+
+export type { EmailFeedbackLinks, MultipartHeaders, SignatureCtx };
+
 /**
  * Tiny markdown → HTML converter scoped to the subset that shows up in
  * support replies: paragraphs, line breaks, bold/italic, links, inline
@@ -9,15 +19,6 @@ export type { SignatureCtx, EmailFeedbackLinks, MultipartHeaders };
  * No external dependency on purpose — reply content is small (a few KB
  * at most), and avoiding a markdown lib keeps the Worker bundle tight.
  */
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function inline(s: string): string {
   let out = escapeHtml(s);
@@ -72,7 +73,12 @@ export function markdownToHtml(md: string): string {
     }
     // paragraph: collect until blank
     const para: string[] = [];
-    while (i < lines.length && lines[i].trim() !== '' && !/^[-*]\s+/.test(lines[i]) && !/^>\s?/.test(lines[i])) {
+    while (
+      i < lines.length &&
+      lines[i].trim() !== '' &&
+      !/^[-*]\s+/.test(lines[i]) &&
+      !/^>\s?/.test(lines[i])
+    ) {
       para.push(inline(lines[i]));
       i++;
     }
@@ -105,7 +111,7 @@ export function buildPlainTextWithSignature(
   traceUrl?: string | null,
 ): string {
   const withFooters = (text: string) =>
-    appendPlainTextTrace(appendPlainTextFeedback(text, feedback), traceUrl);
+    appendPlainTextTrace(appendPlainTextFeedback(text, feedback), traceUrl, ctx.aiAuthored);
   if (ctx.agentSignatureMarkdown) {
     return withFooters(`${body.trimEnd()}\n\n--\n${ctx.agentSignatureMarkdown}`);
   }
@@ -132,9 +138,7 @@ export async function buildHtmlWithSignature(
 ): Promise<string> {
   const bodyHtml = markdownToHtml(bodyMarkdown);
 
-  const avatar =
-    ctx.agentAvatarUrl ??
-    (ctx.agentEmail ? await gravatarUrl(ctx.agentEmail) : null);
+  const avatar = ctx.agentAvatarUrl ?? (ctx.agentEmail ? await gravatarUrl(ctx.agentEmail) : null);
 
   const name = ctx.agentName ?? '';
   const sub = ctx.fromName ?? ctx.workspaceName ?? '';
@@ -149,32 +153,10 @@ export async function buildHtmlWithSignature(
         : ''
     }<td style="vertical-align:middle">${
       name ? `<div style="font-weight:600;color:#222">${escapeHtml(name)}</div>` : ''
-    }${
-      sub ? `<div>${escapeHtml(sub)}</div>` : ''
-    }</td></tr></table>`;
+    }${sub ? `<div>${escapeHtml(sub)}</div>` : ''}</td></tr></table>`;
   }
 
-  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}${feedbackHtml(feedback)}${traceHtml(traceUrl)}</body></html>`;
-}
-
-function appendPlainTextFeedback(text: string, feedback?: EmailFeedbackLinks | null): string {
-  if (!feedback) return text;
-  return `${text.trimEnd()}\n\nWas this helpful?\nYes: ${feedback.positive}\nNo: ${feedback.negative}`;
-}
-
-function appendPlainTextTrace(text: string, traceUrl?: string | null): string {
-  if (!traceUrl) return text;
-  return `${text.trimEnd()}\n\nWhy this answer? ${traceUrl}`;
-}
-
-function traceHtml(traceUrl?: string | null): string {
-  if (!traceUrl) return '';
-  return `<div style="margin-top:8px;color:#64748b;font-size:12px;"><a href="${escapeHtml(traceUrl)}" style="color:#64748b;text-decoration:underline;">Why this answer?</a></div>`;
-}
-
-function feedbackHtml(feedback?: EmailFeedbackLinks | null): string {
-  if (!feedback) return '';
-  return `<div style="margin-top:32px;padding-top:14px;border-top:1px solid #eee;color:#555;font-size:13px;">Was this helpful? <a href="${escapeHtml(feedback.positive)}" style="display:inline-block;margin-left:8px;color:#0f766e;text-decoration:none;">Yes</a> <a href="${escapeHtml(feedback.negative)}" style="display:inline-block;margin-left:8px;color:#991b1b;text-decoration:none;">No</a></div>`;
+  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;line-height:1.5;max-width:640px;margin:0;padding:0">${bodyHtml}${signatureHtml}${feedbackHtml(feedback)}${traceHtml(traceUrl, ctx.aiAuthored)}</body></html>`;
 }
 
 function escapeHeaderValue(s: string): string {
@@ -198,9 +180,10 @@ export function buildMultipartReply(
   if (headers.replyTo) headerLines.push(`Reply-To: ${escapeHeaderValue(headers.replyTo)}`);
   if (headers.inReplyTo) headerLines.push(`In-Reply-To: <${headers.inReplyTo}>`);
   if (headers.references?.length) {
-    const refs = headers.references.length > 10
-      ? [headers.references[0], ...headers.references.slice(-9)]
-      : headers.references;
+    const refs =
+      headers.references.length > 10
+        ? [headers.references[0], ...headers.references.slice(-9)]
+        : headers.references;
     headerLines.push(`References: ${refs.map((r) => `<${r}>`).join(' ')}`);
   }
   headerLines.push('MIME-Version: 1.0');

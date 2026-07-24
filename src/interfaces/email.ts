@@ -1,24 +1,10 @@
-
-
 export interface CfEnvelope<T> {
   success: boolean;
   result: T;
   errors?: Array<{ code: number; message: string }>;
 }
 
-export interface SignatureCtx {
-  agentName?: string | null;
-  agentEmail?: string | null;
-  agentSignatureMarkdown?: string | null;
-  agentAvatarUrl?: string | null;
-  workspaceName?: string | null;
-  fromName?: string | null;
-}
-
-export interface EmailFeedbackLinks {
-  positive: string;
-  negative: string;
-}
+// Reply/signature interfaces live in ./replies.ts.
 
 /**
  * Build a multipart/alternative raw MIME message. text/plain part comes

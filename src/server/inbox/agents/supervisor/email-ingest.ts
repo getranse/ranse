@@ -1,9 +1,9 @@
-import type { Env } from '../../../env';
-import { audit } from '../../../actions/audit';
 import { ids } from '../../../../lib/ids';
+import type { InboundEmailPayload } from '../../../../types/shared/supervisor';
+import { audit } from '../../../actions/audit';
+import type { Env } from '../../../env';
 import { recordOutcome } from '../../../platform/outcomes';
 import { emitEvent } from '../../notifications/dispatch';
-import type { InboundEmailPayload } from '../../../../types/shared/supervisor';
 
 export async function ingestEmail(
   ctx: {

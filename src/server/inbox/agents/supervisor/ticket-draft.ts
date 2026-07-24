@@ -1,7 +1,10 @@
-import type { Env } from '../../../env';
+import type {
+  AgenticRetrievalTrace,
+  KnowledgeInspectionHit,
+} from '../../../../types/shared/knowledge';
 import { audit } from '../../../actions/audit';
 import { agenticSearchKnowledge } from '../../../automation/knowledge';
-import type { AgenticRetrievalTrace, KnowledgeInspectionHit } from '../../../../types/shared/knowledge';
+import type { Env } from '../../../env';
 import { runDraft } from '../specialists/draft';
 import type { workspaceConfig } from './settings';
 
