@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
-import { authApp } from '../../src/server/http/auth';
 import { hashPassword } from '../../src/lib/password';
+import { authApp } from '../../src/server/http/auth';
 
 export function createWorkspaceTestDb() {
   const db = new DatabaseSync(':memory:');
@@ -790,12 +790,11 @@ export function createWorkspaceTestDb() {
               bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
           };
         },
-        delete: async (key: string) => {
-          blobStore.delete(key);
-        },
+        delete: async (key: string) => void blobStore.delete(key),
       },
       WEBHOOKS: { send: async () => undefined },
       RATE_LIMIT_INGEST: { limit: async () => ({ success: true }) },
+      RATE_LIMIT_AUTH: { limit: async () => ({ success: true }) },
     } as any,
   };
 }

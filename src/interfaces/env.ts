@@ -1,8 +1,18 @@
-import type { Ai, D1Database, DurableObjectNamespace, KVNamespace, Queue, R2Bucket, SendEmail, Vectorize, WorkerVersionMetadata } from '@cloudflare/workers-types';
-import type { WorkspaceSupervisorAgent } from '../server/inbox/agents/WorkspaceSupervisorAgent';
+import type {
+  Ai,
+  D1Database,
+  DurableObjectNamespace,
+  KVNamespace,
+  Queue,
+  R2Bucket,
+  SendEmail,
+  Vectorize,
+  WorkerVersionMetadata,
+} from '@cloudflare/workers-types';
 import type { MailboxAgent } from '../server/inbox/agents/MailboxAgent';
-import type { UserSecretsStore } from '../server/inbox/agents/UserSecretsStore';
 import type { ProcedureRunnerAgent } from '../server/inbox/agents/ProcedureRunnerAgent';
+import type { UserSecretsStore } from '../server/inbox/agents/UserSecretsStore';
+import type { WorkspaceSupervisorAgent } from '../server/inbox/agents/WorkspaceSupervisorAgent';
 
 export interface Env {
   APP_NAME: string;
@@ -42,6 +52,7 @@ export interface Env {
   ASSETS: Fetcher;
   CF_VERSION: WorkerVersionMetadata;
   RATE_LIMIT_INGEST: RateLimit;
+  RATE_LIMIT_AUTH: RateLimit;
 
   WorkspaceSupervisorAgent: DurableObjectNamespace<WorkspaceSupervisorAgent>;
   MailboxAgent: DurableObjectNamespace<MailboxAgent>;
