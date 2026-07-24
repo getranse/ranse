@@ -4,13 +4,15 @@ on:
   pull_request:
     paths:
       - "procedures/**"
-      - "src/agents/specialists/**"
-      - "src/agents/supervisor/**"
-      - "src/evals/**"
-      - "src/llm/**"
-      - "src/procedures/**"
+      - "src/server/inbox/agents/**"
+      - "src/server/automation/**"
+      - "src/lib/llm/**"
       - "scripts/ranse.ts"
+      - "tests/procedure-library.test.ts"
       - ".github/workflows/evals.yml"
+
+permissions:
+  contents: read
 
 jobs:
   procedure-evals:
