@@ -25,16 +25,11 @@ export interface SessionData {
   workspaceId?: string;
 }
 
-// Customer-facing decision trace. Every AI-authored outbound reply can carry
-// a "Why this answer?" link signed with HMAC. The link resolves to a sanitized
-// page that shows: KB sources cited, procedure + step, MCP tools called
-// (label-only, never payloads), confidence, approver, eval pass rate of the
-// procedure version, and last-knowledge-refresh timestamps.
-//
-// The point: industry CSAT collapses because customers cannot see why the AI
-// said what it said. We have all the trace already in audit/message_index/
-// procedure_run/mcp_tool_call — exposing it externally is a trust unlock no
-// closed-SaaS competitor will ship because their first job is to hide it.
+// Customer-facing decision trace: every AI-authored reply can carry an
+// HMAC-signed "Why this answer?" link resolving to a sanitized page (cited KB
+// sources, procedure + step, MCP tool labels — never payloads — confidence,
+// approver, eval pass rate, knowledge freshness). Customers distrust AI they
+// cannot inspect; exposing the trace is a trust unlock closed SaaS won't ship.
 
 export interface DecisionTraceTokenPayload {
   workspaceId: string;
@@ -92,6 +87,8 @@ export interface FeedbackTokenPayload {
 export interface FeedbackLinks {
   positive: string;
   negative: string;
+  /** Signed customer-portal link for the ticket, when APP_URL is configured. */
+  portal?: string;
 }
 
 export interface UploadOptions {

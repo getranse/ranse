@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { KnowledgeSectionProps } from '../../../interfaces/client';
-import { formatDateTime } from '../../../lib/format';
 import {
   type AnswerInspectionTrace,
   API,
@@ -8,6 +7,7 @@ import {
   type KnowledgeSource,
 } from '../../api';
 import { AnswerInspection } from './AnswerInspection';
+import { KnowledgeSourceRow } from './KnowledgeSourceRow';
 
 export function KnowledgeSection({ onSaved }: KnowledgeSectionProps) {
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
@@ -233,49 +233,7 @@ export function KnowledgeSection({ onSaved }: KnowledgeSectionProps) {
 
         <div className="source-list">
           {sources.map((source) => (
-            <div key={source.id} className="source-row">
-              <div>
-                <div style={{ fontWeight: 500 }}>{source.title}</div>
-                <div className="muted">
-                  {source.kind} · {source.chunk_count} chunks · used {source.used_in_answers_count}{' '}
-                  times
-                  {source.last_crawled_at
-                    ? ` · crawled ${formatDateTime(source.last_crawled_at)}`
-                    : ''}
-                  {source.last_indexed_at
-                    ? ` · indexed ${formatDateTime(source.last_indexed_at)}`
-                    : ' · not vectorized yet'}
-                </div>
-                {source.source_url && (
-                  <a href={source.source_url} target="_blank" rel="noreferrer">
-                    {source.source_url}
-                  </a>
-                )}
-                {source.error && <div className="error">{source.error}</div>}
-              </div>
-              <div className="source-actions">
-                <div className="source-pills">
-                  <span
-                    className={`pill ${source.status === 'failed' ? 'urgent' : source.status === 'ready' ? 'resolved' : ''}`}
-                  >
-                    {source.status}
-                  </span>
-                  {source.stale && <span className="pill high">stale</span>}
-                  {source.duplicate_count > 0 && <span className="pill high">duplicate</span>}
-                </div>
-                <button
-                  disabled={!!busy || source.status === 'indexing'}
-                  onClick={() =>
-                    run(`reindex-${source.id}`, async () => {
-                      const result = await API.reindexKnowledge(source.id);
-                      return `Reindexed ${result.chunks} chunks`;
-                    })
-                  }
-                >
-                  {busy === `reindex-${source.id}` ? 'Refreshing…' : 'Refresh'}
-                </button>
-              </div>
-            </div>
+            <KnowledgeSourceRow key={source.id} source={source} busy={busy} run={run} />
           ))}
           {sources.length === 0 && <div className="muted">No sources indexed yet.</div>}
         </div>

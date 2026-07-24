@@ -245,7 +245,7 @@ export function createWorkspaceTestDb() {
       ticket_id TEXT,
       message_id TEXT,
       content_hash TEXT,
-      status TEXT NOT NULL,
+      status TEXT NOT NULL, public INTEGER NOT NULL DEFAULT 0,
       chunk_count INTEGER NOT NULL DEFAULT 0,
       last_crawled_at INTEGER,
       last_indexed_at INTEGER,

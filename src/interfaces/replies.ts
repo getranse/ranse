@@ -12,6 +12,7 @@ export interface SignatureCtx {
 export interface EmailFeedbackLinks {
   positive: string;
   negative: string;
+  portal?: string;
 }
 
 export interface ReplyBodyCtx {

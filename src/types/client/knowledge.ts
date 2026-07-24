@@ -1,5 +1,7 @@
-import type { KnowledgeIngestResult } from '../../interfaces/knowledge';
+import type { KnowledgeIngestResult } from '../../interfaces/knowledge-sources';
+
 export type { KnowledgeIngestResult };
+
 import type {
   AgenticRetrievalTrace,
   KnowledgeHit,

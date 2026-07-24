@@ -14,7 +14,8 @@ export function appendPlainTextFeedback(
   feedback?: EmailFeedbackLinks | null,
 ): string {
   if (!feedback) return text;
-  return `${text.trimEnd()}\n\nWas this helpful?\nYes: ${feedback.positive}\nNo: ${feedback.negative}`;
+  const portal = feedback.portal ? `\nView your request: ${feedback.portal}` : '';
+  return `${text.trimEnd()}\n\nWas this helpful?\nYes: ${feedback.positive}\nNo: ${feedback.negative}${portal}`;
 }
 
 // Customers must always be able to tell an AI reply from a human one (the
@@ -43,5 +44,8 @@ export function traceHtml(traceUrl?: string | null, aiAuthored?: boolean): strin
 
 export function feedbackHtml(feedback?: EmailFeedbackLinks | null): string {
   if (!feedback) return '';
-  return `<div style="margin-top:32px;padding-top:14px;border-top:1px solid #eee;color:#555;font-size:13px;">Was this helpful? <a href="${escapeHtml(feedback.positive)}" style="display:inline-block;margin-left:8px;color:#0f766e;text-decoration:none;">Yes</a> <a href="${escapeHtml(feedback.negative)}" style="display:inline-block;margin-left:8px;color:#991b1b;text-decoration:none;">No</a></div>`;
+  const portal = feedback.portal
+    ? ` · <a href="${escapeHtml(feedback.portal)}" style="color:#555;text-decoration:underline;">View your request</a>`
+    : '';
+  return `<div style="margin-top:32px;padding-top:14px;border-top:1px solid #eee;color:#555;font-size:13px;">Was this helpful? <a href="${escapeHtml(feedback.positive)}" style="display:inline-block;margin-left:8px;color:#0f766e;text-decoration:none;">Yes</a> <a href="${escapeHtml(feedback.negative)}" style="display:inline-block;margin-left:8px;color:#991b1b;text-decoration:none;">No</a>${portal}</div>`;
 }

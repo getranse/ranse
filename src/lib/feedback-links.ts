@@ -1,7 +1,10 @@
-import type { FeedbackTokenPayload, FeedbackLinks } from '../interfaces/lib';
-export type { FeedbackTokenPayload, FeedbackLinks };
+import type { FeedbackLinks, FeedbackTokenPayload } from '../interfaces/lib';
+
+export type { FeedbackLinks, FeedbackTokenPayload };
+
 import type { Env } from '../server/env';
 import { hmacSign, hmacVerify } from './crypto';
+import { buildPortalLink } from './portal-links';
 
 export async function buildFeedbackLinks(
   env: Env,
@@ -17,6 +20,9 @@ export async function buildFeedbackLinks(
   return {
     positive: await signedFeedbackUrl(env, base, { ...input, rating: 'positive' }),
     negative: await signedFeedbackUrl(env, base, { ...input, rating: 'negative' }),
+    portal:
+      (await buildPortalLink(env, { workspaceId: input.workspaceId, ticketId: input.ticketId })) ??
+      undefined,
   };
 }
 
@@ -58,14 +64,18 @@ function encodePayload(payload: FeedbackTokenPayload): string {
 
 function decodePayload(value: string): FeedbackTokenPayload | null {
   try {
-    const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const padded = value
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(value.length / 4) * 4, '=');
     const parsed = JSON.parse(atob(padded));
     if (
       typeof parsed.workspaceId !== 'string' ||
       typeof parsed.ticketId !== 'string' ||
       typeof parsed.messageId !== 'string' ||
       typeof parsed.expiresAt !== 'number'
-    ) return null;
+    )
+      return null;
     return parsed;
   } catch {
     return null;

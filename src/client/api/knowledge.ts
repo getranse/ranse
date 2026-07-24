@@ -8,6 +8,11 @@ import type {
 import { api, uploadFile } from './core';
 
 export const knowledgeApi = {
+  setKnowledgePublic: (id: string, isPublic: boolean) =>
+    api<any>(`/api/knowledge/${id}/public`, {
+      method: 'PATCH',
+      body: JSON.stringify({ public: isPublic }),
+    }),
   listKnowledge: () => api<{ sources: KnowledgeSource[] }>('/api/knowledge'),
   // Single entry point for all source kinds. PDFs go up as multipart (the file
   // carries bytes to extract); manual/url sources as JSON. Both hit POST /api/knowledge.
